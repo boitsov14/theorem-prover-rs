@@ -1,4 +1,5 @@
 use enum_variant_type::EnumVariantType;
+use maplit::hashset;
 use std::collections::{HashMap, HashSet};
 
 // TODO: 2023/07/06 Dummyどうしの比較は常にNot Eqになってほしい
@@ -29,6 +30,18 @@ impl Term {
             }
         }
         free_vars
+    }
+
+    fn get_free_vars2(&self) -> HashSet<&VarID> {
+        use Term::*;
+        match self {
+            Var(id) => hashset!(id),
+            UnificationTerm(_) | Dummy => hashset!(),
+            Function(_, terms) => terms
+                .iter()
+                .flat_map(|term| term.get_free_vars2())
+                .collect(),
+        }
     }
 
     fn get_unification_terms(&self) -> HashSet<&UnificationTermID> {
