@@ -15,7 +15,7 @@ type VarID = String;
 type UnificationTermID = (usize, usize);
 
 impl Term {
-    fn get_free_vars(&self) -> HashSet<&VarID> {
+    pub fn get_free_vars(&self) -> HashSet<&VarID> {
         let mut free_vars = HashSet::new();
         use Term::*;
         match self {
@@ -32,7 +32,7 @@ impl Term {
         free_vars
     }
 
-    fn get_free_vars2(&self) -> HashSet<&VarID> {
+    pub fn get_free_vars2(&self) -> HashSet<&VarID> {
         use Term::*;
         match self {
             Var(id) => hashset!(id),
@@ -131,6 +131,36 @@ impl Term {
     }
 
     // TODO: 2023/07/06 to_str的なのを書く
+}
+
+impl std::fmt::Display for Term {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Term::*;
+        match self {
+            Var(id) => write!(f, "{id}"),
+            UnificationTerm((id1, id2)) => write!(f, "t({id1}, {id2})"),
+            Function(name, terms) => {
+                write!(
+                    f,
+                    "{name}({})",
+                    terms
+                        .iter()
+                        .map(|term| format!("{}", term))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+                // write!(f, "{name}(")?;
+                // for (i, term) in terms.iter().enumerate() {
+                //     if i > 0 {
+                //         write!(f, ", ")?;
+                //     }
+                //     write!(f, "{}", term)?;
+                // }
+                // write!(f, ")")
+            }
+            Dummy => write!(f, "_"),
+        }
+    }
 }
 
 impl Var {
