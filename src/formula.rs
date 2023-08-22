@@ -26,6 +26,11 @@ pub enum Formula {
 pub static TRUE: Formula = Formula::And(vec![]);
 pub static FALSE: Formula = Formula::Or(vec![]);
 
+pub struct NamingInfo {
+    map: HashMap<String, usize>,
+    next: usize,
+}
+
 impl Term {
     fn free_vars(&self) -> HashSet<usize> {
         let mut vars = hashset!();
