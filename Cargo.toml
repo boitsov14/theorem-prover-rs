@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 enum_variant_type = "0.3.1"
 maplit = "1.0.2"
+unicode-normalization = "0.1.22"
 
 [dev-dependencies]
 criterion = "0.5.1"
