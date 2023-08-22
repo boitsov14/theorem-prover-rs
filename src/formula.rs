@@ -11,6 +11,18 @@ pub enum Term {
     Function(usize, Vec<Term>),
 }
 
+#[derive(Clone, Debug, EnumVariantType, Eq, Hash, PartialEq)]
+pub enum Formula {
+    Predicate(usize, Vec<Term>),
+    Not(Box<Formula>),
+    And(Vec<Formula>),
+    Or(Vec<Formula>),
+    Implies(Box<Formula>, Box<Formula>),
+    Iff(Box<Formula>, Box<Formula>),
+    All(Vec<usize>, Box<Formula>),
+    Exists(Vec<usize>, Box<Formula>),
+}
+
 impl Term {
     fn free_vars(&self) -> HashSet<usize> {
         let mut vars = hashset!();
