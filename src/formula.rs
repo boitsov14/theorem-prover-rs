@@ -23,6 +23,9 @@ pub enum Formula {
     Exists(Vec<usize>, Box<Formula>),
 }
 
+pub static TRUE: Formula = Formula::And(vec![]);
+pub static FALSE: Formula = Formula::Or(vec![]);
+
 impl Term {
     fn free_vars(&self) -> HashSet<usize> {
         let mut vars = hashset!();
