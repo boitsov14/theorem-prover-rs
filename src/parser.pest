@@ -23,8 +23,8 @@ exists   = @{ "∃" | "?" | ^"exists" | ^"ex" }
 bin_op  = _{ and | or | implies | iff }
 and     = @{ "∧" | "/\\" | "&&" | "&" | ^"and" | ^"land" | ^"wedge" }
 or      = @{ "∨" | "\\/" | "||" | "|" | ^"or" | ^"lor" | ^"vee" }
-implies = @{ "→" | "->" | "=>" | "-->" | "==>" | "⇒" | "to" | "implies" | "imply" | "imp" | "rightarrow" }
-iff     = @{ "↔" | "<->" | "<=>" | "<-->" | "<==>" | "⇔" | "≡" | "iff" | "equivalent" | "equiv" | "leftrightarrow" }
+implies = @{ "→" | "->" | "=>" | "-->" | "==>" | "⇒" | ^"to" | ^"implies" | ^"imply" | ^"imp" | ^"rightarrow" }
+iff     = @{ "↔" | "<->" | "<=>" | "<-->" | "<==>" | "⇔" | "≡" | ^"iff" | ^"equivalent" | ^"equiv" | ^"leftrightarrow" }
 
 formula  = _{ atom ~ (bin_op ~ atom)* }
 formulas = _{ formula ~ ("," ~ formula)* }
