@@ -43,23 +43,12 @@ impl NamingInfo {
         }
     }
 
-    // TODO: 2023/08/23 どちらがよいか
-    fn _get_str2(&self, idx: usize) -> Option<&str> {
-        self.map.iter().find_map(|(key, val)| {
-            if *val == idx {
-                Some(key.as_str())
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_str(&self, idx: usize) -> String {
+    fn get_str(&self, idx: usize) -> &str {
         self.map
             .iter()
             .find_map(|(key, val)| {
                 if *val == idx {
-                    Some(key.to_string())
+                    Some(key.as_str())
                 } else {
                     None
                 }
@@ -152,7 +141,7 @@ impl Term {
     fn write_str(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
-            Var(id) => inf.get_str(*id),
+            Var(id) => inf.get_str(*id).to_string(),
             Function(id, terms) => {
                 format!(
                     "{}({})",
@@ -204,7 +193,7 @@ impl Formula {
         match self {
             Predicate(id, terms) => {
                 if terms.is_empty() {
-                    inf.get_str(*id)
+                    inf.get_str(*id).to_string()
                 } else {
                     format!(
                         "{}({})",
