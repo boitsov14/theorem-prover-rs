@@ -199,8 +199,58 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
 }
 
 impl Formula {
-    fn write_str(&self, inf: &NamingInfo, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn write_str(&self, inf: &NamingInfo) -> String {
+        use Formula::*;
+        match self {
+            Predicate(id, terms) => {
+                if terms.is_empty() {
+                    inf.get_str(*id)
+                } else {
+                    format!(
+                        "{}({})",
+                        inf.get_str(*id),
+                        terms
+                            .iter()
+                            .map(|term| term.write_str(inf))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
+            }
+            Not(fml) => format!("¬{}", fml.write_str(inf)),
+            And(fmls) => format!(
+                "({})",
+                fmls.iter()
+                    .map(|fml| fml.write_str(inf))
+                    .collect::<Vec<_>>()
+                    .join(" ∧ ")
+            ),
+            Or(fmls) => format!(
+                "({})",
+                fmls.iter()
+                    .map(|fml| fml.write_str(inf))
+                    .collect::<Vec<_>>()
+                    .join(" ∨ ")
+            ),
+            Implies(lhs, rhs) => format!("({} → {})", lhs.write_str(inf), rhs.write_str(inf)),
+            Iff(lhs, rhs) => format!("({} ↔ {})", lhs.write_str(inf), rhs.write_str(inf)),
+            All(vars, fml) => format!(
+                "∀{}{}",
+                vars.iter()
+                    .map(|id| inf.get_str(*id))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                fml.write_str(inf)
+            ),
+            Exists(vars, fml) => format!(
+                "∃{}{}",
+                vars.iter()
+                    .map(|id| inf.get_str(*id))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                fml.write_str(inf)
+            ),
+        }
     }
 }
 
