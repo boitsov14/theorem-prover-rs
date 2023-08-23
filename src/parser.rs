@@ -7,7 +7,7 @@ use unicode_normalization::UnicodeNormalization;
 #[grammar = "parser.pest"]
 pub struct FormulaParser;
 
-fn parse_formula(str: &str) {
-    let str = str.nfkc().collect::<String>();
-    println!("{str}");
+fn parse_formula(s: &str) {
+    let s = s.nfkc().collect::<String>();
+    println!("{s}");
 }
