@@ -42,7 +42,9 @@ impl NamingInfo {
             self.idx
         }
     }
-    fn get_str(&self, idx: usize) -> Option<&str> {
+
+    // TODO: 2023/08/23 どちらがよいか
+    fn _get_str2(&self, idx: usize) -> Option<&str> {
         self.map.iter().find_map(|(key, val)| {
             if *val == idx {
                 Some(key.as_str())
@@ -50,6 +52,19 @@ impl NamingInfo {
                 None
             }
         })
+    }
+
+    fn get_str(&self, idx: usize) -> String {
+        self.map
+            .iter()
+            .find_map(|(key, val)| {
+                if *val == idx {
+                    Some(key.to_string())
+                } else {
+                    None
+                }
+            })
+            .expect("Value not found for id")
     }
 }
 
@@ -134,8 +149,22 @@ impl Term {
         }
     }
 
-    fn write_str(&self, inf: &NamingInfo, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn write_str(&self, inf: &NamingInfo) -> String {
+        use Term::*;
+        match self {
+            Var(id) => inf.get_str(*id),
+            Function(id, terms) => {
+                format!(
+                    "{}({})",
+                    inf.get_str(*id),
+                    terms
+                        .iter()
+                        .map(|term| term.write_str(inf))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
+        }
     }
 }
 
