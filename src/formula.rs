@@ -26,9 +26,31 @@ pub enum Formula {
 pub static TRUE: Formula = Formula::And(vec![]);
 pub static FALSE: Formula = Formula::Or(vec![]);
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NamingInfo {
     map: HashMap<String, usize>,
-    next: usize,
+    idx: usize,
+}
+
+impl NamingInfo {
+    fn get_id(&mut self, s: String) -> usize {
+        if let Some(&id) = self.map.get(&s) {
+            id
+        } else {
+            self.idx += 1;
+            self.map.insert(s, self.idx);
+            self.idx
+        }
+    }
+    fn get_str(&self, idx: usize) -> Option<&str> {
+        self.map.iter().find_map(|(key, val)| {
+            if *val == idx {
+                Some(key.as_str())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 impl Term {
