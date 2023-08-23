@@ -133,6 +133,10 @@ impl Term {
             }
         }
     }
+
+    fn write_str(&self, inf: &NamingInfo, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
 }
 
 // TODO: 2023/08/21 そもそもこれは必要なのか
@@ -141,13 +145,13 @@ impl fmt::Display for Term {
         use Term::*;
         match self {
             Var(id) => write!(f, "{id}"),
-            Function(name, terms) => {
+            Function(id, terms) => {
                 write!(
                     f,
-                    "{name}({})",
+                    "{id}({})",
                     terms
                         .iter()
-                        .map(|term| format!("{}", term))
+                        .map(|term| format!("{term}"))
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
@@ -162,5 +166,69 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
         get_new_sig(sig + "'", set)
     } else {
         sig
+    }
+}
+
+impl Formula {
+    fn write_str(&self, inf: &NamingInfo, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+impl fmt::Display for Formula {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Formula::*;
+        match self {
+            Predicate(id, terms) => {
+                if terms.is_empty() {
+                    write!(f, "{id}")
+                } else {
+                    write!(
+                        f,
+                        "{id}({})",
+                        terms
+                            .iter()
+                            .map(|term| format!("{term}"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
+            }
+            Not(fml) => write!(f, "¬{fml}"),
+            And(fmls) => write!(
+                f,
+                "({})",
+                fmls.iter()
+                    .map(|fml| format!("{fml}"))
+                    .collect::<Vec<_>>()
+                    .join(" ∧ ")
+            ),
+            Or(fmls) => write!(
+                f,
+                "({})",
+                fmls.iter()
+                    .map(|fml| format!("{fml}"))
+                    .collect::<Vec<_>>()
+                    .join(" ∨ ")
+            ),
+            Implies(lhs, rhs) => write!(f, "({lhs} → {rhs})"),
+            Iff(lhs, rhs) => write!(f, "({lhs} ↔ {rhs})"),
+            All(vars, fml) => write!(
+                f,
+                "∀{}{fml}",
+                vars.iter()
+                    .map(|term| format!("{term}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Exists(vars, fml) => write!(
+                f,
+                "∃{}{fml}",
+                vars.iter()
+                    .map(|term| format!("{term}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        }
     }
 }
