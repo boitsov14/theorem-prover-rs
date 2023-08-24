@@ -8,9 +8,9 @@ term  = _{ function ~ "(" ~ terms ~ ")" | variable }
 terms = _{ term ~ ("," ~ term)* }
 
 predicate = _{ prop ~ ("(" ~ terms ~ ")")? }
-true      = @{ "⊤" | ^"true" | ^"tautology" | ^"top" }
-false     = @{ "⊥" | ^"false" | ^"contradiction" | ^"bottom" | ^"bot" }
-primary   = _{ predicate | true | false | "(" ~ formula ~ ")" }
+p_true    = @{ "⊤" | ^"true" | ^"tautology" | ^"top" }
+p_false   = @{ "⊥" | ^"false" | ^"contradiction" | ^"bottom" | ^"bot" }
+primary   = _{ predicate | p_true | p_false | "(" ~ formula ~ ")" }
 atom      = _{ unary_op* ~ primary }
 
 unary_op = _{ not | qf }
@@ -32,6 +32,7 @@ formulas = _{ formula ~ ("," ~ formula)* }
 sequent = _{ (formulas | "") ~ vdash ~ (formulas | "") }
 vdash   = @{ "⊢" | "|-" | "├" | "┣" }
 
-input = _{ SOI ~ (sequent | formula) ~ EOI }
+input      = _{ SOI ~ (sequent | formula) ~ EOI }
+input_term = _{ SOI ~ term ~ EOI }
 
 WHITESPACE = _{ " " | NEWLINE }
