@@ -33,6 +33,11 @@ pub struct NamingInfo {
 }
 
 impl NamingInfo {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    // TODO: 2023/08/24 Stringか&strか
     fn get_id(&mut self, s: String) -> usize {
         if let Some(&id) = self.map.get(&s) {
             id
@@ -140,6 +145,7 @@ impl Term {
         }
     }
 
+    /// Returns a string representation of the Term using the provided NamingInfo.
     fn write_str(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
@@ -301,4 +307,41 @@ impl fmt::Display for Formula {
             ),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_id() {}
+
+    #[test]
+    fn test_get_name() {}
+
+    #[test]
+    fn test_write_str_var() {
+        use Term::*;
+        let mut inf = NamingInfo::new();
+        let id = inf.get_id("x".to_string());
+        let term = Var(id);
+        assert_eq!(term.write_str(&inf), "x");
+    }
+
+    // TODO: 2023/08/24 さすがに大変なのでパーサー使う
+    #[test]
+    fn test_write_str_function() {
+        use Term::*;
+        let mut inf = NamingInfo::new();
+        let func_id = inf.get_id("f".to_string());
+        let var_id_x = inf.get_id("x".to_string());
+        let var_id_y = inf.get_id("y".to_string());
+        let var_x = Var(var_id_x);
+        let var_y = Var(var_id_y);
+        let term = Function(func_id, vec![var_x, var_y]);
+        assert_eq!(term.write_str(&inf), "f(x, y)");
+    }
+
+    #[test]
+    fn test_formula_write_str() {}
 }
