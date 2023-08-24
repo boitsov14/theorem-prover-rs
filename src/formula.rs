@@ -29,7 +29,7 @@ pub static FALSE: Formula = Formula::Or(vec![]);
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NamingInfo {
     map: HashMap<String, usize>,
-    idx: usize,
+    id: usize,
 }
 
 impl NamingInfo {
@@ -37,22 +37,24 @@ impl NamingInfo {
         if let Some(&id) = self.map.get(&s) {
             id
         } else {
-            self.idx += 1;
-            self.map.insert(s, self.idx);
-            self.idx
+            self.id += 1;
+            self.map.insert(s, self.id);
+            self.id
         }
     }
 
-    fn get_str(&self, idx: usize) -> &str {
+    fn get_name(&self, id: usize) -> &str {
         self.map
             .iter()
-            .find_map(|(key, val)| {
-                if *val == idx {
-                    Some(key.as_str())
-                } else {
-                    None
-                }
-            })
+            .find_map(
+                |(key, val)| {
+                    if *val == id {
+                        Some(key.as_str())
+                    } else {
+                        None
+                    }
+                },
+            )
             .expect("Value not found for id")
     }
 }
@@ -141,11 +143,11 @@ impl Term {
     fn write_str(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
-            Var(id) => inf.get_str(*id).to_string(),
+            Var(id) => inf.get_name(*id).to_string(),
             Function(id, terms) => {
                 format!(
                     "{}({})",
-                    inf.get_str(*id),
+                    inf.get_name(*id),
                     terms
                         .iter()
                         .map(|term| term.write_str(inf))
@@ -193,11 +195,11 @@ impl Formula {
         match self {
             Predicate(id, terms) => {
                 if terms.is_empty() {
-                    inf.get_str(*id).to_string()
+                    inf.get_name(*id).to_string()
                 } else {
                     format!(
                         "{}({})",
-                        inf.get_str(*id),
+                        inf.get_name(*id),
                         terms
                             .iter()
                             .map(|term| term.write_str(inf))
@@ -226,7 +228,7 @@ impl Formula {
             All(vars, fml) => format!(
                 "∀{}{}",
                 vars.iter()
-                    .map(|id| inf.get_str(*id))
+                    .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(", "),
                 fml.write_str(inf)
@@ -234,7 +236,7 @@ impl Formula {
             Exists(vars, fml) => format!(
                 "∃{}{}",
                 vars.iter()
-                    .map(|id| inf.get_str(*id))
+                    .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(", "),
                 fml.write_str(inf)
