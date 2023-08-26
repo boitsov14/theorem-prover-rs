@@ -1,21 +1,21 @@
-variable      = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
-function      = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
-prop          = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
-bdd_variable  = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_DIGIT | "_")* }
-bdd_variables = _{ bdd_variable ~ ("," ~ bdd_variable)* }
+variable       = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
+function_name  = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
+predicate_name = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_ALPHANUMERIC | GREEK | "_")* }
+bdd_variable   = @{ (ASCII_ALPHA | GREEK) ~ (ASCII_DIGIT | "_")* }
+bdd_variables  =  { bdd_variable ~ ("," ~ bdd_variable)* }
 
-term  = _{ function ~ "(" ~ terms ~ ")" | variable }
-terms = _{ term ~ ("," ~ term)* }
+function = { function_name ~ "(" ~ terms ~ ")" }
+term     = { function | variable }
+terms    = { term ~ ("," ~ term)* }
 
-predicate = _{ prop ~ ("(" ~ terms ~ ")")? }
+predicate =  { predicate_name ~ ("(" ~ terms ~ ")")? }
 p_true    = @{ "⊤" | ^"true" | ^"tautology" | ^"top" }
 p_false   = @{ "⊥" | ^"false" | ^"contradiction" | ^"bottom" | ^"bot" }
-primary   = _{ predicate | p_true | p_false | "(" ~ formula ~ ")" }
+primary   = _{ p_true | p_false | predicate | "(" ~ formula ~ ")" }
 atom      = _{ unary_op* ~ primary }
 
 unary_op = _{ not | qf }
-qf       = _{ qf_op ~ bdd_variables }
-qf_op    = _{ all | exists }
+qf       =  { (all | exists) ~ bdd_variables }
 not      = @{ "¬" | "~" | ^"not" | ^"lnot" | ^"negation" | ^"neg" }
 all      = @{ "∀" | "!" | ^"forall" | ^"all" }
 exists   = @{ "∃" | "?" | ^"exists" | ^"ex" }
@@ -26,13 +26,9 @@ or      = @{ "∨" | "\\/" | "||" | "|" | ^"or" | ^"lor" | ^"vee" }
 implies = @{ "→" | "->" | "=>" | "-->" | "==>" | "⇒" | ^"to" | ^"implies" | ^"imply" | ^"imp" | ^"rightarrow" }
 iff     = @{ "↔" | "<->" | "<=>" | "<-->" | "<==>" | "⇔" | "≡" | ^"iff" | ^"equivalent" | ^"equiv" | ^"leftrightarrow" }
 
-formula  = _{ atom ~ (bin_op ~ atom)* }
-formulas = _{ formula ~ ("," ~ formula)* }
+formula = { atom ~ (bin_op ~ atom)* }
 
-sequent = _{ (formulas | "") ~ vdash ~ (formulas | "") }
-vdash   = @{ "⊢" | "|-" | "├" | "┣" }
-
-input      = _{ SOI ~ (sequent | formula) ~ EOI }
-input_term = _{ SOI ~ term ~ EOI }
+input_term    = _{ SOI ~ term ~ EOI }
+input_formula = _{ SOI ~ formula ~ EOI }
 
 WHITESPACE = _{ " " | NEWLINE }
