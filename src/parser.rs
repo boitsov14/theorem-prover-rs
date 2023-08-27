@@ -85,15 +85,15 @@ fn build_formula(pairs: Pairs<Rule>) -> PFormula {
             }
             _ => unreachable!(),
         })
-        .map_infix(|lhs, op, rhs| match op.as_rule() {
-            Rule::and => And(Box::new(lhs), Box::new(rhs)),
-            Rule::or => Or(Box::new(lhs), Box::new(rhs)),
-            Rule::implies => Implies(Box::new(lhs), Box::new(rhs)),
-            Rule::iff => Iff(Box::new(lhs), Box::new(rhs)),
+        .map_infix(|p, op, q| match op.as_rule() {
+            Rule::and => And(Box::new(p), Box::new(q)),
+            Rule::or => Or(Box::new(p), Box::new(q)),
+            Rule::implies => Implies(Box::new(p), Box::new(q)),
+            Rule::iff => Iff(Box::new(p), Box::new(q)),
             _ => unreachable!(),
         })
-        .map_prefix(|op, rhs| match op.as_rule() {
-            Rule::not => Not(Box::new(rhs)),
+        .map_prefix(|op, p| match op.as_rule() {
+            Rule::not => Not(Box::new(p)),
             Rule::qf => {
                 let mut pairs = op.into_inner();
                 let qf_op = pairs.next().unwrap().as_rule();
@@ -104,8 +104,8 @@ fn build_formula(pairs: Pairs<Rule>) -> PFormula {
                     .map(|pair| pair.as_str().to_string())
                     .collect();
                 match qf_op {
-                    Rule::all => All(bdd_vars, Box::new(rhs)),
-                    Rule::exists => Exists(bdd_vars, Box::new(rhs)),
+                    Rule::all => All(bdd_vars, Box::new(p)),
+                    Rule::exists => Exists(bdd_vars, Box::new(p)),
                     _ => unreachable!(),
                 }
             }
