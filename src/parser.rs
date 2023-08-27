@@ -3,6 +3,7 @@ use crate::formula::{Formula, Term};
 
 use once_cell::sync::Lazy;
 use pest::{
+    error::Error,
     iterators::{Pair, Pairs},
     pratt_parser::PrattParser,
     Parser,
@@ -10,7 +11,7 @@ use pest::{
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(pest_derive::Parser)]
-#[grammar = "parser.pest"]
+#[grammar = "grammar.pest"]
 struct FormulaParser;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -44,16 +45,9 @@ static PRATT_PARSER: Lazy<PrattParser<Rule>> = Lazy::new(|| {
         .op(Op::prefix(not) | Op::prefix(qf))
 });
 
-pub fn parse(s: &str) {
-    let s = s.nfkc().collect::<String>();
-    println!("{s}");
-
-    match FormulaParser::parse(Rule::input_formula, &s) {
-        Ok(mut pairs) => {
-            println!("{:#?}", pairs);
-            // let term = parse_term(pairs.next().unwrap());
-            // println!("{term:#?}");
-            let fml = parse_formula(pairs.next().unwrap().into_inner());
+pub fn example(s: &str) {
+    match parse_formula(s) {
+        Ok(fml) => {
             println!("{fml:#?}");
         }
         Err(e) => {
@@ -62,18 +56,29 @@ pub fn parse(s: &str) {
     }
 }
 
-fn parse_formula(pairs: Pairs<Rule>) -> PFormula {
+// TODO: 2023/08/27 convert PFormula to Formula
+fn parse_formula(s: &str) -> Result<PFormula, Box<Error<Rule>>> {
+    let s: String = s.nfkc().collect();
+    let pairs = FormulaParser::parse(Rule::input_formula, &s)?
+        .next()
+        .unwrap()
+        .into_inner();
+    Ok(build_formula(pairs))
+    // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+}
+
+fn build_formula(pairs: Pairs<Rule>) -> PFormula {
     use PFormula::*;
     PRATT_PARSER
         .map_primary(|primary| match primary.as_rule() {
-            Rule::formula => parse_formula(primary.into_inner()),
+            Rule::formula => build_formula(primary.into_inner()),
             Rule::p_true => True,
             Rule::p_false => False,
             Rule::predicate => {
                 let mut pairs = primary.into_inner();
                 let name = pairs.next().unwrap().as_str().to_string();
                 let terms = match pairs.next() {
-                    Some(pair) => pair.into_inner().map(parse_term).collect(),
+                    Some(pair) => pair.into_inner().map(build_term).collect(),
                     None => vec![],
                 };
                 Predicate(name, terms)
@@ -109,7 +114,7 @@ fn parse_formula(pairs: Pairs<Rule>) -> PFormula {
         .parse(pairs)
 }
 
-fn parse_term(pair: Pair<Rule>) -> PTerm {
+fn build_term(pair: Pair<Rule>) -> PTerm {
     use PTerm::*;
     let pair = pair.into_inner().next().unwrap();
     match pair.as_rule() {
@@ -117,9 +122,19 @@ fn parse_term(pair: Pair<Rule>) -> PTerm {
         Rule::function => {
             let mut pairs = pair.into_inner();
             let name = pairs.next().unwrap().as_str().to_string();
-            let terms = pairs.next().unwrap().into_inner().map(parse_term).collect();
+            let terms = pairs.next().unwrap().into_inner().map(build_term).collect();
             Function(name, terms)
         }
         _ => unreachable!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_term(s: &str) -> Result<PTerm, Box<Error<Rule>>> {
+        let pair = FormulaParser::parse(Rule::input_term, s)?.next().unwrap();
+        Ok(build_term(pair))
     }
 }
