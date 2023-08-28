@@ -1,5 +1,4 @@
-use crate::formula::NamingInfo;
-use crate::formula::{Formula, Term};
+use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
 
 use once_cell::sync::Lazy;
 use pest::{
@@ -45,25 +44,13 @@ static PRATT_PARSER: Lazy<PrattParser<Rule>> = Lazy::new(|| {
         .op(Op::prefix(not) | Op::prefix(qf))
 });
 
-pub fn example(s: &str) {
-    match parse_formula(s) {
-        Ok(fml) => {
-            println!("{fml:#?}");
-        }
-        Err(e) => {
-            println!("Parse failed: {e}");
-        }
-    }
-}
-
-// TODO: 2023/08/27 convert PFormula to Formula
-fn parse_formula(s: &str) -> Result<PFormula, Box<Error<Rule>>> {
+pub fn parse_formula(s: &str) -> Result<(Formula, NamingInfo), Box<Error<Rule>>> {
     let s: String = s.nfkc().collect();
     let pairs = FormulaParser::parse(Rule::input_formula, &s)?
         .next()
         .unwrap()
         .into_inner();
-    Ok(build_formula(pairs))
+    Ok(build_formula(pairs).into_formula())
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
 }
 
@@ -126,6 +113,100 @@ fn build_term(pair: Pair<Rule>) -> PTerm {
             Function(name, terms)
         }
         _ => unreachable!(),
+    }
+}
+
+impl PTerm {
+    fn into_term(self, inf: &mut NamingInfo) -> Term {
+        match self {
+            PTerm::Var(name) => Term::Var(inf.get_id(name)),
+            PTerm::Function(name, pterms) => Term::Function(
+                inf.get_id(name),
+                pterms
+                    .into_iter()
+                    .map(|pterm| pterm.into_term(inf))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+impl PFormula {
+    fn into_formula(self) -> (Formula, NamingInfo) {
+        let mut inf = NamingInfo::new();
+        let fml = self.into_formula_rec(&mut inf);
+        (fml, inf)
+    }
+
+    fn into_formula_rec(self, inf: &mut NamingInfo) -> Formula {
+        match self {
+            PFormula::True => TRUE.clone(),
+            PFormula::False => FALSE.clone(),
+            PFormula::Predicate(name, pterms) => Formula::Predicate(
+                inf.get_id(name),
+                pterms
+                    .into_iter()
+                    .map(|pterm| pterm.into_term(inf))
+                    .collect(),
+            ),
+            PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(inf))),
+            PFormula::And(p, q) => {
+                use Formula::And;
+                let p = p.into_formula_rec(inf);
+                let q = q.into_formula_rec(inf);
+                match (p, q) {
+                    (And(mut ps), And(qs)) => {
+                        ps.extend(qs);
+                        And(ps)
+                    }
+                    (And(mut ps), q) => {
+                        ps.push(q);
+                        And(ps)
+                    }
+                    (p, And(mut qs)) => {
+                        qs.insert(0, p);
+                        And(qs)
+                    }
+                    (p, q) => And(vec![p, q]),
+                }
+            }
+            PFormula::Or(p, q) => {
+                use Formula::Or;
+                let p = p.into_formula_rec(inf);
+                let q = q.into_formula_rec(inf);
+                match (p, q) {
+                    (Or(mut ps), Or(qs)) => {
+                        ps.extend(qs);
+                        Or(ps)
+                    }
+                    (Or(mut ps), q) => {
+                        ps.push(q);
+                        Or(ps)
+                    }
+                    (p, Or(mut qs)) => {
+                        qs.insert(0, p);
+                        Or(qs)
+                    }
+                    (p, q) => Or(vec![p, q]),
+                }
+            }
+            PFormula::Implies(p, q) => Formula::Implies(
+                Box::new(p.into_formula_rec(inf)),
+                Box::new(q.into_formula_rec(inf)),
+            ),
+            PFormula::Iff(p, q) => Formula::Iff(
+                Box::new(p.into_formula_rec(inf)),
+                Box::new(q.into_formula_rec(inf)),
+            ),
+            PFormula::All(names, p) => Formula::All(
+                names.into_iter().map(|name| inf.get_id(name)).collect(),
+                Box::new(p.into_formula_rec(inf)),
+            ),
+            PFormula::Exists(names, p) => Formula::Exists(
+                names.into_iter().map(|name| inf.get_id(name)).collect(),
+                Box::new(p.into_formula_rec(inf)),
+            ),
+        }
     }
 }
 
