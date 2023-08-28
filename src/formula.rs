@@ -33,12 +33,11 @@ pub struct NamingInfo {
 }
 
 impl NamingInfo {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    // TODO: 2023/08/24 Stringか&strか
-    fn get_id(&mut self, s: String) -> usize {
+    pub fn get_id(&mut self, s: String) -> usize {
         if let Some(&id) = self.map.get(&s) {
             id
         } else {
@@ -145,8 +144,10 @@ impl Term {
         }
     }
 
+    // TODO: 2023/08/25 pub or private
+    // TODO: 2023/08/28 to_stringにするか
     /// Returns a string representation of the Term using the provided NamingInfo.
-    fn write_str(&self, inf: &NamingInfo) -> String {
+    pub fn write_str(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
             Var(id) => inf.get_name(*id).to_string(),
@@ -158,7 +159,7 @@ impl Term {
                         .iter()
                         .map(|term| term.write_str(inf))
                         .collect::<Vec<_>>()
-                        .join(", ")
+                        .join(",")
                 )
             }
         }
@@ -179,7 +180,7 @@ impl fmt::Display for Term {
                         .iter()
                         .map(|term| format!("{term}"))
                         .collect::<Vec<_>>()
-                        .join(", ")
+                        .join(",")
                 )
             }
         }
@@ -196,7 +197,8 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
 }
 
 impl Formula {
-    fn write_str(&self, inf: &NamingInfo) -> String {
+    // TODO: 2023/08/28 TrueとFalseの場合
+    pub fn write_str(&self, inf: &NamingInfo) -> String {
         use Formula::*;
         match self {
             Predicate(id, terms) => {
@@ -210,7 +212,7 @@ impl Formula {
                             .iter()
                             .map(|term| term.write_str(inf))
                             .collect::<Vec<_>>()
-                            .join(", ")
+                            .join(",")
                     )
                 }
             }
@@ -236,7 +238,7 @@ impl Formula {
                 vars.iter()
                     .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
-                    .join(", "),
+                    .join(","),
                 fml.write_str(inf)
             ),
             Exists(vars, fml) => format!(
@@ -244,7 +246,7 @@ impl Formula {
                 vars.iter()
                     .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
-                    .join(", "),
+                    .join(","),
                 fml.write_str(inf)
             ),
         }
@@ -266,7 +268,7 @@ impl fmt::Display for Formula {
                             .iter()
                             .map(|term| format!("{term}"))
                             .collect::<Vec<_>>()
-                            .join(", ")
+                            .join(",")
                     )
                 }
             }
@@ -295,7 +297,7 @@ impl fmt::Display for Formula {
                 vars.iter()
                     .map(|term| format!("{term}"))
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(",")
             ),
             Exists(vars, fml) => write!(
                 f,
@@ -303,7 +305,7 @@ impl fmt::Display for Formula {
                 vars.iter()
                     .map(|term| format!("{term}"))
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(",")
             ),
         }
     }
