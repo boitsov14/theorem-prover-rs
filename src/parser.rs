@@ -230,4 +230,111 @@ mod tests {
         let pair = FormulaParser::parse(Rule::input_term, s)?.next().unwrap();
         Ok(build_term(pair))
     }
+
+    #[test]
+    fn test_parse_term() {
+        use PTerm::*;
+        assert_eq!(parse_term("x").unwrap(), Var("x".into()));
+        assert_eq!(
+            parse_term("f(x)").unwrap(),
+            Function("f".into(), vec![Var("x".into())])
+        );
+        assert_eq!(
+            parse_term("f(x, y)").unwrap(),
+            Function("f".into(), vec![Var("x".into()), Var("y".into())])
+        );
+        assert_eq!(
+            parse_term("f(x, g(y))").unwrap(),
+            Function(
+                "f".into(),
+                vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_pformula() {
+        use PFormula::*;
+        use PTerm::*;
+        assert_eq!(parse_pformula("true").unwrap(), True);
+        assert_eq!(parse_pformula("false").unwrap(), False);
+        assert_eq!(parse_pformula("P").unwrap(), Predicate("P".into(), vec![]));
+        assert_eq!(
+            parse_pformula("P(x)").unwrap(),
+            Predicate("P".into(), vec![Var("x".into())])
+        );
+        assert_eq!(
+            parse_pformula("P(x, g(y))").unwrap(),
+            Predicate(
+                "P".into(),
+                vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
+            )
+        );
+        assert_eq!(
+            parse_pformula("not P").unwrap(),
+            Not(Box::new(Predicate("P".into(), vec![])))
+        );
+        assert_eq!(
+            parse_pformula("P and Q").unwrap(),
+            And(
+                Box::new(Predicate("P".into(), vec![])),
+                Box::new(Predicate("Q".into(), vec![]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("P or Q").unwrap(),
+            Or(
+                Box::new(Predicate("P".into(), vec![])),
+                Box::new(Predicate("Q".into(), vec![]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("P implies Q").unwrap(),
+            Implies(
+                Box::new(Predicate("P".into(), vec![])),
+                Box::new(Predicate("Q".into(), vec![]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("P iff Q").unwrap(),
+            Iff(
+                Box::new(Predicate("P".into(), vec![])),
+                Box::new(Predicate("Q".into(), vec![]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("all x P(x)").unwrap(),
+            All(
+                vec!["x".into()],
+                Box::new(Predicate("P".into(), vec![Var("x".into())]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("all x, y P(x, y)").unwrap(),
+            All(
+                vec!["x".into(), "y".into()],
+                Box::new(Predicate(
+                    "P".into(),
+                    vec![Var("x".into()), Var("y".into())]
+                ))
+            )
+        );
+        assert_eq!(
+            parse_pformula("ex x P(x)").unwrap(),
+            Exists(
+                vec!["x".into()],
+                Box::new(Predicate("P".into(), vec![Var("x".into())]))
+            )
+        );
+        assert_eq!(
+            parse_pformula("ex x, y P(x, y)").unwrap(),
+            Exists(
+                vec!["x".into(), "y".into()],
+                Box::new(Predicate(
+                    "P".into(),
+                    vec![Var("x".into()), Var("y".into())]
+                ))
+            )
+        );
+    }
 }
