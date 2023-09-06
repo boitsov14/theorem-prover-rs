@@ -44,14 +44,26 @@ static PRATT_PARSER: Lazy<PrattParser<Rule>> = Lazy::new(|| {
         .op(Op::prefix(not) | Op::prefix(qf))
 });
 
-pub fn parse_formula(s: &str) -> Result<(Formula, NamingInfo), Box<Error<Rule>>> {
+pub fn parse_formula(s: &str) -> Result<(Formula, NamingInfo), String> {
     let s: String = s.nfkc().collect();
-    let pairs = FormulaParser::parse(Rule::input_formula, &s)?
+    // TODO: 2023/08/28 括弧の左右の個数のチェック
+    let pfml = match parse_pformula(&s) {
+        Ok(pfml) => pfml,
+        Err(e) => {
+            return Err(e.to_string());
+        }
+    };
+    let (fml, inf) = pfml.into_formula();
+    Ok((fml, inf))
+    // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+}
+
+fn parse_pformula(s: &str) -> Result<PFormula, Box<Error<Rule>>> {
+    let pairs = FormulaParser::parse(Rule::input_formula, s)?
         .next()
         .unwrap()
         .into_inner();
-    Ok(build_formula(pairs).into_formula())
-    // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+    Ok(build_formula(pairs))
 }
 
 fn build_formula(pairs: Pairs<Rule>) -> PFormula {
@@ -63,7 +75,7 @@ fn build_formula(pairs: Pairs<Rule>) -> PFormula {
             Rule::p_false => False,
             Rule::predicate => {
                 let mut pairs = primary.into_inner();
-                let name = pairs.next().unwrap().as_str().to_string();
+                let name = pairs.next().unwrap().as_str().into();
                 let terms = match pairs.next() {
                     Some(pair) => pair.into_inner().map(build_term).collect(),
                     None => vec![],
@@ -88,7 +100,7 @@ fn build_formula(pairs: Pairs<Rule>) -> PFormula {
                     .next()
                     .unwrap()
                     .into_inner()
-                    .map(|pair| pair.as_str().to_string())
+                    .map(|pair| pair.as_str().into())
                     .collect();
                 match qf_op {
                     Rule::all => All(bdd_vars, Box::new(p)),
@@ -105,10 +117,10 @@ fn build_term(pair: Pair<Rule>) -> PTerm {
     use PTerm::*;
     let pair = pair.into_inner().next().unwrap();
     match pair.as_rule() {
-        Rule::variable => Var(pair.as_str().to_string()),
+        Rule::variable => Var(pair.as_str().into()),
         Rule::function => {
             let mut pairs = pair.into_inner();
-            let name = pairs.next().unwrap().as_str().to_string();
+            let name = pairs.next().unwrap().as_str().into();
             let terms = pairs.next().unwrap().into_inner().map(build_term).collect();
             Function(name, terms)
         }
