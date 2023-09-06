@@ -32,45 +32,8 @@ pub struct NamingInfo {
     id: usize,
 }
 
-impl NamingInfo {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn get_id(&mut self, s: String) -> usize {
-        if let Some(&id) = self.map.get(&s) {
-            id
-        } else {
-            self.id += 1;
-            self.map.insert(s, self.id);
-            self.id
-        }
-    }
-
-    fn get_name(&self, id: usize) -> &str {
-        self.map
-            .iter()
-            .find_map(
-                |(key, val)| {
-                    if *val == id {
-                        Some(key.as_str())
-                    } else {
-                        None
-                    }
-                },
-            )
-            .expect("Value not found for id")
-    }
-}
-
 impl Term {
-    fn free_vars(&self) -> HashSet<usize> {
-        let mut vars = hashset!();
-        self.free_vars_rec(&mut vars);
-        vars
-    }
-
-    fn free_vars_rec(&self, vars: &mut HashSet<usize>) {
+    fn fv(&self, vars: &mut HashSet<usize>) {
         use Term::*;
         match self {
             Var(id) => {
@@ -78,12 +41,19 @@ impl Term {
             }
             Function(_, terms) => {
                 for term in terms {
-                    term.free_vars_rec(vars);
+                    term.fv(vars);
                 }
             }
         }
     }
 
+    /*
+    // TODO: 2023/09/06 いらないかも
+    fn free_vars(&self) -> HashSet<usize> {
+        let mut vars = hashset!();
+        self.fv(&mut vars);
+        vars
+    }
     // TODO: 2023/07/06 所有権をどうするか
     // TODO: 2023/08/22 &mut selfとの比較
     // TODO: 2023/08/22 そもそも必要か：substitutionだけでよいのでは
@@ -143,21 +113,21 @@ impl Term {
             }
         }
     }
+    */
 
     // TODO: 2023/08/25 pub or private
-    // TODO: 2023/08/28 to_stringにするか
     /// Returns a string representation of the Term using the provided NamingInfo.
-    pub fn write_str(&self, inf: &NamingInfo) -> String {
+    pub fn to_str_inf(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
-            Var(id) => inf.get_name(*id).to_string(),
+            Var(id) => inf.get_name(*id).into(),
             Function(id, terms) => {
                 format!(
                     "{}({})",
                     inf.get_name(*id),
                     terms
                         .iter()
-                        .map(|term| term.write_str(inf))
+                        .map(|term| term.to_str_inf(inf))
                         .collect::<Vec<_>>()
                         .join(",")
                 )
@@ -166,27 +136,13 @@ impl Term {
     }
 }
 
-// TODO: 2023/08/21 そもそもこれは必要なのか
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Term::*;
-        match self {
-            Var(id) => write!(f, "{id}"),
-            Function(id, terms) => {
-                write!(
-                    f,
-                    "{id}({})",
-                    terms
-                        .iter()
-                        .map(|term| format!("{term}"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )
-            }
-        }
+        write!(f, "{}", self.to_str_inf(&NamingInfo::new()))
     }
 }
 
+/*
 // TODO: 2023/08/21 型や所有権は要検討
 fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
     if set.contains(&sig) {
@@ -195,59 +151,137 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
         sig
     }
 }
+*/
+
+impl Not {
+    pub fn new(p: Formula) -> Self {
+        Self(Box::new(p))
+    }
+}
+
+impl Implies {
+    pub fn new(p: Formula, q: Formula) -> Self {
+        Self(Box::new(p), Box::new(q))
+    }
+}
+
+impl Iff {
+    pub fn new(p: Formula, q: Formula) -> Self {
+        Self(Box::new(p), Box::new(q))
+    }
+}
+
+impl All {
+    pub fn new(vars: Vec<usize>, p: Formula) -> Self {
+        Self(vars, Box::new(p))
+    }
+}
+
+impl Exists {
+    pub fn new(vars: Vec<usize>, p: Formula) -> Self {
+        Self(vars, Box::new(p))
+    }
+}
 
 impl Formula {
-    // TODO: 2023/08/28 TrueとFalseの場合
-    pub fn write_str(&self, inf: &NamingInfo) -> String {
+    // TODO: 2023/09/06 parserでしか使用しないなら移動
+    /// Returns the free variables of the formula.
+    pub fn fv(&self, vars: &mut HashSet<usize>) {
+        use Formula::*;
+        match self {
+            Predicate(_, terms) => {
+                for term in terms {
+                    term.fv(vars);
+                }
+            }
+            Not(p) => p.fv(vars),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.fv(vars);
+                }
+            }
+            Implies(p, q) | Iff(p, q) => {
+                p.fv(vars);
+                q.fv(vars);
+            }
+            All(vs, p) | Exists(vs, p) => {
+                p.fv(vars);
+                for v in vs {
+                    vars.remove(v);
+                }
+            }
+        }
+    }
+
+    /// Returns a string representation of the Formula using the provided NamingInfo.
+    pub fn to_str_inf(&self, inf: &NamingInfo) -> String {
+        self.to_str_inf_rec(inf)
+            .trim_matches(['(', ')'].as_ref())
+            .into()
+    }
+
+    fn to_str_inf_rec(&self, inf: &NamingInfo) -> String {
         use Formula::*;
         match self {
             Predicate(id, terms) => {
                 if terms.is_empty() {
-                    inf.get_name(*id).to_string()
+                    inf.get_name(*id).into()
                 } else {
                     format!(
                         "{}({})",
                         inf.get_name(*id),
                         terms
                             .iter()
-                            .map(|term| term.write_str(inf))
+                            .map(|term| term.to_str_inf(inf))
                             .collect::<Vec<_>>()
                             .join(",")
                     )
                 }
             }
-            Not(fml) => format!("¬{}", fml.write_str(inf)),
-            And(fmls) => format!(
-                "({})",
-                fmls.iter()
-                    .map(|fml| fml.write_str(inf))
-                    .collect::<Vec<_>>()
-                    .join(" ∧ ")
-            ),
-            Or(fmls) => format!(
-                "({})",
-                fmls.iter()
-                    .map(|fml| fml.write_str(inf))
-                    .collect::<Vec<_>>()
-                    .join(" ∨ ")
-            ),
-            Implies(lhs, rhs) => format!("({} → {})", lhs.write_str(inf), rhs.write_str(inf)),
-            Iff(lhs, rhs) => format!("({} ↔ {})", lhs.write_str(inf), rhs.write_str(inf)),
-            All(vars, fml) => format!(
+            Not(p) => format!("¬{}", p.to_str_inf_rec(inf)),
+            And(l) => {
+                if l.is_empty() {
+                    "true".into()
+                } else {
+                    format!(
+                        "({})",
+                        l.iter()
+                            .map(|p| p.to_str_inf_rec(inf))
+                            .collect::<Vec<_>>()
+                            .join(" ∧ ")
+                    )
+                }
+            }
+            Or(l) => {
+                if l.is_empty() {
+                    "false".into()
+                } else {
+                    format!(
+                        "({})",
+                        l.iter()
+                            .map(|p| p.to_str_inf_rec(inf))
+                            .collect::<Vec<_>>()
+                            .join(" ∨ ")
+                    )
+                }
+            }
+            Implies(p, q) => format!("({} → {})", p.to_str_inf_rec(inf), q.to_str_inf_rec(inf)),
+            Iff(p, q) => format!("({} ↔ {})", p.to_str_inf_rec(inf), q.to_str_inf_rec(inf)),
+            All(vars, p) => format!(
                 "∀{}{}",
                 vars.iter()
                     .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(","),
-                fml.write_str(inf)
+                p.to_str_inf_rec(inf)
             ),
-            Exists(vars, fml) => format!(
+            Exists(vars, p) => format!(
                 "∃{}{}",
                 vars.iter()
                     .map(|id| inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(","),
-                fml.write_str(inf)
+                p.to_str_inf_rec(inf)
             ),
         }
     }
@@ -255,59 +289,38 @@ impl Formula {
 
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Formula::*;
-        match self {
-            Predicate(id, terms) => {
-                if terms.is_empty() {
-                    write!(f, "{id}")
-                } else {
-                    write!(
-                        f,
-                        "{id}({})",
-                        terms
-                            .iter()
-                            .map(|term| format!("{term}"))
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    )
-                }
-            }
-            Not(fml) => write!(f, "¬{fml}"),
-            And(fmls) => write!(
-                f,
-                "({})",
-                fmls.iter()
-                    .map(|fml| format!("{fml}"))
-                    .collect::<Vec<_>>()
-                    .join(" ∧ ")
-            ),
-            Or(fmls) => write!(
-                f,
-                "({})",
-                fmls.iter()
-                    .map(|fml| format!("{fml}"))
-                    .collect::<Vec<_>>()
-                    .join(" ∨ ")
-            ),
-            Implies(lhs, rhs) => write!(f, "({lhs} → {rhs})"),
-            Iff(lhs, rhs) => write!(f, "({lhs} ↔ {rhs})"),
-            All(vars, fml) => write!(
-                f,
-                "∀{}{fml}",
-                vars.iter()
-                    .map(|term| format!("{term}"))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            ),
-            Exists(vars, fml) => write!(
-                f,
-                "∃{}{fml}",
-                vars.iter()
-                    .map(|term| format!("{term}"))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            ),
+        write!(f, "{}", self.to_str_inf_rec(&NamingInfo::new()))
+    }
+}
+
+impl NamingInfo {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn get_id(&mut self, s: String) -> usize {
+        if let Some(&id) = self.map.get(&s) {
+            id
+        } else {
+            self.id += 1;
+            self.map.insert(s, self.id);
+            self.id
         }
+    }
+
+    fn get_name(&self, id: usize) -> &str {
+        self.map
+            .iter()
+            .find_map(
+                |(key, val)| {
+                    if *val == id {
+                        Some(key.as_str())
+                    } else {
+                        None
+                    }
+                },
+            )
+            .expect("Value not found for id")
     }
 }
 
@@ -325,9 +338,9 @@ mod tests {
     fn test_write_str_var() {
         use Term::*;
         let mut inf = NamingInfo::new();
-        let id = inf.get_id("x".to_string());
+        let id = inf.get_id("x".into());
         let term = Var(id);
-        assert_eq!(term.write_str(&inf), "x");
+        assert_eq!(term.to_str_inf(&inf), "x");
     }
 
     // TODO: 2023/08/24 さすがに大変なのでパーサー使う
@@ -335,13 +348,13 @@ mod tests {
     fn test_write_str_function() {
         use Term::*;
         let mut inf = NamingInfo::new();
-        let func_id = inf.get_id("f".to_string());
-        let var_id_x = inf.get_id("x".to_string());
-        let var_id_y = inf.get_id("y".to_string());
+        let func_id = inf.get_id("f".into());
+        let var_id_x = inf.get_id("x".into());
+        let var_id_y = inf.get_id("y".into());
         let var_x = Var(var_id_x);
         let var_y = Var(var_id_y);
         let term = Function(func_id, vec![var_x, var_y]);
-        assert_eq!(term.write_str(&inf), "f(x, y)");
+        assert_eq!(term.to_str_inf(&inf), "f(x,y)");
     }
 
     #[test]
