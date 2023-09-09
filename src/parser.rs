@@ -345,12 +345,27 @@ mod tests {
         assert_eq!(
             parse_pformula("P implies Q implies R").unwrap(),
             Implies(
-                Box::new(Predicate("P".into(), vec![])),
+                Box::new(parse_pformula("P").unwrap()),
                 Box::new(Implies(
-                    Box::new(Predicate("Q".into(), vec![])),
-                    Box::new(Predicate("R".into(), vec![]))
+                    Box::new(parse_pformula("Q").unwrap()),
+                    Box::new(parse_pformula("R").unwrap())
                 ))
             )
         );
+    }
+
+    #[test]
+    fn test_parse_pformula_precedence() {
+        use PFormula::*;
+        assert_eq!(parse_pformula("not P and Q or R implies S").unwrap(), {
+            let p = parse_pformula("P").unwrap();
+            let q = parse_pformula("Q").unwrap();
+            let r = parse_pformula("R").unwrap();
+            let s = parse_pformula("S").unwrap();
+            let np = Not(Box::new(p));
+            let np_and_q = And(Box::new(np), Box::new(q));
+            let npq_or_r = Or(Box::new(np_and_q), Box::new(r));
+            Implies(Box::new(npq_or_r), Box::new(s))
+        });
     }
 }
