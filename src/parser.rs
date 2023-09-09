@@ -56,6 +56,7 @@ pub fn parse_formula(s: &str) -> Result<(Formula, NamingInfo), String> {
     let (fml, inf) = pfml.into_formula();
     Ok((fml, inf))
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+    // TODO: 2023/09/06 自由変数をすべてallにする
 }
 
 fn parse_pformula(s: &str) -> Result<PFormula, Box<Error<Rule>>> {
@@ -333,6 +334,21 @@ mod tests {
                 Box::new(Predicate(
                     "P".into(),
                     vec![Var("x".into()), Var("y".into())]
+                ))
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_pformula_assoc() {
+        use PFormula::*;
+        assert_eq!(
+            parse_pformula("P implies Q implies R").unwrap(),
+            Implies(
+                Box::new(Predicate("P".into(), vec![])),
+                Box::new(Implies(
+                    Box::new(Predicate("Q".into(), vec![])),
+                    Box::new(Predicate("R".into(), vec![]))
                 ))
             )
         );
