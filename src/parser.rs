@@ -1,6 +1,5 @@
 use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
 
-use once_cell::sync::Lazy;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

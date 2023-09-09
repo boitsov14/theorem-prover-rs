@@ -578,7 +578,6 @@ dependencies = [
  "criterion",
  "enum_variant_type",
  "maplit",
- "once_cell",
  "peg",
  "unicode-normalization",
 ]
