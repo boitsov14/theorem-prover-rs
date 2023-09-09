@@ -3,13 +3,13 @@ use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-enum PTerm {
+pub enum PTerm {
     Var(String),
     Function(String, Vec<PTerm>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-enum PFormula {
+pub enum PFormula {
     True,
     False,
     Predicate(String, Vec<PTerm>),
@@ -22,20 +22,85 @@ enum PFormula {
     Exists(Vec<String>, Box<PFormula>),
 }
 
-pub fn parse_formula(s: &str) -> Result<(Formula, NamingInfo), String> {
+pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     let s: String = s.nfkc().collect();
     // TODO: 2023/08/28 括弧の左右の個数のチェック
-    let pfml = match parse_pformula(&s) {
+    let pfml = match parser::formula(&s) {
         Ok(pfml) => pfml,
         Err(e) => {
-            return Err(e.to_string());
+            println!("Parser error");
+            println!(" | ");
+            println!(" | {s}");
+            println!(" | {}^___", " ".repeat(e.location.column - 1));
+            println!(" | ");
+            println!(" = expected {}", e.expected);
+            return None;
         }
     };
     let (fml, inf) = pfml.into_formula();
-    Ok((fml, inf))
+    Some((fml, inf))
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
     // TODO: 2023/09/06 自由変数をすべてallにする
 }
+
+peg::parser!( grammar parser() for str {
+    use PFormula::*;
+    use PTerm::*;
+
+    /// Parse a term.
+    pub rule term() -> PTerm = quiet!{
+        f:$function_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Function(f.to_string(), ts) } /
+        v:$var() { Var(v.to_string()) } /
+        "(" t:term() ")" { t }
+    } / expected!("term")
+
+    rule predicate() -> PFormula =
+        p_true() { True } /
+        p_false() { False } /
+        p:$predicate_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Predicate(p.to_string(), ts) } /
+        p:$predicate_name() { Predicate(p.to_string(), vec![]) }
+
+    /// Parse a formula.
+    /// Every infix operator is right-associative.
+    /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
+    pub rule formula() -> PFormula = precedence!{
+        p:@ _ iff() _ q:(@) { Iff(Box::new(p), Box::new(q)) }
+        --
+        p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
+        --
+        p:@ _ or() _ q:(@) { Or(Box::new(p), Box::new(q)) }
+        --
+        p:@ _ and() _ q:(@) { And(Box::new(p), Box::new(q)) }
+        --
+        not() _ p:@ { Not(Box::new(p)) }
+        all() _ vs:($var() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|s| s.to_string()).collect(), Box::new(p)) }
+        exists() _ vs:($var() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|s| s.to_string()).collect(), Box::new(p)) }
+        --
+        p:predicate() { p }
+        "(" p:formula() ")" { p }
+    } / expected!("formula")
+
+    rule ASCII_ALPHA_GREEK() = ['a'..='z' | 'A'..='Z' | 'α'..='ω' | 'Α'..='Ω' ]
+    rule ASCII_DIGIT_HYPHEN_APOSTROPHE() = ['0'..='9' | '_' | '\'' ]
+    rule ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE() = ASCII_ALPHA_GREEK() / ASCII_DIGIT_HYPHEN_APOSTROPHE()
+
+    rule var() = ASCII_ALPHA_GREEK() ASCII_DIGIT_HYPHEN_APOSTROPHE()*
+    rule function_name() = ASCII_ALPHA_GREEK() ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE()*
+    rule predicate_name() = quiet!{ ASCII_ALPHA_GREEK() ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE()* } / expected!("predicate")
+
+    rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" } / expected!("true")
+    rule p_false() = quiet!{ "⊥" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
+
+    rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("not")
+    rule and() = quiet!{ "∧" / "/\\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("and")
+    rule or() = quiet!{ "∨" / "\\/" / "//" / "/" / "or" / "lor" / "vee" } / expected!("or")
+    rule implies() = quiet!{ "→" / "->" / "=>" / "-->" / "==>" / "⇒" / "to" / "implies" / "imply" / "imp" / "rightarrow" } / expected!("implies")
+    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "<-->" / "<==>" / "⇔" / "≡" / "iff" / "equivalent" / "equiv" / "leftrightarrow" } / expected!("iff")
+    rule all() = quiet!{ "∀" / "!" / "forall" / "all" } / expected!("all")
+    rule exists() = quiet!{ "∃" / "?" / "exists" / "ex" } / expected!("exists")
+
+    rule _ = quiet!{ [' ']* }
+});
 
 impl PTerm {
     fn into_term(self, inf: &mut NamingInfo) -> Term {
@@ -134,21 +199,22 @@ impl PFormula {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use parser::{formula, term};
 
     #[test]
     fn test_parse_term() {
         use PTerm::*;
-        assert_eq!(parse_term("x").unwrap(), Var("x".into()));
+        assert_eq!(term("x").unwrap(), Var("x".into()));
         assert_eq!(
-            parse_term("f(x)").unwrap(),
+            term("f(x)").unwrap(),
             Function("f".into(), vec![Var("x".into())])
         );
         assert_eq!(
-            parse_term("f(x, y)").unwrap(),
+            term("f(x, y)").unwrap(),
             Function("f".into(), vec![Var("x".into()), Var("y".into())])
         );
         assert_eq!(
-            parse_term("f(x, g(y))").unwrap(),
+            term("f(x, g(y))").unwrap(),
             Function(
                 "f".into(),
                 vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
@@ -160,61 +226,61 @@ mod tests {
     fn test_parse_pformula() {
         use PFormula::*;
         use PTerm::*;
-        assert_eq!(parse_pformula("true").unwrap(), True);
-        assert_eq!(parse_pformula("false").unwrap(), False);
-        assert_eq!(parse_pformula("P").unwrap(), Predicate("P".into(), vec![]));
+        assert_eq!(formula("true").unwrap(), True);
+        assert_eq!(formula("false").unwrap(), False);
+        assert_eq!(formula("P").unwrap(), Predicate("P".into(), vec![]));
         assert_eq!(
-            parse_pformula("P(x)").unwrap(),
+            formula("P(x)").unwrap(),
             Predicate("P".into(), vec![Var("x".into())])
         );
         assert_eq!(
-            parse_pformula("P(x, g(y))").unwrap(),
+            formula("P(x, g(y))").unwrap(),
             Predicate(
                 "P".into(),
                 vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
             )
         );
         assert_eq!(
-            parse_pformula("not P").unwrap(),
+            formula("not P").unwrap(),
             Not(Box::new(Predicate("P".into(), vec![])))
         );
         assert_eq!(
-            parse_pformula("P and Q").unwrap(),
+            formula("P and Q").unwrap(),
             And(
                 Box::new(Predicate("P".into(), vec![])),
                 Box::new(Predicate("Q".into(), vec![]))
             )
         );
         assert_eq!(
-            parse_pformula("P or Q").unwrap(),
+            formula("P or Q").unwrap(),
             Or(
                 Box::new(Predicate("P".into(), vec![])),
                 Box::new(Predicate("Q".into(), vec![]))
             )
         );
         assert_eq!(
-            parse_pformula("P implies Q").unwrap(),
+            formula("P implies Q").unwrap(),
             Implies(
                 Box::new(Predicate("P".into(), vec![])),
                 Box::new(Predicate("Q".into(), vec![]))
             )
         );
         assert_eq!(
-            parse_pformula("P iff Q").unwrap(),
+            formula("P iff Q").unwrap(),
             Iff(
                 Box::new(Predicate("P".into(), vec![])),
                 Box::new(Predicate("Q".into(), vec![]))
             )
         );
         assert_eq!(
-            parse_pformula("all x P(x)").unwrap(),
+            formula("all x P(x)").unwrap(),
             All(
                 vec!["x".into()],
                 Box::new(Predicate("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
-            parse_pformula("all x, y P(x, y)").unwrap(),
+            formula("all x, y P(x, y)").unwrap(),
             All(
                 vec!["x".into(), "y".into()],
                 Box::new(Predicate(
@@ -224,14 +290,14 @@ mod tests {
             )
         );
         assert_eq!(
-            parse_pformula("ex x P(x)").unwrap(),
+            formula("ex x P(x)").unwrap(),
             Exists(
                 vec!["x".into()],
                 Box::new(Predicate("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
-            parse_pformula("ex x, y P(x, y)").unwrap(),
+            formula("ex x, y P(x, y)").unwrap(),
             Exists(
                 vec!["x".into(), "y".into()],
                 Box::new(Predicate(
@@ -246,12 +312,12 @@ mod tests {
     fn test_parse_pformula_assoc() {
         use PFormula::*;
         assert_eq!(
-            parse_pformula("P implies Q implies R").unwrap(),
+            formula("P implies Q implies R").unwrap(),
             Implies(
-                Box::new(parse_pformula("P").unwrap()),
+                Box::new(formula("P").unwrap()),
                 Box::new(Implies(
-                    Box::new(parse_pformula("Q").unwrap()),
-                    Box::new(parse_pformula("R").unwrap())
+                    Box::new(formula("Q").unwrap()),
+                    Box::new(formula("R").unwrap())
                 ))
             )
         );
@@ -260,11 +326,11 @@ mod tests {
     #[test]
     fn test_parse_pformula_precedence() {
         use PFormula::*;
-        assert_eq!(parse_pformula("not P and Q or R implies S").unwrap(), {
-            let p = parse_pformula("P").unwrap();
-            let q = parse_pformula("Q").unwrap();
-            let r = parse_pformula("R").unwrap();
-            let s = parse_pformula("S").unwrap();
+        assert_eq!(formula("not P and Q or R implies S").unwrap(), {
+            let p = formula("P").unwrap();
+            let q = formula("Q").unwrap();
+            let r = formula("R").unwrap();
+            let s = formula("S").unwrap();
             let np = Not(Box::new(p));
             let np_and_q = And(Box::new(np), Box::new(q));
             let npq_or_r = Or(Box::new(np_and_q), Box::new(r));
