@@ -215,8 +215,10 @@ impl Formula {
 
     /// Returns a string representation of the Formula using the provided NamingInfo.
     pub fn to_str_inf(&self, inf: &NamingInfo) -> String {
-        self.to_str_inf_rec(inf)
-            .trim_matches(['(', ')'].as_ref())
+        let s = self.to_str_inf_rec(inf);
+        s.strip_prefix('(')
+            .and_then(|s| s.strip_suffix(')'))
+            .unwrap_or(&s)
             .into()
     }
 
