@@ -1,4 +1,5 @@
 use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
+use regex::Regex;
 use std::mem;
 use unicode_normalization::UnicodeNormalization;
 
@@ -23,8 +24,14 @@ pub enum PFormula {
 }
 
 pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
-    let s: String = s.nfkc().collect();
-    // TODO: 2023/08/28 括弧の左右の個数のチェック
+    let s = s.nfkc().collect::<String>().trim().to_string();
+    let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
+    let lp = s.chars().filter(|&c| c == '(').count();
+    let rp = s.chars().filter(|&c| c == ')').count();
+    if lp != rp {
+        println!("Parentheses error: Found {lp} left parentheses and {rp} right parentheses");
+        return None;
+    }
     let pfml = match parser::formula(&s) {
         Ok(pfml) => pfml,
         Err(e) => {
