@@ -1,5 +1,5 @@
 use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
-
+use std::mem;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -37,7 +37,8 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
             return None;
         }
     };
-    let (fml, inf) = pfml.into_formula();
+    let (mut fml, inf) = pfml.into_formula();
+    fml.vectorize();
     Some((fml, inf))
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
     // TODO: 2023/09/06 自由変数をすべてallにする
@@ -137,44 +138,10 @@ impl PFormula {
             ),
             PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(inf))),
             PFormula::And(p, q) => {
-                use Formula::And;
-                let p = p.into_formula_rec(inf);
-                let q = q.into_formula_rec(inf);
-                match (p, q) {
-                    (And(mut ps), And(qs)) => {
-                        ps.extend(qs);
-                        And(ps)
-                    }
-                    (And(mut ps), q) => {
-                        ps.push(q);
-                        And(ps)
-                    }
-                    (p, And(mut qs)) => {
-                        qs.insert(0, p);
-                        And(qs)
-                    }
-                    (p, q) => And(vec![p, q]),
-                }
+                Formula::And(vec![p.into_formula_rec(inf), q.into_formula_rec(inf)])
             }
             PFormula::Or(p, q) => {
-                use Formula::Or;
-                let p = p.into_formula_rec(inf);
-                let q = q.into_formula_rec(inf);
-                match (p, q) {
-                    (Or(mut ps), Or(qs)) => {
-                        ps.extend(qs);
-                        Or(ps)
-                    }
-                    (Or(mut ps), q) => {
-                        ps.push(q);
-                        Or(ps)
-                    }
-                    (p, Or(mut qs)) => {
-                        qs.insert(0, p);
-                        Or(qs)
-                    }
-                    (p, q) => Or(vec![p, q]),
-                }
+                Formula::Or(vec![p.into_formula_rec(inf), q.into_formula_rec(inf)])
             }
             PFormula::Implies(p, q) => Formula::Implies(
                 Box::new(p.into_formula_rec(inf)),
@@ -192,6 +159,35 @@ impl PFormula {
                 names.into_iter().map(|name| inf.get_id(name)).collect(),
                 Box::new(p.into_formula_rec(inf)),
             ),
+        }
+    }
+}
+
+impl Formula {
+    fn vectorize(&mut self) {
+        use Formula::*;
+        match self {
+            Predicate(_, _) => {}
+            And(ps) | Or(ps) => {
+                for p in &mut *ps {
+                    p.vectorize();
+                }
+                let mut new_ps = vec![];
+                for p in &mut *ps {
+                    match p {
+                        And(qs) => new_ps.append(qs),
+                        p => {
+                            new_ps.push(mem::take(p));
+                        }
+                    }
+                }
+                *ps = new_ps;
+            }
+            Implies(p, q) | Iff(p, q) => {
+                p.vectorize();
+                q.vectorize();
+            }
+            Not(p) | All(_, p) | Exists(_, p) => p.vectorize(),
         }
     }
 }
@@ -336,5 +332,21 @@ mod tests {
             let npq_or_r = Or(Box::new(np_and_q), Box::new(r));
             Implies(Box::new(npq_or_r), Box::new(s))
         });
+    }
+
+    #[test]
+    fn test_vectorize() {
+        use Formula::*;
+        let (mut fml, mut inf) = formula("P and Q and R and S").unwrap().into_formula();
+        fml.vectorize();
+        assert_eq!(
+            fml,
+            And(vec![
+                formula("P").unwrap().into_formula_rec(&mut inf),
+                formula("Q").unwrap().into_formula_rec(&mut inf),
+                formula("R").unwrap().into_formula_rec(&mut inf),
+                formula("S").unwrap().into_formula_rec(&mut inf),
+            ])
+        );
     }
 }
