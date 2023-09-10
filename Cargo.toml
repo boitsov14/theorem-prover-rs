@@ -9,6 +9,7 @@ edition = "2021"
 enum_variant_type = "0.3.1"
 maplit = "1.0.2"
 peg = "0.8.1"
+regex = "1.9.5"
 unicode-normalization = "0.1.22"
 
 [dev-dependencies]
