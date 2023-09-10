@@ -295,6 +295,12 @@ impl fmt::Display for Formula {
     }
 }
 
+impl Default for Formula {
+    fn default() -> Self {
+        TRUE.clone()
+    }
+}
+
 impl NamingInfo {
     pub fn new() -> Self {
         Self::default()
