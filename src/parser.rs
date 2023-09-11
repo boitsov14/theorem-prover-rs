@@ -152,7 +152,7 @@ peg::parser!( grammar parser() for str {
 
     rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("not")
     rule and() = quiet!{ "∧" / "/\\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("and")
-    rule or() = quiet!{ "∨" / "\\/" / "//" / "/" / "or" / "lor" / "vee" } / expected!("or")
+    rule or() = quiet!{ "∨" / "\\/" / "||" / "|" / "or" / "lor" / "vee" } / expected!("or")
     rule implies() = quiet!{ "→" / "->" / "=>" / "-->" / "==>" / "⇒" / "to" / "implies" / "imply" / "imp" / "rightarrow" } / expected!("implies")
     rule iff() = quiet!{ "↔" / "<->" / "<=>" / "<-->" / "<==>" / "⇔" / "≡" / "iff" / "equivalent" / "equiv" / "leftrightarrow" } / expected!("iff")
     rule all() = quiet!{ "∀" / "!" / "forall" / "all" } / expected!("all")
