@@ -148,7 +148,7 @@ peg::parser!( grammar parser() for str {
     rule predicate_name() = quiet!{ ASCII_ALPHA_GREEK() ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE()* } / expected!("predicate")
 
     rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" } / expected!("true")
-    rule p_false() = quiet!{ "⊥" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
+    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
 
     rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("not")
     rule and() = quiet!{ "∧" / "/\\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("and")
