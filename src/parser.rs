@@ -1,6 +1,5 @@
 use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
 use regex::Regex;
-use std::mem;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -9,14 +8,15 @@ pub enum PTerm {
     Function(String, Vec<PTerm>),
 }
 
+// TODO: 2023/09/11 Formula or PFormula
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PFormula {
     True,
     False,
     Predicate(String, Vec<PTerm>),
     Not(Box<PFormula>),
-    And(Box<PFormula>, Box<PFormula>),
-    Or(Box<PFormula>, Box<PFormula>),
+    And(Vec<PFormula>),
+    Or(Vec<PFormula>),
     Implies(Box<PFormula>, Box<PFormula>),
     Iff(Box<PFormula>, Box<PFormula>),
     All(Vec<String>, Box<PFormula>),
@@ -44,8 +44,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
             return None;
         }
     };
-    let (mut fml, inf) = pfml.into_formula();
-    fml.vectorize();
+    let (fml, inf) = pfml.into_formula();
     Some((fml, inf))
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
     // TODO: 2023/09/06 自由変数をすべてallにする
@@ -76,13 +75,63 @@ peg::parser!( grammar parser() for str {
         --
         p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
         --
-        p:@ _ or() _ q:(@) { Or(Box::new(p), Box::new(q)) }
+        p:@ _ or() _ q:(@) {
+            match (p, q) {
+                (Or(mut ps), Or(qs)) => {
+                    ps.extend(qs);
+                    Or(ps)
+                }
+                (Or(mut ps), q) => {
+                    ps.push(q);
+                    Or(ps)
+                }
+                (p, Or(mut qs)) => {
+                    qs.insert(0, p);
+                    Or(qs)
+                }
+                (p, q) => Or(vec![p, q]),
+            }
+        }
         --
-        p:@ _ and() _ q:(@) { And(Box::new(p), Box::new(q)) }
+        p:@ _ and() _ q:(@) {
+            match (p, q) {
+                (And(mut ps), And(qs)) => {
+                    ps.extend(qs);
+                    And(ps)
+                }
+                (And(mut ps), q) => {
+                    ps.push(q);
+                    And(ps)
+                }
+                (p, And(mut qs)) => {
+                    qs.insert(0, p);
+                    And(qs)
+                }
+                (p, q) => And(vec![p, q]),
+            }
+        }
         --
         not() _ p:@ { Not(Box::new(p)) }
-        all() _ vs:($var() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|s| s.to_string()).collect(), Box::new(p)) }
-        exists() _ vs:($var() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|s| s.to_string()).collect(), Box::new(p)) }
+        all() _ vs:($var() ++ (_ "," _)) _ p:@ {
+            let mut vs: Vec<_> = vs.iter().map(|s| s.to_string()).collect();
+            match p {
+                All(ws, q) => {
+                    vs.extend(ws);
+                    All(vs, q)
+                }
+                p => All(vs, Box::new(p)),
+            }
+        }
+        exists() _ vs:($var() ++ (_ "," _)) _ p:@ {
+            let mut vs: Vec<_> = vs.iter().map(|s| s.to_string()).collect();
+            match p {
+                Exists(ws, q) => {
+                    vs.extend(ws);
+                    Exists(vs, q)
+                }
+                p => Exists(vs, Box::new(p)),
+            }
+        }
         --
         p:predicate() { p }
         "(" p:formula() ")" { p }
@@ -144,11 +193,11 @@ impl PFormula {
                     .collect(),
             ),
             PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(inf))),
-            PFormula::And(p, q) => {
-                Formula::And(vec![p.into_formula_rec(inf), q.into_formula_rec(inf)])
+            PFormula::And(ps) => {
+                Formula::And(ps.into_iter().map(|p| p.into_formula_rec(inf)).collect())
             }
-            PFormula::Or(p, q) => {
-                Formula::Or(vec![p.into_formula_rec(inf), q.into_formula_rec(inf)])
+            PFormula::Or(ps) => {
+                Formula::Or(ps.into_iter().map(|p| p.into_formula_rec(inf)).collect())
             }
             PFormula::Implies(p, q) => Formula::Implies(
                 Box::new(p.into_formula_rec(inf)),
@@ -166,35 +215,6 @@ impl PFormula {
                 names.into_iter().map(|name| inf.get_id(name)).collect(),
                 Box::new(p.into_formula_rec(inf)),
             ),
-        }
-    }
-}
-
-impl Formula {
-    fn vectorize(&mut self) {
-        use Formula::*;
-        match self {
-            Predicate(_, _) => {}
-            And(ps) | Or(ps) => {
-                for p in &mut *ps {
-                    p.vectorize();
-                }
-                let mut new_ps = vec![];
-                for p in &mut *ps {
-                    match p {
-                        And(qs) => new_ps.append(qs),
-                        p => {
-                            new_ps.push(mem::take(p));
-                        }
-                    }
-                }
-                *ps = new_ps;
-            }
-            Implies(p, q) | Iff(p, q) => {
-                p.vectorize();
-                q.vectorize();
-            }
-            Not(p) | All(_, p) | Exists(_, p) => p.vectorize(),
         }
     }
 }
@@ -249,17 +269,17 @@ mod tests {
         );
         assert_eq!(
             formula("P and Q").unwrap(),
-            And(
-                Box::new(Predicate("P".into(), vec![])),
-                Box::new(Predicate("Q".into(), vec![]))
-            )
+            And(vec![
+                Predicate("P".into(), vec![]),
+                Predicate("Q".into(), vec![])
+            ])
         );
         assert_eq!(
             formula("P or Q").unwrap(),
-            Or(
-                Box::new(Predicate("P".into(), vec![])),
-                Box::new(Predicate("Q".into(), vec![]))
-            )
+            Or(vec![
+                Predicate("P".into(), vec![]),
+                Predicate("Q".into(), vec![])
+            ])
         );
         assert_eq!(
             formula("P implies Q").unwrap(),
@@ -335,25 +355,62 @@ mod tests {
             let r = formula("R").unwrap();
             let s = formula("S").unwrap();
             let np = Not(Box::new(p));
-            let np_and_q = And(Box::new(np), Box::new(q));
-            let npq_or_r = Or(Box::new(np_and_q), Box::new(r));
+            let np_and_q = And(vec![np, q]);
+            let npq_or_r = Or(vec![np_and_q, r]);
             Implies(Box::new(npq_or_r), Box::new(s))
         });
     }
 
     #[test]
-    fn test_vectorize() {
-        use Formula::*;
-        let (mut fml, mut inf) = formula("P and Q and R and S").unwrap().into_formula();
-        fml.vectorize();
+    fn test_parse_pformula_vec() {
+        use PFormula::*;
+        let fml = formula("P and Q and R and S").unwrap();
         assert_eq!(
             fml,
             And(vec![
-                formula("P").unwrap().into_formula_rec(&mut inf),
-                formula("Q").unwrap().into_formula_rec(&mut inf),
-                formula("R").unwrap().into_formula_rec(&mut inf),
-                formula("S").unwrap().into_formula_rec(&mut inf),
+                formula("P").unwrap(),
+                formula("Q").unwrap(),
+                formula("R").unwrap(),
+                formula("S").unwrap(),
             ])
         );
+        let fml = formula("P or Q or R or S").unwrap();
+        assert_eq!(
+            fml,
+            Or(vec![
+                formula("P").unwrap(),
+                formula("Q").unwrap(),
+                formula("R").unwrap(),
+                formula("S").unwrap(),
+            ])
+        );
+        let fml = formula("P and Q and (R or S or (T and U and V))").unwrap();
+        assert_eq!(
+            fml,
+            And(vec![
+                formula("P").unwrap(),
+                formula("Q").unwrap(),
+                Or(vec![
+                    formula("R").unwrap(),
+                    formula("S").unwrap(),
+                    And(vec![
+                        formula("T").unwrap(),
+                        formula("U").unwrap(),
+                        formula("V").unwrap(),
+                    ]),
+                ]),
+            ])
+        );
+        let fml = formula("all x, y all z, u ex v ex w all h P").unwrap();
+        assert_eq!(
+            fml,
+            All(
+                vec!["x".into(), "y".into(), "z".into(), "u".into()],
+                Box::new(Exists(
+                    vec!["v".into(), "w".into()],
+                    Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
+                ))
+            )
+        )
     }
 }
