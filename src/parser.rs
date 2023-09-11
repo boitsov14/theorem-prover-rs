@@ -1,5 +1,6 @@
-use crate::formula::{Formula, NamingInfo, Term, FALSE, TRUE};
+use crate::formula::{Formula, NamingInfo, Term};
 use regex::Regex;
+use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -47,7 +48,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     };
     let (fml, inf) = pfml.into_formula();
     Some((fml, inf))
-    // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+    // TODO: 2023/08/27 functionやpredicateやbdd var(Duplicated Bounded Variables)をquantifyしていないかのチェック
     // TODO: 2023/09/11 同じpredicate，functionで異なる個数の引数をもつものがないかチェック
     // TODO: 2023/09/06 自由変数をすべてallにする
 }
@@ -193,11 +194,11 @@ impl PFormula {
                     .collect(),
             ),
             PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(inf))),
-            PFormula::And(ps) => {
-                Formula::And(ps.into_iter().map(|p| p.into_formula_rec(inf)).collect())
+            PFormula::And(l) => {
+                Formula::And(l.into_iter().map(|p| p.into_formula_rec(inf)).collect())
             }
-            PFormula::Or(ps) => {
-                Formula::Or(ps.into_iter().map(|p| p.into_formula_rec(inf)).collect())
+            PFormula::Or(l) => {
+                Formula::Or(l.into_iter().map(|p| p.into_formula_rec(inf)).collect())
             }
             PFormula::Implies(p, q) => Formula::Implies(
                 Box::new(p.into_formula_rec(inf)),
@@ -215,6 +216,30 @@ impl PFormula {
                 names.into_iter().map(|name| inf.get_id(name)).collect(),
                 Box::new(p.into_formula_rec(inf)),
             ),
+        }
+    }
+}
+
+impl Formula {
+    /// Return the set of all bounded variables in the formula.
+    fn bdd_vs(&self, vars: &mut HashSet<usize>) {
+        use Formula::*;
+        match self {
+            Predicate(_, _) => {}
+            Not(p) => p.bdd_vs(vars),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.bdd_vs(vars);
+                }
+            }
+            Implies(p, q) | Iff(p, q) => {
+                p.bdd_vs(vars);
+                q.bdd_vs(vars);
+            }
+            All(vs, p) | Exists(vs, p) => {
+                vars.extend(vs);
+                p.bdd_vs(vars);
+            }
         }
     }
 }
