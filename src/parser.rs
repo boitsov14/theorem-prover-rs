@@ -11,8 +11,6 @@ pub enum PTerm {
 // TODO: 2023/09/11 Formula or PFormula
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PFormula {
-    True,
-    False,
     Predicate(String, Vec<PTerm>),
     Not(Box<PFormula>),
     And(Vec<PFormula>),
@@ -22,6 +20,9 @@ pub enum PFormula {
     All(Vec<String>, Box<PFormula>),
     Exists(Vec<String>, Box<PFormula>),
 }
+
+pub static P_TRUE: PFormula = PFormula::And(vec![]);
+pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
 pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     let s = s.nfkc().collect::<String>().trim().to_string();
@@ -47,6 +48,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     let (fml, inf) = pfml.into_formula();
     Some((fml, inf))
     // TODO: 2023/08/27 functionやpredicateをquantifyしていないかのチェック
+    // TODO: 2023/09/11 同じpredicate，functionで異なる個数の引数をもつものがないかチェック
     // TODO: 2023/09/06 自由変数をすべてallにする
 }
 
@@ -62,8 +64,8 @@ peg::parser!( grammar parser() for str {
     } / expected!("term")
 
     rule predicate() -> PFormula =
-        p_true() { True } /
-        p_false() { False } /
+        p_true() { P_TRUE.clone() } /
+        p_false() { P_FALSE.clone() } /
         p:$predicate_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Predicate(p.to_string(), ts) } /
         p:$predicate_name() { Predicate(p.to_string(), vec![]) }
 
@@ -183,8 +185,6 @@ impl PFormula {
 
     fn into_formula_rec(self, inf: &mut NamingInfo) -> Formula {
         match self {
-            PFormula::True => TRUE.clone(),
-            PFormula::False => FALSE.clone(),
             PFormula::Predicate(name, pterms) => Formula::Predicate(
                 inf.get_id(name),
                 pterms
@@ -249,8 +249,8 @@ mod tests {
     fn test_parse_pformula() {
         use PFormula::*;
         use PTerm::*;
-        assert_eq!(formula("true").unwrap(), True);
-        assert_eq!(formula("false").unwrap(), False);
+        assert_eq!(formula("true").unwrap(), P_TRUE);
+        assert_eq!(formula("false").unwrap(), P_FALSE);
         assert_eq!(formula("P").unwrap(), Predicate("P".into(), vec![]));
         assert_eq!(
             formula("P(x)").unwrap(),
@@ -411,6 +411,26 @@ mod tests {
                     Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
                 ))
             )
-        )
+        );
+        let fml = formula("true and P and true and Q and true").unwrap();
+        assert_eq!(
+            fml,
+            And(vec![formula("P").unwrap(), formula("Q").unwrap(),])
+        );
+        let fml = formula("false or P or false or Q or false").unwrap();
+        assert_eq!(fml, Or(vec![formula("P").unwrap(), formula("Q").unwrap()]));
+    }
+
+    #[test]
+    fn test_parse() {
+        let l = vec![
+            (" \t \n \r P \t \n \r and \t \n \r Q \t \n \r ", "P ∧ Q"),
+            ("Ｐ０", "P0"),
+        ];
+        for pair in l {
+            let (s, expected) = pair;
+            let (fml, inf) = parse(s).unwrap();
+            assert_eq!(fml.to_str_inf(&inf), expected);
+        }
     }
 }
