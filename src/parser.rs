@@ -426,6 +426,7 @@ mod tests {
         let l = vec![
             (" \t \n \r P \t \n \r and \t \n \r Q \t \n \r ", "P ∧ Q"),
             ("Ｐ０", "P0"),
+            ("(((P) and ((Q))))", "P ∧ Q"),
         ];
         for pair in l {
             let (s, expected) = pair;
