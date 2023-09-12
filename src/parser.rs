@@ -601,5 +601,18 @@ mod tests {
         assert!(!fml.check_bdd_var());
     }
 
-    // TODO: 2023/09/13 get_fns get_preds universal_quantify
+    #[test]
+    fn test_universal_quantify() {
+        let mut inf = NamingInfo::new();
+        let fml0 = formula("all x,y P(f(x,y))")
+            .unwrap()
+            .into_formula_rec(&mut inf);
+        assert_eq!(fml0.clone().universal_quantify(), fml0);
+        let fml1 = formula("P(f(x,y))").unwrap().into_formula_rec(&mut inf);
+        assert_eq!(fml1.universal_quantify(), fml0);
+        let fml2 = formula("all y P(f(x,y))")
+            .unwrap()
+            .into_formula_rec(&mut inf);
+        assert_eq!(fml2.universal_quantify(), fml0);
+    }
 }
