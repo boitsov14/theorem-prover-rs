@@ -1,4 +1,5 @@
 use crate::formula::{Formula, NamingInfo, Term};
+use maplit::{hashmap, hashset};
 use regex::Regex;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
@@ -47,6 +48,12 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
         }
     };
     let (fml, inf) = pfml.into_formula();
+    if !fml.check_arity() {
+        return None;
+    }
+    if !fml.check_bdd_var() {
+        return None;
+    }
     Some((fml, inf))
     // TODO: 2023/08/27 functionやpredicateやbdd var(Duplicated Bounded Variables)をquantifyしていないかのチェック
     // TODO: 2023/09/11 同じpredicate，functionで異なる個数の引数をもつものがないかチェック
@@ -237,6 +244,60 @@ impl Term {
 }
 
 impl Formula {
+    /// Check if there is a predicate or a function with different arities.
+    /// If there is, print the error message and return false.
+    /// This function is mainly for performance improvement for unification.
+    fn check_arity(&self) -> bool {
+        let mut env = hashmap!();
+        for (id, arity) in self.get_preds() {
+            if let Some(arity0) = env.get(&id) {
+                println!("Error: Predicate {id} has different arities: {arity0}, {arity}");
+                return false;
+            } else {
+                env.insert(id, arity);
+            }
+        }
+        let mut env = hashmap!();
+        for (id, arity) in self.get_fns() {
+            if let Some(arity0) = env.get(&id) {
+                println!("Error: Function {id} has different arities: {arity0}, {arity}");
+                return false;
+            } else {
+                env.insert(id, arity);
+            }
+        }
+        true
+    }
+
+    /// Check if there is a quantified predicate or function.
+    /// If there is, print the error message and return false.
+    fn check_bdd_var(&self) -> bool {
+        use Formula::*;
+        match self {
+            Predicate(_, _) => true,
+            Not(p) => p.check_bdd_var(),
+            And(l) | Or(l) => l.iter().all(|p| p.check_bdd_var()),
+            Implies(p, q) | Iff(p, q) => p.check_bdd_var() && q.check_bdd_var(),
+            All(vs, p) | Exists(vs, p) => {
+                let pred_ids: HashSet<_> = p.get_preds().into_iter().map(|(id, _)| id).collect();
+                for v in vs {
+                    if pred_ids.contains(v) {
+                        println!("Error: Cannot quantify predicate: {v}");
+                        return false;
+                    }
+                }
+                let fn_ids: HashSet<_> = p.get_fns().into_iter().map(|(id, _)| id).collect();
+                for v in vs {
+                    if fn_ids.contains(v) {
+                        println!("Error: Cannot quantify function: {v}");
+                        return false;
+                    }
+                }
+                true
+            }
+        }
+    }
+
     /// Return the set of all bounded variables in the formula.
     fn bdd_vs(&self, vars: &mut HashSet<usize>) {
         use Formula::*;
@@ -260,7 +321,13 @@ impl Formula {
     }
 
     /// Return the set of all function ids and arity in the formula.
-    fn get_fns(&self, fns: &mut HashSet<(usize, usize)>) {
+    fn get_fns(&self) -> HashSet<(usize, usize)> {
+        let mut fns = hashset!();
+        self.get_fns_rec(&mut fns);
+        fns
+    }
+
+    fn get_fns_rec(&self, fns: &mut HashSet<(usize, usize)>) {
         use Formula::*;
         match self {
             Predicate(_, terms) => {
@@ -270,35 +337,41 @@ impl Formula {
             }
             And(l) | Or(l) => {
                 for p in l {
-                    p.get_fns(fns);
+                    p.get_fns_rec(fns);
                 }
             }
             Implies(p, q) | Iff(p, q) => {
-                p.get_fns(fns);
-                q.get_fns(fns);
+                p.get_fns_rec(fns);
+                q.get_fns_rec(fns);
             }
-            Not(p) | All(_, p) | Exists(_, p) => p.get_fns(fns),
+            Not(p) | All(_, p) | Exists(_, p) => p.get_fns_rec(fns),
         }
     }
 
     /// Return the set of all predicate ids and arity in the formula.
-    fn get_preds(&self, preds: &mut HashSet<(usize, usize)>) {
+    fn get_preds(&self) -> HashSet<(usize, usize)> {
+        let mut preds = hashset!();
+        self.get_preds_rec(&mut preds);
+        preds
+    }
+
+    fn get_preds_rec(&self, preds: &mut HashSet<(usize, usize)>) {
         use Formula::*;
         match self {
             Predicate(id, terms) => {
                 preds.insert((*id, terms.len()));
             }
-            Not(p) => p.get_preds(preds),
+            Not(p) => p.get_preds_rec(preds),
             And(l) | Or(l) => {
                 for p in l {
-                    p.get_preds(preds);
+                    p.get_preds_rec(preds);
                 }
             }
             Implies(p, q) | Iff(p, q) => {
-                p.get_preds(preds);
-                q.get_preds(preds);
+                p.get_preds_rec(preds);
+                q.get_preds_rec(preds);
             }
-            All(_, p) | Exists(_, p) => p.get_preds(preds),
+            All(_, p) | Exists(_, p) => p.get_preds_rec(preds),
         }
     }
 }
