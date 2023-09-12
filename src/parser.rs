@@ -591,5 +591,15 @@ mod tests {
         assert!(!fml.check_arity());
     }
 
-    // TODO: 2023/09/13 check_bdd_var get_fns get_preds universal_quantify
+    #[test]
+    fn test_check_bdd_var() {
+        let (fml, _) = formula("all x,y P(f(x,y))").unwrap().into_formula();
+        assert!(fml.check_bdd_var());
+        let (fml, _) = formula("all f all x,y P(f(x,y))").unwrap().into_formula();
+        assert!(!fml.check_bdd_var());
+        let (fml, _) = formula("all P all x,y P(f(x,y))").unwrap().into_formula();
+        assert!(!fml.check_bdd_var());
+    }
+
+    // TODO: 2023/09/13 get_fns get_preds universal_quantify
 }
