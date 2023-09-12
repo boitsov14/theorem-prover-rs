@@ -185,8 +185,14 @@ impl Exists {
 
 impl Formula {
     // TODO: 2023/09/06 parserでしか使用しないなら移動
-    /// Returns the free variables of the formula.
-    pub fn fv(&self, vars: &mut HashSet<usize>) {
+    /// Returns all the free variables of the formula.
+    pub fn free_vars(&self) -> HashSet<usize> {
+        let mut vars = hashset!();
+        self.fv(&mut vars);
+        vars
+    }
+
+    fn fv(&self, vars: &mut HashSet<usize>) {
         use Formula::*;
         match self {
             Predicate(_, terms) => {

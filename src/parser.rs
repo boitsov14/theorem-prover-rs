@@ -54,8 +54,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     if !fml.check_bdd_var() {
         return None;
     }
-    Some((fml, inf))
-    // TODO: 2023/09/06 自由変数をすべてallにする
+    Some((fml.universal_quantify(), inf))
 }
 
 peg::parser!( grammar parser() for str {
@@ -348,6 +347,21 @@ impl Formula {
                 q.get_preds_rec(preds);
             }
             All(_, p) | Exists(_, p) => p.get_preds_rec(preds),
+        }
+    }
+
+    fn universal_quantify(self) -> Self {
+        use Formula::All;
+        let mut fv: Vec<_> = self.free_vars().into_iter().collect();
+        if fv.is_empty() {
+            return self;
+        }
+        match self {
+            All(vs, p) => {
+                fv.extend(vs);
+                All(fv, p)
+            }
+            p => All(fv, Box::new(p)),
         }
     }
 }
