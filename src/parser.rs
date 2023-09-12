@@ -220,6 +220,22 @@ impl PFormula {
     }
 }
 
+impl Term {
+    /// Return the set of all function ids and arity in the term.
+    fn get_fns(&self, fns: &mut HashSet<(usize, usize)>) {
+        use Term::*;
+        match self {
+            Var(_) => {}
+            Function(id, terms) => {
+                fns.insert((*id, terms.len()));
+                for term in terms {
+                    term.get_fns(fns);
+                }
+            }
+        }
+    }
+}
+
 impl Formula {
     /// Return the set of all bounded variables in the formula.
     fn bdd_vs(&self, vars: &mut HashSet<usize>) {
@@ -240,6 +256,49 @@ impl Formula {
                 vars.extend(vs);
                 p.bdd_vs(vars);
             }
+        }
+    }
+
+    /// Return the set of all function ids and arity in the formula.
+    fn get_fns(&self, fns: &mut HashSet<(usize, usize)>) {
+        use Formula::*;
+        match self {
+            Predicate(_, terms) => {
+                for term in terms {
+                    term.get_fns(fns);
+                }
+            }
+            And(l) | Or(l) => {
+                for p in l {
+                    p.get_fns(fns);
+                }
+            }
+            Implies(p, q) | Iff(p, q) => {
+                p.get_fns(fns);
+                q.get_fns(fns);
+            }
+            Not(p) | All(_, p) | Exists(_, p) => p.get_fns(fns),
+        }
+    }
+
+    /// Return the set of all predicate ids and arity in the formula.
+    fn get_preds(&self, preds: &mut HashSet<(usize, usize)>) {
+        use Formula::*;
+        match self {
+            Predicate(id, terms) => {
+                preds.insert((*id, terms.len()));
+            }
+            Not(p) => p.get_preds(preds),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.get_preds(preds);
+                }
+            }
+            Implies(p, q) | Iff(p, q) => {
+                p.get_preds(preds);
+                q.get_preds(preds);
+            }
+            All(_, p) | Exists(_, p) => p.get_preds(preds),
         }
     }
 }
