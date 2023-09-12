@@ -32,7 +32,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
     if lp != rp {
-        println!("Parentheses error: Found {lp} left parentheses and {rp} right parentheses");
+        println!("Parentheses error: Found {lp} left parentheses and {rp} right parentheses.");
         return None;
     }
     let pfml = match parser::formula(&s) {
@@ -49,9 +49,11 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     };
     let (fml, inf) = pfml.into_formula();
     if !fml.check_arity() {
+        println!("Error: Predicates and functions must take the same number of arguments.");
         return None;
     }
     if !fml.check_bdd_var() {
+        println!("Error: Cannot quantify predicates or functions.");
         return None;
     }
     Some((fml.universal_quantify(), inf))
@@ -241,14 +243,13 @@ impl Term {
 }
 
 impl Formula {
-    /// Check if there is a predicate or a function with different arities.
-    /// If there is, print the error message and return false.
+    /// Check if there is a predicate or a function with different number of arguments.
+    /// If there is, return false.
     /// This function is mainly for performance improvement for unification.
     fn check_arity(&self) -> bool {
         let mut env = hashmap!();
         for (id, arity) in self.get_preds() {
-            if let Some(arity0) = env.get(&id) {
-                println!("Error: Predicate {id} has different arities: {arity0}, {arity}");
+            if let Some(_) = env.get(&id) {
                 return false;
             } else {
                 env.insert(id, arity);
@@ -256,8 +257,7 @@ impl Formula {
         }
         let mut env = hashmap!();
         for (id, arity) in self.get_fns() {
-            if let Some(arity0) = env.get(&id) {
-                println!("Error: Function {id} has different arities: {arity0}, {arity}");
+            if let Some(_) = env.get(&id) {
                 return false;
             } else {
                 env.insert(id, arity);
@@ -267,7 +267,7 @@ impl Formula {
     }
 
     /// Check if there is a quantified predicate or function.
-    /// If there is, print the error message and return false.
+    /// If there is, return false.
     fn check_bdd_var(&self) -> bool {
         use Formula::*;
         match self {
@@ -276,19 +276,14 @@ impl Formula {
             And(l) | Or(l) => l.iter().all(|p| p.check_bdd_var()),
             Implies(p, q) | Iff(p, q) => p.check_bdd_var() && q.check_bdd_var(),
             All(vs, p) | Exists(vs, p) => {
+                let vs = vs.iter().cloned().collect();
                 let pred_ids: HashSet<_> = p.get_preds().into_iter().map(|(id, _)| id).collect();
-                for v in vs {
-                    if pred_ids.contains(v) {
-                        println!("Error: Cannot quantify predicate: {v}");
-                        return false;
-                    }
+                if !pred_ids.is_disjoint(&vs) {
+                    return false;
                 }
                 let fn_ids: HashSet<_> = p.get_fns().into_iter().map(|(id, _)| id).collect();
-                for v in vs {
-                    if fn_ids.contains(v) {
-                        println!("Error: Cannot quantify function: {v}");
-                        return false;
-                    }
+                if !fn_ids.is_disjoint(&vs) {
+                    return false;
                 }
                 true
             }
@@ -581,4 +576,20 @@ mod tests {
             assert_eq!(fml.to_str_inf(&inf), expected);
         }
     }
+
+    #[test]
+    fn test_check_arity() {
+        let (fml, _) = formula("P and P").unwrap().into_formula();
+        assert!(fml.check_arity());
+        let (fml, _) = formula("P and P(x)").unwrap().into_formula();
+        assert!(!fml.check_arity());
+        let (fml, _) = formula("P(x) and P(x,y)").unwrap().into_formula();
+        assert!(!fml.check_arity());
+        let (fml, _) = formula("P(f(x), f(x))").unwrap().into_formula();
+        assert!(fml.check_arity());
+        let (fml, _) = formula("P(f(x), f(x,y))").unwrap().into_formula();
+        assert!(!fml.check_arity());
+    }
+
+    // TODO: 2023/09/13 check_bdd_var get_fns get_preds universal_quantify
 }
