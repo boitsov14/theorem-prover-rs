@@ -115,9 +115,8 @@ impl Term {
     }
     */
 
-    // TODO: 2023/08/25 pub or private
     /// Returns a string representation of the Term using the provided NamingInfo.
-    pub fn to_str_inf(&self, inf: &NamingInfo) -> String {
+    fn to_str_inf(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
             Var(id) => inf.get_name(*id).into(),
@@ -341,6 +340,40 @@ impl NamingInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::parse;
+
+    #[test]
+    fn test_fv() {
+        let (fml, mut inf) = parse("P(x)").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["x"].map(|s| inf.get_id(s.into())).into_iter().collect()
+        );
+
+        let (fml, mut inf) = parse("P(x, f(y,z))").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["x", "y", "z"]
+                .map(|s| inf.get_id(s.into()))
+                .into_iter()
+                .collect()
+        );
+
+        let (fml, mut inf) = parse("all x,y P(x, f(y,z))").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["z"].map(|s| inf.get_id(s.into())).into_iter().collect()
+        );
+
+        let (fml, mut inf) = parse("P(x) and Q(y) iff not R(z)").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["x", "y", "z"]
+                .map(|s| inf.get_id(s.into()))
+                .into_iter()
+                .collect()
+        );
+    }
 
     #[test]
     fn test_get_id() {}
