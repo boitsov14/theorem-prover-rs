@@ -376,6 +376,39 @@ mod tests {
     }
 
     #[test]
+    fn test_to_str_inf() {
+        let (fml, inf) = parse("P(x)").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P(x)");
+
+        let (fml, inf) = parse("P(x,f(y,g(z)))").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P(x,f(y,g(z)))");
+
+        let (fml, inf) = parse("not P").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "¬P");
+
+        let (fml, inf) = parse("P and Q and R and S").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P ∧ Q ∧ R ∧ S");
+
+        let (fml, inf) = parse("P or Q or R or S").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P ∨ Q ∨ R ∨ S");
+
+        let (fml, inf) = parse("P to Q to R to S").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P → (Q → (R → S))");
+
+        let (fml, inf) = parse("P iff Q iff R iff S").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P ↔ (Q ↔ (R ↔ S))");
+
+        let (fml, inf) = parse("all x,y,z P(x, y, z)").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "∀x,y,zP(x,y,z)");
+
+        let (fml, inf) = parse("ex x,y,z P(x, y, z)").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "∃x,y,zP(x,y,z)");
+
+        let (fml, inf) = parse("P and Q and R to S or T iff U").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U");
+    }
+
+    #[test]
     fn test_get_id() {}
 
     #[test]
