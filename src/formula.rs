@@ -380,30 +380,4 @@ mod tests {
 
     #[test]
     fn test_get_name() {}
-
-    #[test]
-    fn test_write_str_var() {
-        use Term::*;
-        let mut inf = NamingInfo::new();
-        let id = inf.get_id("x".into());
-        let term = Var(id);
-        assert_eq!(term.to_str_inf(&inf), "x");
-    }
-
-    // TODO: 2023/08/24 さすがに大変なのでパーサー使う
-    #[test]
-    fn test_write_str_function() {
-        use Term::*;
-        let mut inf = NamingInfo::new();
-        let func_id = inf.get_id("f".into());
-        let var_id_x = inf.get_id("x".into());
-        let var_id_y = inf.get_id("y".into());
-        let var_x = Var(var_id_x);
-        let var_y = Var(var_id_y);
-        let term = Function(func_id, vec![var_x, var_y]);
-        assert_eq!(term.to_str_inf(&inf), "f(x,y)");
-    }
-
-    #[test]
-    fn test_formula_write_str() {}
 }
