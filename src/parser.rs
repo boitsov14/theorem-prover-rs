@@ -10,7 +10,6 @@ pub enum PTerm {
     Function(String, Vec<PTerm>),
 }
 
-// TODO: 2023/09/11 Formula or PFormula
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PFormula {
     Predicate(String, Vec<PTerm>),
@@ -56,7 +55,7 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
         println!("Error: Cannot quantify predicates or functions.");
         return None;
     }
-    Some((fml.universal_quantify(), inf))
+    Some((fml, inf))
 }
 
 peg::parser!( grammar parser() for str {
@@ -249,7 +248,7 @@ impl Formula {
     fn check_arity(&self) -> bool {
         let mut env = hashmap!();
         for (id, arity) in self.get_preds() {
-            if let Some(_) = env.get(&id) {
+            if env.get(&id).is_some() {
                 return false;
             } else {
                 env.insert(id, arity);
@@ -257,7 +256,7 @@ impl Formula {
         }
         let mut env = hashmap!();
         for (id, arity) in self.get_fns() {
-            if let Some(_) = env.get(&id) {
+            if env.get(&id).is_some() {
                 return false;
             } else {
                 env.insert(id, arity);
@@ -345,7 +344,7 @@ impl Formula {
         }
     }
 
-    fn universal_quantify(self) -> Self {
+    pub fn universal_quantify(self) -> Self {
         use Formula::All;
         let mut fv: Vec<_> = self.free_vars().into_iter().collect();
         if fv.is_empty() {
@@ -604,15 +603,28 @@ mod tests {
     #[test]
     fn test_universal_quantify() {
         let mut inf = NamingInfo::new();
-        let fml0 = formula("all x,y P(f(x,y))")
+
+        let fml = formula("all x,y P(f(x,y))")
             .unwrap()
             .into_formula_rec(&mut inf);
-        assert_eq!(fml0.clone().universal_quantify(), fml0);
+        assert_eq!(fml.clone().universal_quantify(), fml);
+
         let fml1 = formula("P(f(x,y))").unwrap().into_formula_rec(&mut inf);
-        assert_eq!(fml1.universal_quantify(), fml0);
+        let Formula::All(vs1, p1) = fml1.universal_quantify() else {
+            unreachable!()
+        };
+        let Formula::All(vs, p) = fml.clone().universal_quantify() else {
+            unreachable!()
+        };
+        assert_eq!(
+            vs1.iter().collect::<HashSet<_>>(),
+            vs.iter().collect::<HashSet<_>>()
+        );
+        assert_eq!(p1, p);
+
         let fml2 = formula("all y P(f(x,y))")
             .unwrap()
             .into_formula_rec(&mut inf);
-        assert_eq!(fml2.universal_quantify(), fml0);
+        assert_eq!(fml2.universal_quantify(), fml);
     }
 }
