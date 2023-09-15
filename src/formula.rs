@@ -119,7 +119,7 @@ impl Term {
     fn to_str_inf(&self, inf: &NamingInfo) -> String {
         use Term::*;
         match self {
-            Var(id) => inf.get_name(*id).into(),
+            Var(id) => inf.get_name(*id),
             Function(id, terms) => {
                 format!(
                     "{}({})",
@@ -232,7 +232,7 @@ impl Formula {
         match self {
             Predicate(id, terms) => {
                 if terms.is_empty() {
-                    inf.get_name(*id).into()
+                    inf.get_name(*id)
                 } else {
                     format!(
                         "{}({})",
@@ -321,19 +321,19 @@ impl NamingInfo {
         }
     }
 
-    fn get_name(&self, id: usize) -> &str {
+    fn get_name(&self, id: usize) -> String {
         self.map
             .iter()
             .find_map(
                 |(key, val)| {
                     if *val == id {
-                        Some(key.as_str())
+                        Some(key.clone())
                     } else {
                         None
                     }
                 },
             )
-            .expect("Value not found for id")
+            .unwrap_or(format!("{id}"))
     }
 }
 
