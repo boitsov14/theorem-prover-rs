@@ -12,6 +12,7 @@ pub enum Term {
 }
 
 #[derive(Clone, Debug, EnumVariantType, Eq, Hash, PartialEq)]
+#[evt(derive(Clone, Debug, Eq, Hash, PartialEq))]
 pub enum Formula {
     Predicate(usize, Vec<Term>),
     Not(Box<Formula>),
