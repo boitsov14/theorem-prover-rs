@@ -24,8 +24,11 @@ pub enum Formula {
     Exists(Vec<usize>, Box<Formula>),
 }
 
-pub static TRUE: Formula = Formula::And(vec![]);
-pub static FALSE: Formula = Formula::Or(vec![]);
+pub static F_TRUE: Formula = Formula::And(vec![]);
+pub static F_FALSE: Formula = Formula::Or(vec![]);
+
+pub static TRUE: And = And(vec![]);
+pub static FALSE: Or = Or(vec![]);
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NamingInfo {
@@ -303,7 +306,7 @@ impl fmt::Display for Formula {
 
 impl Default for Formula {
     fn default() -> Self {
-        TRUE.clone()
+        F_TRUE.clone()
     }
 }
 
