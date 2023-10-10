@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 enum_variant_type = "0.3.1"
+indexmap = "2.0.2"
 maplit = "1.0.2"
 peg = "0.8.1"
 regex = "1.9.5"
