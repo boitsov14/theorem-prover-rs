@@ -17,7 +17,6 @@ pub enum PFormula {
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
     Implies(Box<PFormula>, Box<PFormula>),
-    Iff(Box<PFormula>, Box<PFormula>),
     All(Vec<String>, Box<PFormula>),
     Exists(Vec<String>, Box<PFormula>),
 }
@@ -79,7 +78,7 @@ peg::parser!( grammar parser() for str {
     /// Every infix operator is right-associative.
     /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
     pub rule formula() -> PFormula = precedence!{
-        p:@ _ iff() _ q:(@) { Iff(Box::new(p), Box::new(q)) }
+        p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p), Box::new(q)), Implies(Box::new(q), Box::new(p))]) }
         --
         p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
         --
@@ -209,10 +208,6 @@ impl PFormula {
                 Box::new(p.into_formula_rec(inf)),
                 Box::new(q.into_formula_rec(inf)),
             ),
-            PFormula::Iff(p, q) => Formula::Iff(
-                Box::new(p.into_formula_rec(inf)),
-                Box::new(q.into_formula_rec(inf)),
-            ),
             PFormula::All(names, p) => Formula::All(
                 names.into_iter().map(|name| inf.get_id(name)).collect(),
                 Box::new(p.into_formula_rec(inf)),
@@ -273,7 +268,7 @@ impl Formula {
             Predicate(_, _) => true,
             Not(p) => p.check_bdd_var(),
             And(l) | Or(l) => l.iter().all(|p| p.check_bdd_var()),
-            Implies(p, q) | Iff(p, q) => p.check_bdd_var() && q.check_bdd_var(),
+            Implies(p, q) => p.check_bdd_var() && q.check_bdd_var(),
             All(vs, p) | Exists(vs, p) => {
                 let vs = vs.iter().cloned().collect();
                 let pred_ids: HashSet<_> = p.get_preds().into_iter().map(|(id, _)| id).collect();
@@ -309,7 +304,7 @@ impl Formula {
                     p.get_fns_rec(fns);
                 }
             }
-            Implies(p, q) | Iff(p, q) => {
+            Implies(p, q) => {
                 p.get_fns_rec(fns);
                 q.get_fns_rec(fns);
             }
@@ -336,7 +331,7 @@ impl Formula {
                     p.get_preds_rec(preds);
                 }
             }
-            Implies(p, q) | Iff(p, q) => {
+            Implies(p, q) => {
                 p.get_preds_rec(preds);
                 q.get_preds_rec(preds);
             }
@@ -374,14 +369,14 @@ mod tests {
             Function("f".into(), vec![Var("x".into())])
         );
         assert_eq!(
-            term("f(x, y)").unwrap(),
-            Function("f".into(), vec![Var("x".into()), Var("y".into())])
-        );
-        assert_eq!(
-            term("f(x, g(y))").unwrap(),
+            term("f(x, g(y), z)").unwrap(),
             Function(
                 "f".into(),
-                vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
+                vec![
+                    Var("x".into()),
+                    Function("g".into(), vec![Var("y".into())]),
+                    Var("z".into())
+                ]
             )
         );
     }
@@ -398,10 +393,14 @@ mod tests {
             Predicate("P".into(), vec![Var("x".into())])
         );
         assert_eq!(
-            formula("P(x, g(y))").unwrap(),
+            formula("P(x, g(y), z)").unwrap(),
             Predicate(
                 "P".into(),
-                vec![Var("x".into()), Function("g".into(), vec![Var("y".into())])]
+                vec![
+                    Var("x".into()),
+                    Function("g".into(), vec![Var("y".into())]),
+                    Var("z".into())
+                ]
             )
         );
         assert_eq!(
@@ -431,10 +430,16 @@ mod tests {
         );
         assert_eq!(
             formula("P iff Q").unwrap(),
-            Iff(
-                Box::new(Predicate("P".into(), vec![])),
-                Box::new(Predicate("Q".into(), vec![]))
-            )
+            And(vec![
+                Implies(
+                    Box::new(Predicate("P".into(), vec![])),
+                    Box::new(Predicate("Q".into(), vec![]))
+                ),
+                Implies(
+                    Box::new(Predicate("Q".into(), vec![])),
+                    Box::new(Predicate("P".into(), vec![]))
+                )
+            ])
         );
         assert_eq!(
             formula("all x P(x)").unwrap(),
