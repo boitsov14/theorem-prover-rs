@@ -19,7 +19,6 @@ pub enum Formula {
     And(Vec<Formula>),
     Or(Vec<Formula>),
     Implies(Box<Formula>, Box<Formula>),
-    Iff(Box<Formula>, Box<Formula>),
     All(Vec<usize>, Box<Formula>),
     Exists(Vec<usize>, Box<Formula>),
 }
@@ -168,12 +167,6 @@ impl Implies {
     }
 }
 
-impl Iff {
-    pub fn new(p: Formula, q: Formula) -> Self {
-        Self(Box::new(p), Box::new(q))
-    }
-}
-
 impl All {
     pub fn new(vars: Vec<usize>, p: Formula) -> Self {
         Self(vars, Box::new(p))
@@ -209,7 +202,7 @@ impl Formula {
                     p.fv(vars);
                 }
             }
-            Implies(p, q) | Iff(p, q) => {
+            Implies(p, q) => {
                 p.fv(vars);
                 q.fv(vars);
             }
@@ -250,10 +243,16 @@ impl Formula {
                 }
             }
             Not(p) => format!("¬{}", p.to_str_inf_rec(inf)),
-            And(l) => {
-                if l.is_empty() {
-                    "true".into()
-                } else {
+            And(l) => match l.as_slice() {
+                [] => "true".into(),
+                [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r => {
+                    format!(
+                        "({} ↔ {})",
+                        p_l.to_str_inf_rec(inf),
+                        q_l.to_str_inf_rec(inf)
+                    )
+                }
+                _ => {
                     format!(
                         "({})",
                         l.iter()
@@ -262,7 +261,7 @@ impl Formula {
                             .join(" ∧ ")
                     )
                 }
-            }
+            },
             Or(l) => {
                 if l.is_empty() {
                     "false".into()
@@ -277,7 +276,6 @@ impl Formula {
                 }
             }
             Implies(p, q) => format!("({} → {})", p.to_str_inf_rec(inf), q.to_str_inf_rec(inf)),
-            Iff(p, q) => format!("({} ↔ {})", p.to_str_inf_rec(inf), q.to_str_inf_rec(inf)),
             All(vars, p) => format!(
                 "∀{}{}",
                 vars.iter()
@@ -343,7 +341,6 @@ impl NamingInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::parser::parse;
 
     #[test]
@@ -410,6 +407,12 @@ mod tests {
 
         let (fml, inf) = parse("P and Q and R to S or T iff U").unwrap();
         assert_eq!(fml.to_str_inf(&inf), "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U");
+
+        let (fml, inf) = parse("(P to Q) and (Q to P)").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "P ↔ Q");
+
+        let (fml, inf) = parse("(P to Q) and (Q to R)").unwrap();
+        assert_eq!(fml.to_str_inf(&inf), "(P → Q) ∧ (Q → R)");
     }
 
     #[test]
