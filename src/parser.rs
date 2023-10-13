@@ -1,4 +1,5 @@
-use crate::formula::{Formula, NamingInfo, Term};
+use crate::formula::{Formula, Term};
+use crate::naming::NamingInfo;
 use maplit::{hashmap, hashset};
 use regex::Regex;
 use std::collections::HashSet;
