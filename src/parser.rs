@@ -78,7 +78,7 @@ peg::parser!( grammar parser() for str {
     /// Every infix operator is right-associative.
     /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
     pub rule formula() -> PFormula = precedence!{
-        p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p), Box::new(q)), Implies(Box::new(q), Box::new(p))]) }
+        p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p.clone()), Box::new(q.clone())), Implies(Box::new(q), Box::new(p))]) }
         --
         p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
         --
