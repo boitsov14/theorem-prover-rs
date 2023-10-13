@@ -1,6 +1,6 @@
 use indexmap::IndexSet;
 
-use crate::formula::{All, And, Exists, Formula, Iff, Implies, Not, Or, Predicate};
+use crate::formula::{All, And, Exists, Formula, Implies, Not, Or, Predicate};
 
 /// Structured set of formulae
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -10,7 +10,6 @@ struct Formulae {
     and_set: IndexSet<And>,
     or_set: IndexSet<Or>,
     implies_set: IndexSet<Implies>,
-    iff_set: IndexSet<Iff>,
     all_set: IndexSet<All>,
     exists_set: IndexSet<Exists>,
 }
@@ -34,11 +33,9 @@ enum Tactic {
     LNot,
     RNot,
     RImplies,
-    LIff,
     LAnd,
     ROr,
     LImplies,
-    RIff,
     RAnd,
     LOr,
 }
@@ -82,9 +79,6 @@ impl Sequent {
             Formula::Implies(p, q) => {
                 self.ant.implies_set.insert(Implies(p, q));
             }
-            Formula::Iff(p, q) => {
-                self.ant.iff_set.insert(Iff(p, q));
-            }
             Formula::All(vs, p) => {
                 self.ant.all_set.insert(All(vs, p));
             }
@@ -116,9 +110,6 @@ impl Sequent {
             }
             Formula::Implies(p, q) => {
                 self.suc.implies_set.insert(Implies(p, q));
-            }
-            Formula::Iff(p, q) => {
-                self.suc.iff_set.insert(Iff(p, q));
             }
             Formula::All(vs, p) => {
                 self.suc.all_set.insert(All(vs, p));
@@ -167,25 +158,9 @@ impl Tactic {
                     vec![(sequent_l, state_l), (sequent_r, state_r)],
                 ))
             }
-            LIff => {
-                let Iff(p, q) = sequent.ant.iff_set.pop()?;
-                let mut sequent_l = sequent.clone();
-                let mut sequent_r = sequent;
-                sequent_l
-                    .ant
-                    .implies_set
-                    .insert(Implies(p.clone(), q.clone()));
-                sequent_r.suc.implies_set.insert(Implies(p, q));
-                use ProofState::InProgress;
-                Some(TacticResult::new(
-                    self,
-                    vec![(sequent_l, InProgress), (sequent_r, InProgress)],
-                ))
-            }
             LAnd => todo!(),
             ROr => todo!(),
             LImplies => todo!(),
-            RIff => todo!(),
             RAnd => todo!(),
             LOr => todo!(),
         }
