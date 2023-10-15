@@ -3,6 +3,7 @@ use indexmap::IndexSet;
 use crate::formula::{All, And, Exists, Formula, Implies, Not, Or, Predicate};
 
 use itertools::repeat_n;
+use strum::{EnumIter, IntoEnumIterator};
 
 /// Structured set of formulae
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -30,7 +31,7 @@ struct PlainSequent {
     suc: IndexSet<Formula>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 enum Tactic {
     LNot,
     RNot,
@@ -42,11 +43,17 @@ enum Tactic {
     LOr,
 }
 
-struct ProofTree {
+enum ProofTree {
+    Leaf(ProofState),
+    Node(Node),
+}
+
+struct Node {
     tactic: Tactic,
     subproofs: Vec<ProofTree>,
 }
 
+#[derive(PartialEq)]
 enum ProofState {
     Provable,
     InProgress,
@@ -122,6 +129,14 @@ impl Sequent {
         }
         InProgress
     }
+    fn apply_tactic(self) -> Option<TacticResult> {
+        for tactic in Tactic::iter() {
+            if tactic.applicable(&self) {
+                return Some(TacticResult::new(tactic, tactic.apply(self)));
+            }
+        }
+        None
+    }
 }
 
 struct TacticResult {
@@ -136,44 +151,41 @@ impl TacticResult {
 }
 
 impl Tactic {
-    fn apply(self, mut sequent: Sequent) -> Option<TacticResult> {
+    fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, ProofState)> {
         use Tactic::*;
         match self {
             LNot => {
-                let Not(p) = sequent.ant.not_set.pop()?;
+                let Not(p) = sequent.ant.not_set.pop().unwrap();
                 let state = sequent.insert_to_suc(*p);
-                Some(TacticResult::new(self, vec![(sequent, state)]))
+                vec![(sequent, state)]
             }
             RNot => {
-                let Not(p) = sequent.suc.not_set.pop()?;
+                let Not(p) = sequent.suc.not_set.pop().unwrap();
                 let state = sequent.insert_to_ant(*p);
-                Some(TacticResult::new(self, vec![(sequent, state)]))
+                vec![(sequent, state)]
             }
             RImplies => {
-                let Implies(p, q) = sequent.suc.implies_set.pop()?;
+                let Implies(p, q) = sequent.suc.implies_set.pop().unwrap();
                 let mut sequent_l = sequent.clone();
                 let mut sequent_r = sequent;
                 let state_l = sequent_l.insert_to_ant(*p);
                 let state_r = sequent_r.insert_to_suc(*q);
-                Some(TacticResult::new(
-                    self,
-                    vec![(sequent_l, state_l), (sequent_r, state_r)],
-                ))
+                vec![(sequent_l, state_l), (sequent_r, state_r)]
             }
             LAnd => {
-                let And(l) = sequent.ant.and_set.pop()?;
+                let And(l) = sequent.ant.and_set.pop().unwrap();
                 let mut state = ProofState::InProgress;
                 for p in l {
                     if let ProofState::Provable = sequent.insert_to_ant(p) {
                         state = ProofState::Provable;
                     }
                 }
-                Some(TacticResult::new(self, vec![(sequent, state)]))
+                vec![(sequent, state)]
             }
             ROr => todo!(),
             LImplies => todo!(),
             RAnd => {
-                let And(l) = sequent.suc.and_set.pop()?;
+                let And(l) = sequent.suc.and_set.pop().unwrap();
                 let n = l.len();
                 let l = l.into_iter().zip(repeat_n(sequent, n));
                 let mut sequents = Vec::with_capacity(n);
@@ -181,10 +193,10 @@ impl Tactic {
                     let state = sequent.insert_to_suc(p);
                     sequents.push((sequent, state));
                 }
-                Some(TacticResult::new(self, sequents))
+                sequents
             }
             LOr => {
-                let Or(l) = sequent.ant.or_set.pop()?;
+                let Or(l) = sequent.ant.or_set.pop().unwrap();
                 let n = l.len();
                 let l = l.into_iter().zip(repeat_n(sequent, n));
                 let mut sequents = Vec::with_capacity(n);
@@ -192,7 +204,43 @@ impl Tactic {
                     let state = sequent.insert_to_ant(p);
                     sequents.push((sequent, state));
                 }
-                Some(TacticResult::new(self, sequents))
+                sequents
+            }
+        }
+    }
+    fn applicable(&self, sequent: &Sequent) -> bool {
+        use Tactic::*;
+        match self {
+            LNot => !sequent.ant.not_set.is_empty(),
+            RNot => !sequent.suc.not_set.is_empty(),
+            RImplies => !sequent.suc.implies_set.is_empty(),
+            LAnd => !sequent.ant.and_set.is_empty(),
+            ROr => !sequent.suc.or_set.is_empty(),
+            LImplies => !sequent.ant.implies_set.is_empty(),
+            RAnd => !sequent.suc.and_set.is_empty(),
+            LOr => !sequent.ant.or_set.is_empty(),
+        }
+    }
+}
+
+impl Node {
+    fn new(tactic: Tactic) -> Self {
+        Self {
+            tactic,
+            subproofs: vec![],
+        }
+    }
+    fn make_proof_tree(&mut self, sequents: Vec<(Sequent, ProofState)>) {
+        use ProofState::*;
+        for (sequent, state) in sequents {
+            if state == Provable {
+                self.subproofs.push(ProofTree::Leaf(Provable));
+            } else if let Some(TacticResult { tactic, sequents }) = sequent.apply_tactic() {
+                let mut node = Node::new(tactic);
+                node.make_proof_tree(sequents);
+                self.subproofs.push(ProofTree::Node(node));
+            } else {
+                self.subproofs.push(ProofTree::Leaf(UnProvable));
             }
         }
     }
