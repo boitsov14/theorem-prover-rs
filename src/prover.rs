@@ -2,6 +2,8 @@ use indexmap::IndexSet;
 
 use crate::formula::{All, And, Exists, Formula, Implies, Not, Or, Predicate};
 
+use itertools::repeat_n;
+
 /// Structured set of formulae
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Formulae {
@@ -158,11 +160,40 @@ impl Tactic {
                     vec![(sequent_l, state_l), (sequent_r, state_r)],
                 ))
             }
-            LAnd => todo!(),
+            LAnd => {
+                let And(l) = sequent.ant.and_set.pop()?;
+                let mut state = ProofState::InProgress;
+                for p in l {
+                    if let ProofState::Provable = sequent.insert_to_ant(p) {
+                        state = ProofState::Provable;
+                    }
+                }
+                Some(TacticResult::new(self, vec![(sequent, state)]))
+            }
             ROr => todo!(),
             LImplies => todo!(),
-            RAnd => todo!(),
-            LOr => todo!(),
+            RAnd => {
+                let And(l) = sequent.suc.and_set.pop()?;
+                let n = l.len();
+                let l = l.into_iter().zip(repeat_n(sequent, n));
+                let mut sequents = Vec::with_capacity(n);
+                for (p, mut sequent) in l {
+                    let state = sequent.insert_to_suc(p);
+                    sequents.push((sequent, state));
+                }
+                Some(TacticResult::new(self, sequents))
+            }
+            LOr => {
+                let Or(l) = sequent.ant.or_set.pop()?;
+                let n = l.len();
+                let l = l.into_iter().zip(repeat_n(sequent, n));
+                let mut sequents = Vec::with_capacity(n);
+                for (p, mut sequent) in l {
+                    let state = sequent.insert_to_ant(p);
+                    sequents.push((sequent, state));
+                }
+                Some(TacticResult::new(self, sequents))
+            }
         }
     }
 }
