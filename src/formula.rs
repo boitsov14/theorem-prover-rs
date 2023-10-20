@@ -122,24 +122,28 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
 */
 
 impl Not {
+    #[inline(never)]
     pub fn new(p: Formula) -> Self {
         Self(Box::new(p))
     }
 }
 
 impl Implies {
+    #[inline(never)]
     pub fn new(p: Formula, q: Formula) -> Self {
         Self(Box::new(p), Box::new(q))
     }
 }
 
 impl All {
+    #[inline(never)]
     pub fn new(vars: Vec<usize>, p: Formula) -> Self {
         Self(vars, Box::new(p))
     }
 }
 
 impl Exists {
+    #[inline(never)]
     pub fn new(vars: Vec<usize>, p: Formula) -> Self {
         Self(vars, Box::new(p))
     }
