@@ -142,7 +142,7 @@ peg::parser!( grammar parser() for str {
         }
         --
         p:predicate() { p }
-        "(" p:formula() ")" { p }
+        "(" _ p:formula() _ ")" { p }
     } / expected!("formula")
 
     rule ASCII_ALPHA_GREEK() = ['a'..='z' | 'A'..='Z' | 'α'..='ω' | 'Α'..='Ω' ]
