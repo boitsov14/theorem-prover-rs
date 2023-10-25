@@ -2,19 +2,23 @@ use indexmap::IndexSet;
 
 use crate::formula::{Formula, Term};
 
+use core::hash::BuildHasherDefault;
 use itertools::repeat_n;
+use rustc_hash::FxHasher;
 use strum::{EnumIter, IntoEnumIterator};
+
+type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Structured set of formulae
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Formulae<'a> {
-    predicate_set: IndexSet<(usize, &'a Vec<Term>)>,
-    not_set: IndexSet<&'a Formula>,
-    and_set: IndexSet<&'a Vec<Formula>>,
-    or_set: IndexSet<&'a Vec<Formula>>,
-    implies_set: IndexSet<(&'a Formula, &'a Formula)>,
-    all_set: IndexSet<(&'a Vec<usize>, &'a Formula)>,
-    exists_set: IndexSet<(&'a Vec<usize>, &'a Formula)>,
+    predicate_set: FxIndexSet<(usize, &'a Vec<Term>)>,
+    not_set: FxIndexSet<&'a Formula>,
+    and_set: FxIndexSet<&'a Vec<Formula>>,
+    or_set: FxIndexSet<&'a Vec<Formula>>,
+    implies_set: FxIndexSet<(&'a Formula, &'a Formula)>,
+    all_set: FxIndexSet<(&'a Vec<usize>, &'a Formula)>,
+    exists_set: FxIndexSet<(&'a Vec<usize>, &'a Formula)>,
 }
 
 /// Sequent of structured formulae
@@ -27,8 +31,8 @@ struct Sequent<'a> {
 /// Sequent of formulae
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct PlainSequent {
-    ant: IndexSet<Formula>,
-    suc: IndexSet<Formula>,
+    ant: FxIndexSet<Formula>,
+    suc: FxIndexSet<Formula>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
@@ -296,9 +300,9 @@ pub fn example() {
     let s = "((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔(a⇔(b⇔(c⇔(d⇔(e⇔f))))))";
     // 454ms -> 50ms vs 180ms
     // let s = "(((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔g)))))))";
-    // 7,006ms -> 424ms vs 303ms
+    // 7,006ms -> 424ms -> 344ms vs 303ms
     // let s = "((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔h))))))))";
-    // ? -> 6613ms vs 523ms
+    // ? -> 6613ms -> 5477ms vs 523ms
     // let s = "(((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔i)))))))))";
     // 0.3ms vs Error
     // let s = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43) -> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o31 ∧ o43) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o43) ∨ (o11 ∧ o21 ∧ o33 ∧ o41) ∨ (o11 ∧ o21 ∧ o33 ∧ o42) ∨ (o11 ∧ o21 ∧ o33 ∧ o43) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o43) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o43) ∨ (o11 ∧ o22 ∧ o33 ∧ o41) ∨ (o11 ∧ o22 ∧ o33 ∧ o42) ∨ (o11 ∧ o22 ∧ o33 ∧ o43) ∨ (o11 ∧ o23 ∧ o31 ∧ o41) ∨ (o11 ∧ o23 ∧ o31 ∧ o42) ∨ (o11 ∧ o23 ∧ o31 ∧ o43) ∨ (o11 ∧ o23 ∧ o32 ∧ o41) ∨ (o11 ∧ o23 ∧ o32 ∧ o42) ∨ (o11 ∧ o23 ∧ o32 ∧ o43) ∨ (o11 ∧ o23 ∧ o33 ∧ o41) ∨ (o11 ∧ o23 ∧ o33 ∧ o42) ∨ (o11 ∧ o23 ∧ o33 ∧ o43) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o43) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o43) ∨ (o12 ∧ o21 ∧ o33 ∧ o41) ∨ (o12 ∧ o21 ∧ o33 ∧ o42) ∨ (o12 ∧ o21 ∧ o33 ∧ o43) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o43) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o43) ∨ (o12 ∧ o22 ∧ o33 ∧ o41) ∨ (o12 ∧ o22 ∧ o33 ∧ o42) ∨ (o12 ∧ o22 ∧ o33 ∧ o43) ∨ (o12 ∧ o23 ∧ o31 ∧ o41) ∨ (o12 ∧ o23 ∧ o31 ∧ o42) ∨ (o12 ∧ o23 ∧ o31 ∧ o43) ∨ (o12 ∧ o23 ∧ o32 ∧ o41) ∨ (o12 ∧ o23 ∧ o32 ∧ o42) ∨ (o12 ∧ o23 ∧ o32 ∧ o43) ∨ (o12 ∧ o23 ∧ o33 ∧ o41) ∨ (o12 ∧ o23 ∧ o33 ∧ o42) ∨ (o12 ∧ o23 ∧ o33 ∧ o43) ∨ (o13 ∧ o21 ∧ o31 ∧ o41) ∨ (o13 ∧ o21 ∧ o31 ∧ o42) ∨ (o13 ∧ o21 ∧ o31 ∧ o43) ∨ (o13 ∧ o21 ∧ o32 ∧ o41) ∨ (o13 ∧ o21 ∧ o32 ∧ o42) ∨ (o13 ∧ o21 ∧ o32 ∧ o43) ∨ (o13 ∧ o21 ∧ o33 ∧ o41) ∨ (o13 ∧ o21 ∧ o33 ∧ o42) ∨ (o13 ∧ o21 ∧ o33 ∧ o43) ∨ (o13 ∧ o22 ∧ o31 ∧ o41) ∨ (o13 ∧ o22 ∧ o31 ∧ o42) ∨ (o13 ∧ o22 ∧ o31 ∧ o43) ∨ (o13 ∧ o22 ∧ o32 ∧ o41) ∨ (o13 ∧ o22 ∧ o32 ∧ o42) ∨ (o13 ∧ o22 ∧ o32 ∧ o43) ∨ (o13 ∧ o22 ∧ o33 ∧ o41) ∨ (o13 ∧ o22 ∧ o33 ∧ o42) ∨ (o13 ∧ o22 ∧ o33 ∧ o43) ∨ (o13 ∧ o23 ∧ o31 ∧ o41) ∨ (o13 ∧ o23 ∧ o31 ∧ o42) ∨ (o13 ∧ o23 ∧ o31 ∧ o43) ∨ (o13 ∧ o23 ∧ o32 ∧ o41) ∨ (o13 ∧ o23 ∧ o32 ∧ o42) ∨ (o13 ∧ o23 ∧ o32 ∧ o43) ∨ (o13 ∧ o23 ∧ o33 ∧ o41) ∨ (o13 ∧ o23 ∧ o33 ∧ o42) ∨ (o13 ∧ o23 ∧ o33 ∧ o43)";
