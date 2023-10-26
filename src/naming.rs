@@ -1,10 +1,10 @@
 use crate::formula::{Formula, Term};
-use std::{collections::HashMap, fmt};
+use indexmap::IndexSet;
+use std::fmt;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NamingInfo {
-    map: HashMap<String, usize>,
-    id: usize,
+    names: IndexSet<String>,
 }
 
 impl NamingInfo {
@@ -13,28 +13,12 @@ impl NamingInfo {
     }
 
     pub fn get_id(&mut self, s: String) -> usize {
-        if let Some(&id) = self.map.get(&s) {
-            id
-        } else {
-            self.id += 1;
-            self.map.insert(s, self.id);
-            self.id
-        }
+        let (id, _) = self.names.insert_full(s);
+        id
     }
 
     fn get_name(&self, id: usize) -> String {
-        self.map
-            .iter()
-            .find_map(
-                |(key, val)| {
-                    if *val == id {
-                        Some(key.clone())
-                    } else {
-                        None
-                    }
-                },
-            )
-            .unwrap_or(format!("{id}"))
+        self.names.get_index(id).unwrap_or(&id.to_string()).clone()
     }
 }
 
