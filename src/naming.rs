@@ -22,30 +22,40 @@ impl NamingInfo {
     }
 }
 
-impl Term {
-    /// Returns a string representation of the Term using the provided NamingInfo.
-    fn to_str_inf(&self, inf: &NamingInfo) -> String {
+struct TermDisplay<'a> {
+    term: &'a Term,
+    inf: &'a NamingInfo,
+}
+
+impl fmt::Display for TermDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Term::*;
-        match self {
-            Var(id) => inf.get_name(*id),
-            Function(id, terms) => {
-                format!(
-                    "{}({})",
-                    inf.get_name(*id),
-                    terms
-                        .iter()
-                        .map(|term| term.to_str_inf(inf))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )
-            }
+        match self.term {
+            Var(id) => write!(f, "{}", self.inf.get_name(*id))?,
+            Function(id, terms) => write!(
+                f,
+                "{}({})",
+                self.inf.get_name(*id),
+                terms
+                    .iter()
+                    .map(|term| term.display(self.inf).to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )?,
         }
+        Ok(())
+    }
+}
+
+impl Term {
+    fn display<'a>(&'a self, inf: &'a NamingInfo) -> TermDisplay<'a> {
+        TermDisplay { term: self, inf }
     }
 }
 
 impl fmt::Display for Term {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_str_inf(&NamingInfo::new()))
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.display(&NamingInfo::new()))
     }
 }
 
@@ -71,7 +81,7 @@ impl Formula {
                         inf.get_name(*id),
                         terms
                             .iter()
-                            .map(|term| term.to_str_inf(inf))
+                            .map(|term| term.display(inf).to_string())
                             .collect::<Vec<_>>()
                             .join(",")
                     )
