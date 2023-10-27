@@ -22,6 +22,10 @@ impl NamingInfo {
     }
 }
 
+pub trait Latex {
+    fn to_latex(&self) -> String;
+}
+
 struct TermDisplay<'a> {
     term: &'a Term,
     inf: &'a NamingInfo,
@@ -172,6 +176,21 @@ impl fmt::Display for FormulaDisplay<'_> {
             )?,
         }
         Ok(())
+    }
+}
+
+impl Latex for FormulaDisplay<'_> {
+    fn to_latex(&self) -> String {
+        self.to_string()
+            .replace("true", r"\top")
+            .replace("false", r"\bot")
+            .replace('¬', r"\lnot ")
+            .replace('∧', r"\land")
+            .replace('∨', r"\lor")
+            .replace('→', r"\rightarrow")
+            .replace('↔', r"\leftrightarrow")
+            .replace('∀', r"\forall ")
+            .replace('∃', r"\exists ")
     }
 }
 
