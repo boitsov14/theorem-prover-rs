@@ -59,91 +59,142 @@ impl fmt::Display for Term {
     }
 }
 
-impl Formula {
-    /// Returns a string representation of the Formula using the provided NamingInfo.
-    pub fn to_str_inf(&self, inf: &NamingInfo) -> String {
-        let s = self.to_str_inf_rec(inf);
-        s.strip_prefix('(')
-            .and_then(|s| s.strip_suffix(')'))
-            .unwrap_or(&s)
-            .into()
-    }
+pub struct FormulaDisplay<'a> {
+    formula: &'a Formula,
+    inf: &'a NamingInfo,
+    is_inner: bool,
+}
 
-    fn to_str_inf_rec(&self, inf: &NamingInfo) -> String {
+impl fmt::Display for FormulaDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Formula::*;
-        match self {
+        match self.formula {
             Predicate(id, terms) => {
                 if terms.is_empty() {
-                    inf.get_name(*id)
+                    write!(f, "{}", self.inf.get_name(*id))?;
                 } else {
-                    format!(
+                    write!(
+                        f,
                         "{}({})",
-                        inf.get_name(*id),
+                        self.inf.get_name(*id),
                         terms
                             .iter()
-                            .map(|term| term.display(inf).to_string())
+                            .map(|term| term.display(self.inf).to_string())
                             .collect::<Vec<_>>()
                             .join(",")
-                    )
+                    )?;
                 }
             }
-            Not(p) => format!("¬{}", p.to_str_inf_rec(inf)),
+            Not(p) => write!(f, "¬{}", p.display_inner(self.inf))?,
             And(l) => match l.as_slice() {
-                [] => "true".into(),
+                [] => write!(f, "true")?,
                 [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r => {
-                    format!(
-                        "({} ↔ {})",
-                        p_l.to_str_inf_rec(inf),
-                        q_l.to_str_inf_rec(inf)
-                    )
+                    if self.is_inner {
+                        write!(f, "(")?;
+                    }
+                    write!(
+                        f,
+                        "{} ↔ {}",
+                        p_l.display_inner(self.inf),
+                        q_l.display_inner(self.inf)
+                    )?;
+                    if self.is_inner {
+                        write!(f, ")")?;
+                    }
                 }
                 _ => {
-                    format!(
-                        "({})",
+                    if self.is_inner {
+                        write!(f, "(")?;
+                    }
+                    write!(
+                        f,
+                        "{}",
                         l.iter()
-                            .map(|p| p.to_str_inf_rec(inf))
+                            .map(|p| p.display_inner(self.inf).to_string())
                             .collect::<Vec<_>>()
                             .join(" ∧ ")
-                    )
+                    )?;
+                    if self.is_inner {
+                        write!(f, ")")?;
+                    }
                 }
             },
-            Or(l) => {
-                if l.is_empty() {
-                    "false".into()
-                } else {
-                    format!(
-                        "({})",
+            Or(l) => match l.as_slice() {
+                [] => write!(f, "false")?,
+                _ => {
+                    if self.is_inner {
+                        write!(f, "(")?;
+                    }
+                    write!(
+                        f,
+                        "{}",
                         l.iter()
-                            .map(|p| p.to_str_inf_rec(inf))
+                            .map(|p| p.display_inner(self.inf).to_string())
                             .collect::<Vec<_>>()
                             .join(" ∨ ")
-                    )
+                    )?;
+                    if self.is_inner {
+                        write!(f, ")")?;
+                    }
+                }
+            },
+            Implies(p, q) => {
+                if self.is_inner {
+                    write!(f, "(")?;
+                }
+                write!(
+                    f,
+                    "{} → {}",
+                    p.display_inner(self.inf),
+                    q.display_inner(self.inf)
+                )?;
+                if self.is_inner {
+                    write!(f, ")")?;
                 }
             }
-            Implies(p, q) => format!("({} → {})", p.to_str_inf_rec(inf), q.to_str_inf_rec(inf)),
-            All(vars, p) => format!(
+            All(vars, p) => write!(
+                f,
                 "∀{}{}",
                 vars.iter()
-                    .map(|id| inf.get_name(*id))
+                    .map(|id| self.inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(","),
-                p.to_str_inf_rec(inf)
-            ),
-            Exists(vars, p) => format!(
+                p.display_inner(self.inf)
+            )?,
+            Exists(vars, p) => write!(
+                f,
                 "∃{}{}",
                 vars.iter()
-                    .map(|id| inf.get_name(*id))
+                    .map(|id| self.inf.get_name(*id))
                     .collect::<Vec<_>>()
                     .join(","),
-                p.to_str_inf_rec(inf)
-            ),
+                p.display_inner(self.inf)
+            )?,
+        }
+        Ok(())
+    }
+}
+
+impl Formula {
+    pub fn display<'a>(&'a self, inf: &'a NamingInfo) -> FormulaDisplay<'a> {
+        FormulaDisplay {
+            formula: self,
+            inf,
+            is_inner: false,
+        }
+    }
+    fn display_inner<'a>(&'a self, inf: &'a NamingInfo) -> FormulaDisplay<'a> {
+        FormulaDisplay {
+            formula: self,
+            inf,
+            is_inner: true,
         }
     }
 }
 
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_str_inf_rec(&NamingInfo::new()))
+        write!(f, "{}", self.display(&NamingInfo::new()))
     }
 }
 
@@ -152,41 +203,41 @@ mod tests {
     use crate::parser::parse;
 
     #[test]
-    fn test_to_str_inf() {
+    fn test_display() {
         let (fml, inf) = parse("P(x)").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P(x)");
+        assert_eq!(fml.display(&inf).to_string(), "P(x)");
 
         let (fml, inf) = parse("P(x,f(y,g(z)))").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P(x,f(y,g(z)))");
+        assert_eq!(fml.display(&inf).to_string(), "P(x,f(y,g(z)))");
 
         let (fml, inf) = parse("not P").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "¬P");
+        assert_eq!(fml.display(&inf).to_string(), "¬P");
 
         let (fml, inf) = parse("P and Q and R and S").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P ∧ Q ∧ R ∧ S");
+        assert_eq!(fml.display(&inf).to_string(), "P ∧ Q ∧ R ∧ S");
 
         let (fml, inf) = parse("P or Q or R or S").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P ∨ Q ∨ R ∨ S");
+        assert_eq!(fml.display(&inf).to_string(), "P ∨ Q ∨ R ∨ S");
 
         let (fml, inf) = parse("P to Q to R to S").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P → (Q → (R → S))");
+        assert_eq!(fml.display(&inf).to_string(), "P → (Q → (R → S))");
 
         let (fml, inf) = parse("P iff Q iff R iff S").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P ↔ (Q ↔ (R ↔ S))");
+        assert_eq!(fml.display(&inf).to_string(), "P ↔ (Q ↔ (R ↔ S))");
 
         let (fml, inf) = parse("all x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "∀x,y,zP(x,y,z)");
+        assert_eq!(fml.display(&inf).to_string(), "∀x,y,zP(x,y,z)");
 
         let (fml, inf) = parse("ex x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "∃x,y,zP(x,y,z)");
+        assert_eq!(fml.display(&inf).to_string(), "∃x,y,zP(x,y,z)");
 
         let (fml, inf) = parse("P and Q and R to S or T iff U").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U");
+        assert_eq!(fml.display(&inf).to_string(), "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U");
 
         let (fml, inf) = parse("(P to Q) and (Q to P)").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "P ↔ Q");
+        assert_eq!(fml.display(&inf).to_string(), "P ↔ Q");
 
         let (fml, inf) = parse("(P to Q) and (Q to R)").unwrap();
-        assert_eq!(fml.to_str_inf(&inf), "(P → Q) ∧ (Q → R)");
+        assert_eq!(fml.display(&inf).to_string(), "(P → Q) ∧ (Q → R)");
     }
 }

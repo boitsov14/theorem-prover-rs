@@ -578,7 +578,7 @@ mod tests {
         for pair in l {
             let (s, expected) = pair;
             let (fml, inf) = parse(s).unwrap();
-            assert_eq!(fml.to_str_inf(&inf), expected);
+            assert_eq!(fml.display(&inf).to_string(), expected);
         }
     }
 

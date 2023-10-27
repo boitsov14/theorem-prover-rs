@@ -15,5 +15,5 @@ fn main() {
         return;
     };
     let fml = fml.universal_quantify();
-    println!("{}", fml.to_str_inf(&inf));
+    println!("{}", fml.display(&inf));
 }

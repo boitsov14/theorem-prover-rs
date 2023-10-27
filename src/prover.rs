@@ -313,7 +313,7 @@ pub fn example() {
         return;
     };
     let fml = fml.universal_quantify();
-    println!("{}", fml.to_str_inf(&inf));
+    println!("{}", fml.display(&inf));
     let mut node = Node::new(Tactic::LNot);
     let mut sequent = Sequent::new(Formulae::default(), Formulae::default());
     // let arena = Arena::new();
