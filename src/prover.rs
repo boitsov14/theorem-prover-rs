@@ -257,18 +257,21 @@ impl Node {
         }
     }
     #[inline(never)]
-    fn make_proof_tree(&mut self, sequents: Vec<(Sequent, ProofState)>) {
+    fn make_proof_tree(&mut self, sequent: Sequent) {
         use ProofState::*;
-        for (sequent, state) in sequents {
-            if state == Provable {
-                self.subproofs.push(ProofTree::Leaf(Provable));
-            } else if let Some(TacticResult { tactic, sequents }) = sequent.apply_tactic() {
-                let mut node = Node::new(tactic);
-                node.make_proof_tree(sequents);
-                self.subproofs.push(ProofTree::Node(node));
-            } else {
-                self.subproofs.push(ProofTree::Leaf(UnProvable));
+        if let Some(TacticResult { tactic, sequents }) = sequent.apply_tactic() {
+            for (sequent, state) in sequents {
+                match state {
+                    Provable => self.subproofs.push(ProofTree::Leaf(Provable)),
+                    _ => {
+                        let mut node = Node::new(tactic);
+                        node.make_proof_tree(sequent);
+                        self.subproofs.push(ProofTree::Node(node));
+                    }
+                }
             }
+        } else {
+            self.subproofs.push(ProofTree::Leaf(UnProvable));
         }
     }
 }
@@ -320,7 +323,7 @@ pub fn example() {
     // let fml = arena.alloc(fml);
     sequent.insert_to_suc(&fml);
     let start_time = Instant::now();
-    node.make_proof_tree(vec![(sequent, ProofState::InProgress)]);
+    node.make_proof_tree(sequent);
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
