@@ -30,9 +30,9 @@ struct Sequent<'a> {
 
 /// Sequent of formulae
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct PlainSequent {
-    ant: FxIndexSet<Formula>,
-    suc: FxIndexSet<Formula>,
+struct PlainSequent<'a> {
+    ant: FxIndexSet<&'a Formula>,
+    suc: FxIndexSet<&'a Formula>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
@@ -246,6 +246,106 @@ impl Tactic {
             RAnd => !sequent.suc.and_set.is_empty(),
             LOr => !sequent.ant.or_set.is_empty(),
         }
+    }
+
+    fn apply_plain(self, mut sequent: PlainSequent) -> Vec<PlainSequent> {
+        use Formula::*;
+        use Tactic::*;
+        match self {
+            LNot => {
+                for fml in sequent.ant.iter().rev() {
+                    if let Not(p) = fml {
+                        sequent.ant.shift_remove(*fml);
+                        sequent.suc.insert(p);
+                        return vec![sequent];
+                    }
+                }
+            }
+            RNot => {
+                for fml in sequent.suc.iter().rev() {
+                    if let Not(p) = fml {
+                        sequent.suc.shift_remove(*fml);
+                        sequent.ant.insert(p);
+                        return vec![sequent];
+                    }
+                }
+            }
+            RImplies => {
+                for fml in sequent.suc.iter().rev() {
+                    if let Implies(p, q) = fml {
+                        sequent.suc.shift_remove(*fml);
+                        sequent.ant.insert(p);
+                        sequent.suc.insert(q);
+                        return vec![sequent];
+                    }
+                }
+            }
+            LAnd => {
+                for fml in sequent.ant.iter().rev() {
+                    if let And(l) = fml {
+                        sequent.ant.shift_remove(*fml);
+                        for p in l {
+                            sequent.ant.insert(p);
+                        }
+                        return vec![sequent];
+                    }
+                }
+            }
+            ROr => {
+                for fml in sequent.suc.iter().rev() {
+                    if let Or(l) = fml {
+                        sequent.suc.shift_remove(*fml);
+                        for p in l {
+                            sequent.suc.insert(p);
+                        }
+                        return vec![sequent];
+                    }
+                }
+            }
+            LImplies => {
+                for fml in sequent.ant.iter().rev() {
+                    if let Implies(p, q) = fml {
+                        sequent.ant.shift_remove(*fml);
+                        let mut sequent_l = sequent.clone();
+                        let mut sequent_r = sequent;
+                        sequent_l.suc.insert(p);
+                        sequent_r.ant.insert(q);
+                        return vec![sequent_l, sequent_r];
+                    }
+                }
+            }
+            RAnd => {
+                for fml in sequent.suc.iter().rev() {
+                    if let And(l) = fml {
+                        sequent.suc.shift_remove(*fml);
+                        let n = l.len();
+                        let l = l.iter().zip(repeat_n(sequent, n));
+                        let mut sequents = Vec::with_capacity(n);
+                        for (p, mut sequent) in l {
+                            sequent.suc.insert(p);
+                            sequents.push(sequent);
+                        }
+                        return sequents;
+                    }
+                }
+            }
+            LOr => {
+                for fml in sequent.ant.iter().rev() {
+                    if let Or(l) = fml {
+                        sequent.ant.shift_remove(*fml);
+                        let n = l.len();
+                        let l = l.iter().zip(repeat_n(sequent, n));
+                        let mut sequents = Vec::with_capacity(n);
+                        for (p, mut sequent) in l {
+                            sequent.ant.insert(p);
+                            sequents.push(sequent);
+                        }
+                        return sequents;
+                    }
+                }
+            }
+        }
+        unreachable!();
     }
 }
 
