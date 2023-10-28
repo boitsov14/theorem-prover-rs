@@ -47,11 +47,13 @@ enum Tactic {
     LOr,
 }
 
+#[derive(Debug)]
 enum ProofTree {
     Leaf(ProofState),
     Node(Node),
 }
 
+#[derive(Debug)]
 struct Node {
     tactic: Tactic,
     subproofs: Vec<ProofTree>,
@@ -160,6 +162,7 @@ impl<'a> TacticResult<'a> {
 impl Tactic {
     #[inline(never)]
     fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, ProofState)> {
+        use ProofState::*;
         use Tactic::*;
         match self {
             LNot => {
@@ -174,7 +177,6 @@ impl Tactic {
             }
             RImplies => {
                 let (p, q) = sequent.suc.implies_set.pop().unwrap();
-                use ProofState::*;
                 let state = match (sequent.insert_to_ant(p), sequent.insert_to_suc(q)) {
                     (Provable, _) | (_, Provable) => Provable,
                     _ => InProgress,
@@ -183,20 +185,20 @@ impl Tactic {
             }
             LAnd => {
                 let l = sequent.ant.and_set.pop().unwrap();
-                let mut state = ProofState::InProgress;
+                let mut state = InProgress;
                 for p in l {
-                    if let ProofState::Provable = sequent.insert_to_ant(p) {
-                        state = ProofState::Provable;
+                    if sequent.insert_to_ant(p) == Provable {
+                        state = Provable;
                     }
                 }
                 vec![(sequent, state)]
             }
             ROr => {
                 let l = sequent.suc.or_set.pop().unwrap();
-                let mut state = ProofState::InProgress;
+                let mut state = InProgress;
                 for p in l {
-                    if let ProofState::Provable = sequent.insert_to_ant(p) {
-                        state = ProofState::Provable;
+                    if sequent.insert_to_suc(p) == Provable {
+                        state = Provable;
                     }
                 }
                 vec![(sequent, state)]
@@ -357,21 +359,49 @@ impl Node {
         }
     }
     #[inline(never)]
-    fn make_proof_tree(&mut self, sequent: Sequent) {
+    fn make_proof_tree(&mut self, sequent: Sequent) -> ProofState {
         use ProofState::*;
         if let Some(TacticResult { tactic, sequents }) = sequent.apply_tactic() {
+            let mut node = Node::new(tactic);
+            let mut result = Provable;
             for (sequent, state) in sequents {
                 match state {
-                    Provable => self.subproofs.push(ProofTree::Leaf(Provable)),
+                    Provable => node.subproofs.push(ProofTree::Leaf(Provable)),
                     _ => {
-                        let mut node = Node::new(tactic);
-                        node.make_proof_tree(sequent);
-                        self.subproofs.push(ProofTree::Node(node));
+                        let state0 = node.make_proof_tree(sequent);
+                        if state0 == UnProvable {
+                            result = UnProvable;
+                        }
                     }
                 }
             }
+            self.subproofs.push(ProofTree::Node(node));
+            result
         } else {
             self.subproofs.push(ProofTree::Leaf(UnProvable));
+            UnProvable
+        }
+    }
+}
+
+impl ProofTree {
+    fn traverse(&self, sequent: PlainSequent) {
+        use ProofTree::*;
+        match self {
+            Leaf(state) => {
+                // println!("state: {state:?}");
+                // println!("sequent: {:?}", sequent);
+            }
+            Node(node) => {
+                // println!("tactic: {:?}", node.tactic);
+                let sequents = node.tactic.apply_plain(sequent);
+                // println!("{}", sequents.len());
+                // println!("{}", node.subproofs.len());
+                for (sequent, tree) in sequents.into_iter().zip(&node.subproofs) {
+                    // println!("sequent: {:?}", sequent);
+                    tree.traverse(sequent);
+                }
+            }
         }
     }
 }
@@ -412,6 +442,8 @@ pub fn example() {
     // 1.2ms vs Error
     // let s = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43) <-> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o31 ∧ o43) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o43) ∨ (o11 ∧ o21 ∧ o33 ∧ o41) ∨ (o11 ∧ o21 ∧ o33 ∧ o42) ∨ (o11 ∧ o21 ∧ o33 ∧ o43) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o43) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o43) ∨ (o11 ∧ o22 ∧ o33 ∧ o41) ∨ (o11 ∧ o22 ∧ o33 ∧ o42) ∨ (o11 ∧ o22 ∧ o33 ∧ o43) ∨ (o11 ∧ o23 ∧ o31 ∧ o41) ∨ (o11 ∧ o23 ∧ o31 ∧ o42) ∨ (o11 ∧ o23 ∧ o31 ∧ o43) ∨ (o11 ∧ o23 ∧ o32 ∧ o41) ∨ (o11 ∧ o23 ∧ o32 ∧ o42) ∨ (o11 ∧ o23 ∧ o32 ∧ o43) ∨ (o11 ∧ o23 ∧ o33 ∧ o41) ∨ (o11 ∧ o23 ∧ o33 ∧ o42) ∨ (o11 ∧ o23 ∧ o33 ∧ o43) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o43) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o43) ∨ (o12 ∧ o21 ∧ o33 ∧ o41) ∨ (o12 ∧ o21 ∧ o33 ∧ o42) ∨ (o12 ∧ o21 ∧ o33 ∧ o43) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o43) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o43) ∨ (o12 ∧ o22 ∧ o33 ∧ o41) ∨ (o12 ∧ o22 ∧ o33 ∧ o42) ∨ (o12 ∧ o22 ∧ o33 ∧ o43) ∨ (o12 ∧ o23 ∧ o31 ∧ o41) ∨ (o12 ∧ o23 ∧ o31 ∧ o42) ∨ (o12 ∧ o23 ∧ o31 ∧ o43) ∨ (o12 ∧ o23 ∧ o32 ∧ o41) ∨ (o12 ∧ o23 ∧ o32 ∧ o42) ∨ (o12 ∧ o23 ∧ o32 ∧ o43) ∨ (o12 ∧ o23 ∧ o33 ∧ o41) ∨ (o12 ∧ o23 ∧ o33 ∧ o42) ∨ (o12 ∧ o23 ∧ o33 ∧ o43) ∨ (o13 ∧ o21 ∧ o31 ∧ o41) ∨ (o13 ∧ o21 ∧ o31 ∧ o42) ∨ (o13 ∧ o21 ∧ o31 ∧ o43) ∨ (o13 ∧ o21 ∧ o32 ∧ o41) ∨ (o13 ∧ o21 ∧ o32 ∧ o42) ∨ (o13 ∧ o21 ∧ o32 ∧ o43) ∨ (o13 ∧ o21 ∧ o33 ∧ o41) ∨ (o13 ∧ o21 ∧ o33 ∧ o42) ∨ (o13 ∧ o21 ∧ o33 ∧ o43) ∨ (o13 ∧ o22 ∧ o31 ∧ o41) ∨ (o13 ∧ o22 ∧ o31 ∧ o42) ∨ (o13 ∧ o22 ∧ o31 ∧ o43) ∨ (o13 ∧ o22 ∧ o32 ∧ o41) ∨ (o13 ∧ o22 ∧ o32 ∧ o42) ∨ (o13 ∧ o22 ∧ o32 ∧ o43) ∨ (o13 ∧ o22 ∧ o33 ∧ o41) ∨ (o13 ∧ o22 ∧ o33 ∧ o42) ∨ (o13 ∧ o22 ∧ o33 ∧ o43) ∨ (o13 ∧ o23 ∧ o31 ∧ o41) ∨ (o13 ∧ o23 ∧ o31 ∧ o42) ∨ (o13 ∧ o23 ∧ o31 ∧ o43) ∨ (o13 ∧ o23 ∧ o32 ∧ o41) ∨ (o13 ∧ o23 ∧ o32 ∧ o42) ∨ (o13 ∧ o23 ∧ o32 ∧ o43) ∨ (o13 ∧ o23 ∧ o33 ∧ o41) ∨ (o13 ∧ o23 ∧ o33 ∧ o42) ∨ (o13 ∧ o23 ∧ o33 ∧ o43)";
 
+    // let s = "P and Q to Q and P";
+
     let Some((fml, inf)) = parse(s) else {
         return;
     };
@@ -423,11 +455,23 @@ pub fn example() {
     // let fml = arena.alloc(fml);
     sequent.insert_to_suc(&fml);
     let start_time = Instant::now();
-    node.make_proof_tree(sequent);
+    let result = node.make_proof_tree(sequent);
+    let end_time = Instant::now();
+    let elapsed_time = end_time.duration_since(start_time);
+    println!("{result:?}");
+    println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+    let mut suc = FxIndexSet::default();
+    suc.insert(&fml);
+    let start_time = Instant::now();
+    node.subproofs[0].traverse(PlainSequent {
+        ant: FxIndexSet::default(),
+        suc,
+    });
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     // traverse(&node.subproofs[0]);
+    // println!("{:#?}", &node.subproofs[0]);
 }
 
 fn traverse(node: &ProofTree) {
