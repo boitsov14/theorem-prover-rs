@@ -71,14 +71,14 @@ impl<'a> Sequent<'a> {
         Self { ant, suc }
     }
     #[inline(never)]
-    fn insert_to_ant(&mut self, fml: &'a Formula) -> ProofState {
+    fn insert_to_ant(&mut self, fml: &'a Formula) -> bool {
         use ProofState::*;
         match fml {
             Formula::Predicate(id, terms) => {
                 let p = (*id, terms);
                 if self.suc.predicate_set.contains(&p) {
                     self.ant.predicate_set.insert(p);
-                    return Provable;
+                    return true;
                 }
                 self.ant.predicate_set.insert(p);
             }
@@ -102,17 +102,17 @@ impl<'a> Sequent<'a> {
                 self.ant.exists_set.insert((vs, p));
             }
         }
-        InProgress
+        false
     }
     #[inline(never)]
-    fn insert_to_suc(&mut self, fml: &'a Formula) -> ProofState {
+    fn insert_to_suc(&mut self, fml: &'a Formula) -> bool {
         use ProofState::*;
         match fml {
             Formula::Predicate(id, terms) => {
                 let p = (*id, terms);
                 if self.ant.predicate_set.contains(&p) {
                     self.suc.predicate_set.insert(p);
-                    return Provable;
+                    return true;
                 }
                 self.suc.predicate_set.insert(p);
             }
@@ -135,7 +135,7 @@ impl<'a> Sequent<'a> {
                 self.suc.exists_set.insert((vs, p));
             }
         }
-        InProgress
+        false
     }
     #[inline(never)]
     fn apply_tactic(self) -> Option<TacticResult<'a>> {
@@ -150,18 +150,18 @@ impl<'a> Sequent<'a> {
 
 struct TacticResult<'a> {
     tactic: Tactic,
-    sequents: Vec<(Sequent<'a>, ProofState)>,
+    sequents: Vec<(Sequent<'a>, bool)>,
 }
 
 impl<'a> TacticResult<'a> {
-    fn new(tactic: Tactic, sequents: Vec<(Sequent<'a>, ProofState)>) -> Self {
+    fn new(tactic: Tactic, sequents: Vec<(Sequent<'a>, bool)>) -> Self {
         Self { tactic, sequents }
     }
 }
 
 impl Tactic {
     #[inline(never)]
-    fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, ProofState)> {
+    fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, bool)> {
         use ProofState::*;
         use Tactic::*;
         match self {
@@ -177,28 +177,25 @@ impl Tactic {
             }
             RImplies => {
                 let (p, q) = sequent.suc.implies_set.pop().unwrap();
-                let state = match (sequent.insert_to_ant(p), sequent.insert_to_suc(q)) {
-                    (Provable, _) | (_, Provable) => Provable,
-                    _ => InProgress,
-                };
+                let state = sequent.insert_to_ant(p) | sequent.insert_to_suc(q);
                 vec![(sequent, state)]
             }
             LAnd => {
                 let l = sequent.ant.and_set.pop().unwrap();
-                let mut state = InProgress;
+                let mut state = false;
                 for p in l {
-                    if sequent.insert_to_ant(p) == Provable {
-                        state = Provable;
+                    if sequent.insert_to_ant(p) {
+                        state = true;
                     }
                 }
                 vec![(sequent, state)]
             }
             ROr => {
                 let l = sequent.suc.or_set.pop().unwrap();
-                let mut state = InProgress;
+                let mut state = false;
                 for p in l {
-                    if sequent.insert_to_suc(p) == Provable {
-                        state = Provable;
+                    if sequent.insert_to_suc(p) {
+                        state = true;
                     }
                 }
                 vec![(sequent, state)]
@@ -365,13 +362,12 @@ impl Node {
             let mut node = Node::new(tactic);
             let mut result = Provable;
             for (sequent, state) in sequents {
-                match state {
-                    Provable => node.subproofs.push(ProofTree::Leaf(Provable)),
-                    _ => {
-                        let state0 = node.make_proof_tree(sequent);
-                        if state0 == UnProvable {
-                            result = UnProvable;
-                        }
+                if state {
+                    node.subproofs.push(ProofTree::Leaf(Provable))
+                } else {
+                    let state0 = node.make_proof_tree(sequent);
+                    if state0 == UnProvable {
+                        result = UnProvable;
                     }
                 }
             }
