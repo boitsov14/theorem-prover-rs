@@ -1,4 +1,5 @@
 use crate::formula::{Formula, Term};
+use crate::prover::PlainSequent;
 use indexmap::IndexSet;
 use std::fmt;
 
@@ -214,6 +215,39 @@ impl Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.display(&NamingInfo::new()))
+    }
+}
+
+pub struct PlainSequentDisplay<'a, 'b> {
+    sequent: &'a PlainSequent<'b>,
+    inf: &'a NamingInfo,
+}
+
+impl fmt::Display for PlainSequentDisplay<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} ⊢ {}",
+            self.sequent
+                .ant
+                .iter()
+                .map(|fml| fml.display(self.inf).to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.sequent
+                .suc
+                .iter()
+                .map(|fml| fml.display(self.inf).to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )?;
+        Ok(())
+    }
+}
+
+impl<'b> PlainSequent<'b> {
+    pub fn display<'a>(&'a self, inf: &'a NamingInfo) -> PlainSequentDisplay<'a, 'b> {
+        PlainSequentDisplay { sequent: self, inf }
     }
 }
 
