@@ -2,6 +2,7 @@ use indexmap::IndexSet;
 
 use crate::formula::{Formula, Term};
 
+use crate::naming::NamingInfo;
 use core::hash::BuildHasherDefault;
 use itertools::repeat_n;
 use rustc_hash::FxHasher;
@@ -10,7 +11,7 @@ use strum::{EnumIter, IntoEnumIterator};
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Structured set of formulae
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Formulae<'a> {
     predicate_set: FxIndexSet<(usize, &'a Vec<Term>)>,
     not_set: FxIndexSet<&'a Formula>,
@@ -19,6 +20,20 @@ struct Formulae<'a> {
     implies_set: FxIndexSet<(&'a Formula, &'a Formula)>,
     all_set: FxIndexSet<(&'a Vec<usize>, &'a Formula)>,
     exists_set: FxIndexSet<(&'a Vec<usize>, &'a Formula)>,
+}
+
+impl<'a> Formulae<'a> {
+    fn new() -> Self {
+        Self {
+            predicate_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            not_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            and_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            or_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            implies_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            all_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+            exists_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
+        }
+    }
 }
 
 /// Sequent of structured formulae
@@ -30,9 +45,9 @@ struct Sequent<'a> {
 
 /// Sequent of formulae
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct PlainSequent<'a> {
-    ant: FxIndexSet<&'a Formula>,
-    suc: FxIndexSet<&'a Formula>,
+pub struct PlainSequent<'a> {
+    pub ant: FxIndexSet<&'a Formula>,
+    pub suc: FxIndexSet<&'a Formula>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
@@ -62,17 +77,18 @@ struct Node {
 #[derive(Debug, PartialEq)]
 enum ProofState {
     Provable,
-    InProgress,
     UnProvable,
 }
 
 impl<'a> Sequent<'a> {
-    fn new(ant: Formulae<'a>, suc: Formulae<'a>) -> Self {
-        Self { ant, suc }
+    fn new() -> Self {
+        Self {
+            ant: Formulae::new(),
+            suc: Formulae::new(),
+        }
     }
     #[inline(never)]
     fn insert_to_ant(&mut self, fml: &'a Formula) -> bool {
-        use ProofState::*;
         match fml {
             Formula::Predicate(id, terms) => {
                 let p = (*id, terms);
@@ -106,7 +122,6 @@ impl<'a> Sequent<'a> {
     }
     #[inline(never)]
     fn insert_to_suc(&mut self, fml: &'a Formula) -> bool {
-        use ProofState::*;
         match fml {
             Formula::Predicate(id, terms) => {
                 let p = (*id, terms);
@@ -162,7 +177,6 @@ impl<'a> TacticResult<'a> {
 impl Tactic {
     #[inline(never)]
     fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, bool)> {
-        use ProofState::*;
         use Tactic::*;
         match self {
             LNot => {
@@ -381,21 +395,32 @@ impl Node {
 }
 
 impl ProofTree {
-    fn traverse(&self, sequent: PlainSequent) {
+    fn traverse(&self, sequents: &mut Vec<PlainSequent>, inf: &NamingInfo) {
         use ProofTree::*;
+        for sequent in sequents.iter().rev() {
+            println!("{}", sequent.display(inf));
+        }
+        let sequent = sequents.pop().unwrap();
         match self {
             Leaf(state) => {
-                // println!("state: {state:?}");
-                // println!("sequent: {:?}", sequent);
+                use ProofState::*;
+                match state {
+                    Provable => {
+                        println!("Axiom");
+                        assert!(!sequent.ant.is_disjoint(&sequent.suc));
+                    }
+                    _ => {
+                        println!("{state:?}");
+                    }
+                }
             }
             Node(node) => {
-                // println!("tactic: {:?}", node.tactic);
-                let sequents = node.tactic.apply_plain(sequent);
-                // println!("{}", sequents.len());
-                // println!("{}", node.subproofs.len());
-                for (sequent, tree) in sequents.into_iter().zip(&node.subproofs) {
-                    // println!("sequent: {:?}", sequent);
-                    tree.traverse(sequent);
+                println!("{:?}", node.tactic);
+                let new_sequents: Vec<_> =
+                    node.tactic.apply_plain(sequent).into_iter().rev().collect();
+                sequents.extend(new_sequents);
+                for tree in &node.subproofs {
+                    tree.traverse(sequents, inf);
                 }
             }
         }
@@ -439,6 +464,8 @@ pub fn example() {
     // let s = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43) <-> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o31 ∧ o43) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o43) ∨ (o11 ∧ o21 ∧ o33 ∧ o41) ∨ (o11 ∧ o21 ∧ o33 ∧ o42) ∨ (o11 ∧ o21 ∧ o33 ∧ o43) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o43) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o43) ∨ (o11 ∧ o22 ∧ o33 ∧ o41) ∨ (o11 ∧ o22 ∧ o33 ∧ o42) ∨ (o11 ∧ o22 ∧ o33 ∧ o43) ∨ (o11 ∧ o23 ∧ o31 ∧ o41) ∨ (o11 ∧ o23 ∧ o31 ∧ o42) ∨ (o11 ∧ o23 ∧ o31 ∧ o43) ∨ (o11 ∧ o23 ∧ o32 ∧ o41) ∨ (o11 ∧ o23 ∧ o32 ∧ o42) ∨ (o11 ∧ o23 ∧ o32 ∧ o43) ∨ (o11 ∧ o23 ∧ o33 ∧ o41) ∨ (o11 ∧ o23 ∧ o33 ∧ o42) ∨ (o11 ∧ o23 ∧ o33 ∧ o43) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o43) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o43) ∨ (o12 ∧ o21 ∧ o33 ∧ o41) ∨ (o12 ∧ o21 ∧ o33 ∧ o42) ∨ (o12 ∧ o21 ∧ o33 ∧ o43) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o43) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o43) ∨ (o12 ∧ o22 ∧ o33 ∧ o41) ∨ (o12 ∧ o22 ∧ o33 ∧ o42) ∨ (o12 ∧ o22 ∧ o33 ∧ o43) ∨ (o12 ∧ o23 ∧ o31 ∧ o41) ∨ (o12 ∧ o23 ∧ o31 ∧ o42) ∨ (o12 ∧ o23 ∧ o31 ∧ o43) ∨ (o12 ∧ o23 ∧ o32 ∧ o41) ∨ (o12 ∧ o23 ∧ o32 ∧ o42) ∨ (o12 ∧ o23 ∧ o32 ∧ o43) ∨ (o12 ∧ o23 ∧ o33 ∧ o41) ∨ (o12 ∧ o23 ∧ o33 ∧ o42) ∨ (o12 ∧ o23 ∧ o33 ∧ o43) ∨ (o13 ∧ o21 ∧ o31 ∧ o41) ∨ (o13 ∧ o21 ∧ o31 ∧ o42) ∨ (o13 ∧ o21 ∧ o31 ∧ o43) ∨ (o13 ∧ o21 ∧ o32 ∧ o41) ∨ (o13 ∧ o21 ∧ o32 ∧ o42) ∨ (o13 ∧ o21 ∧ o32 ∧ o43) ∨ (o13 ∧ o21 ∧ o33 ∧ o41) ∨ (o13 ∧ o21 ∧ o33 ∧ o42) ∨ (o13 ∧ o21 ∧ o33 ∧ o43) ∨ (o13 ∧ o22 ∧ o31 ∧ o41) ∨ (o13 ∧ o22 ∧ o31 ∧ o42) ∨ (o13 ∧ o22 ∧ o31 ∧ o43) ∨ (o13 ∧ o22 ∧ o32 ∧ o41) ∨ (o13 ∧ o22 ∧ o32 ∧ o42) ∨ (o13 ∧ o22 ∧ o32 ∧ o43) ∨ (o13 ∧ o22 ∧ o33 ∧ o41) ∨ (o13 ∧ o22 ∧ o33 ∧ o42) ∨ (o13 ∧ o22 ∧ o33 ∧ o43) ∨ (o13 ∧ o23 ∧ o31 ∧ o41) ∨ (o13 ∧ o23 ∧ o31 ∧ o42) ∨ (o13 ∧ o23 ∧ o31 ∧ o43) ∨ (o13 ∧ o23 ∧ o32 ∧ o41) ∨ (o13 ∧ o23 ∧ o32 ∧ o42) ∨ (o13 ∧ o23 ∧ o32 ∧ o43) ∨ (o13 ∧ o23 ∧ o33 ∧ o41) ∨ (o13 ∧ o23 ∧ o33 ∧ o42) ∨ (o13 ∧ o23 ∧ o33 ∧ o43)";
 
     // let s = "P and Q to Q and P";
+    // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
+    // let s = "(((a⇔b)⇔c) -> (a⇔(b⇔c)))";
 
     let Some((fml, inf)) = parse(s) else {
         return;
@@ -446,7 +473,7 @@ pub fn example() {
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
     let mut node = Node::new(Tactic::LNot);
-    let mut sequent = Sequent::new(Formulae::default(), Formulae::default());
+    let mut sequent = Sequent::new();
     // let arena = Arena::new();
     // let fml = arena.alloc(fml);
     sequent.insert_to_suc(&fml);
@@ -458,29 +485,13 @@ pub fn example() {
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     let mut suc = FxIndexSet::default();
     suc.insert(&fml);
-    let start_time = Instant::now();
-    node.subproofs[0].traverse(PlainSequent {
+    let plain_sequent = PlainSequent {
         ant: FxIndexSet::default(),
         suc,
-    });
+    };
+    let start_time = Instant::now();
+    node.subproofs[0].traverse(&mut vec![plain_sequent], &inf);
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-    // traverse(&node.subproofs[0]);
-    // println!("{:#?}", &node.subproofs[0]);
-}
-
-fn traverse(node: &ProofTree) {
-    use ProofTree::*;
-    match node {
-        Leaf(state) => {
-            println!("{state:?}");
-        }
-        Node(node) => {
-            println!("{:?}", node.tactic);
-            for node in &node.subproofs {
-                traverse(node);
-            }
-        }
-    }
 }
