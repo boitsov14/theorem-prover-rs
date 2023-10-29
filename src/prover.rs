@@ -11,7 +11,7 @@ use strum::{EnumIter, IntoEnumIterator};
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Structured set of formulae
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 struct Formulae<'a> {
     predicate_set: FxIndexSet<(usize, &'a Vec<Term>)>,
     not_set: FxIndexSet<&'a Formula>,
@@ -22,22 +22,8 @@ struct Formulae<'a> {
     exists_set: FxIndexSet<(&'a Vec<usize>, &'a Formula)>,
 }
 
-impl<'a> Formulae<'a> {
-    fn new() -> Self {
-        Self {
-            predicate_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            not_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            and_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            or_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            implies_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            all_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-            exists_set: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
-        }
-    }
-}
-
 /// Sequent of structured formulae
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 struct Sequent<'a> {
     ant: Formulae<'a>,
     suc: Formulae<'a>,
@@ -81,12 +67,6 @@ enum ProofState {
 }
 
 impl<'a> Sequent<'a> {
-    fn new() -> Self {
-        Self {
-            ant: Formulae::new(),
-            suc: Formulae::new(),
-        }
-    }
     #[inline(never)]
     fn insert_to_ant(&mut self, fml: &'a Formula) -> bool {
         match fml {
@@ -473,7 +453,7 @@ pub fn example() {
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
     let mut node = Node::new(Tactic::LNot);
-    let mut sequent = Sequent::new();
+    let mut sequent = Sequent::default();
     // let arena = Arena::new();
     // let fml = arena.alloc(fml);
     sequent.insert_to_suc(&fml);
@@ -483,6 +463,7 @@ pub fn example() {
     let elapsed_time = end_time.duration_since(start_time);
     println!("{result:?}");
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+    return;
     let mut suc = FxIndexSet::default();
     suc.insert(&fml);
     let plain_sequent = PlainSequent {
