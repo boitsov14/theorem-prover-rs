@@ -1,6 +1,4 @@
 /target
 .idea/
 *.iml
-/src/lib.rs
-/benches
 callgrind.out.*

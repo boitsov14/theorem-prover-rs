@@ -61,7 +61,7 @@ struct Node {
 }
 
 #[derive(Debug, PartialEq)]
-enum ProofState {
+pub enum ProofState {
     Provable,
     UnProvable,
 }
@@ -468,4 +468,11 @@ pub fn example() {
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+}
+
+pub fn example_for_bench(fml: &Formula) -> ProofState {
+    let mut node = Node::new(Tactic::LNot);
+    let mut sequent = Sequent::default();
+    sequent.insert_to_suc(&fml);
+    node.make_proof_tree(sequent)
 }
