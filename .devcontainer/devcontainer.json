@@ -1,7 +1,6 @@
 {
     "name": "My Rust Dev Container",
     "image": "mcr.microsoft.com/devcontainers/rust:latest",
-    "postCreateCommand": "sudo apt-get update && sudo apt-get install -y valgrind",
     "containerEnv": {
         "CARGO_PROFILE_RELEASE_DEBUG": "true"
     },
