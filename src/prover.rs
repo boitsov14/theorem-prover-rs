@@ -326,7 +326,7 @@ impl Node {
     fn new(tactic: Tactic) -> Self {
         Self {
             tactic,
-            subproofs: vec![],
+            subproofs: Vec::with_capacity(2),
         }
     }
     #[inline(never)]
