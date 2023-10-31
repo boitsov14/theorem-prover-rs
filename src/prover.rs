@@ -150,73 +150,59 @@ impl Tactic {
         match self {
             LNot => {
                 let p = sequent.ant.not_set.pop().unwrap();
-                let state = sequent.insert_to_suc(p);
-                vec.push((sequent, state));
+                let is_proved = sequent.insert_to_suc(p);
+                vec.push((sequent, is_proved));
                 1
             }
             RNot => {
                 let p = sequent.suc.not_set.pop().unwrap();
-                let state = sequent.insert_to_ant(p);
-                vec.push((sequent, state));
+                let is_proved = sequent.insert_to_ant(p);
+                vec.push((sequent, is_proved));
                 1
             }
             RImplies => {
                 let (p, q) = sequent.suc.implies_set.pop().unwrap();
-                let state = sequent.insert_to_ant(p) | sequent.insert_to_suc(q);
-                vec.push((sequent, state));
+                let is_proved = sequent.insert_to_ant(p) | sequent.insert_to_suc(q);
+                vec.push((sequent, is_proved));
                 1
             }
             LAnd => {
                 let l = sequent.ant.and_set.pop().unwrap();
-                let mut state = false;
-                for p in l {
-                    if sequent.insert_to_ant(p) {
-                        state = true;
-                    }
-                }
-                vec.push((sequent, state));
+                let is_proved = l.iter().any(|p| sequent.insert_to_ant(p));
+                vec.push((sequent, is_proved));
                 1
             }
             ROr => {
                 let l = sequent.suc.or_set.pop().unwrap();
-                let mut state = false;
-                for p in l {
-                    if sequent.insert_to_suc(p) {
-                        state = true;
-                    }
-                }
-                vec.push((sequent, state));
+                let is_proved = l.iter().any(|p| sequent.insert_to_suc(p));
+                vec.push((sequent, is_proved));
                 1
             }
             LImplies => {
                 let (p, q) = sequent.ant.implies_set.pop().unwrap();
                 let mut sequent_l = sequent.clone();
                 let mut sequent_r = sequent;
-                let state_l = sequent_l.insert_to_suc(p);
-                let state_r = sequent_r.insert_to_ant(q);
-                vec.push((sequent_r, state_r));
-                vec.push((sequent_l, state_l));
+                let is_proved_l = sequent_l.insert_to_suc(p);
+                let is_proved_r = sequent_r.insert_to_ant(q);
+                vec.push((sequent_r, is_proved_r));
+                vec.push((sequent_l, is_proved_l));
                 2
             }
             RAnd => {
                 let l = sequent.suc.and_set.pop().unwrap();
-                let n = l.len();
-                let l = l.iter().zip(repeat_n(sequent, n));
-                for (p, mut sequent) in l.rev() {
-                    let state = sequent.insert_to_suc(p);
-                    vec.push((sequent, state));
+                for (p, mut sequent) in l.iter().zip(repeat_n(sequent, l.len())).rev() {
+                    let is_proved = sequent.insert_to_suc(p);
+                    vec.push((sequent, is_proved));
                 }
-                n
+                l.len()
             }
             LOr => {
                 let l = sequent.ant.or_set.pop().unwrap();
-                let n = l.len();
-                let l = l.iter().zip(repeat_n(sequent, n));
-                for (p, mut sequent) in l.rev() {
-                    let state = sequent.insert_to_ant(p);
-                    vec.push((sequent, state));
+                for (p, mut sequent) in l.iter().zip(repeat_n(sequent, l.len())).rev() {
+                    let is_proved = sequent.insert_to_ant(p);
+                    vec.push((sequent, is_proved));
                 }
-                n
+                l.len()
             }
         }
     }
