@@ -133,46 +133,38 @@ impl<'a> Sequent<'a> {
         false
     }
     #[inline(never)]
-    fn apply_tactic(self) -> Option<TacticResult<'a>> {
+    fn apply_tactic(self, vec: &mut Vec<(Sequent<'a>, bool)>) -> Option<(Tactic, usize)> {
         for tactic in Tactic::iter() {
             if tactic.applicable(&self) {
-                return Some(TacticResult::new(tactic, tactic.apply(self)));
+                return Some((tactic, tactic.apply(self, vec)));
             }
         }
         None
     }
 }
 
-struct TacticResult<'a> {
-    tactic: Tactic,
-    sequents: Vec<(Sequent<'a>, bool)>,
-}
-
-impl<'a> TacticResult<'a> {
-    fn new(tactic: Tactic, sequents: Vec<(Sequent<'a>, bool)>) -> Self {
-        Self { tactic, sequents }
-    }
-}
-
 impl Tactic {
     #[inline(never)]
-    fn apply(self, mut sequent: Sequent) -> Vec<(Sequent, bool)> {
+    fn apply<'a>(self, mut sequent: Sequent<'a>, vec: &mut Vec<(Sequent<'a>, bool)>) -> usize {
         use Tactic::*;
         match self {
             LNot => {
                 let p = sequent.ant.not_set.pop().unwrap();
                 let state = sequent.insert_to_suc(p);
-                vec![(sequent, state)]
+                vec.push((sequent, state));
+                1
             }
             RNot => {
                 let p = sequent.suc.not_set.pop().unwrap();
                 let state = sequent.insert_to_ant(p);
-                vec![(sequent, state)]
+                vec.push((sequent, state));
+                1
             }
             RImplies => {
                 let (p, q) = sequent.suc.implies_set.pop().unwrap();
                 let state = sequent.insert_to_ant(p) | sequent.insert_to_suc(q);
-                vec![(sequent, state)]
+                vec.push((sequent, state));
+                1
             }
             LAnd => {
                 let l = sequent.ant.and_set.pop().unwrap();
@@ -182,7 +174,8 @@ impl Tactic {
                         state = true;
                     }
                 }
-                vec![(sequent, state)]
+                vec.push((sequent, state));
+                1
             }
             ROr => {
                 let l = sequent.suc.or_set.pop().unwrap();
@@ -192,7 +185,8 @@ impl Tactic {
                         state = true;
                     }
                 }
-                vec![(sequent, state)]
+                vec.push((sequent, state));
+                1
             }
             LImplies => {
                 let (p, q) = sequent.ant.implies_set.pop().unwrap();
@@ -200,29 +194,29 @@ impl Tactic {
                 let mut sequent_r = sequent;
                 let state_l = sequent_l.insert_to_suc(p);
                 let state_r = sequent_r.insert_to_ant(q);
-                vec![(sequent_l, state_l), (sequent_r, state_r)]
+                vec.push((sequent_r, state_r));
+                vec.push((sequent_l, state_l));
+                2
             }
             RAnd => {
                 let l = sequent.suc.and_set.pop().unwrap();
                 let n = l.len();
                 let l = l.iter().zip(repeat_n(sequent, n));
-                let mut sequents = Vec::with_capacity(n);
-                for (p, mut sequent) in l {
+                for (p, mut sequent) in l.rev() {
                     let state = sequent.insert_to_suc(p);
-                    sequents.push((sequent, state));
+                    vec.push((sequent, state));
                 }
-                sequents
+                n
             }
             LOr => {
                 let l = sequent.ant.or_set.pop().unwrap();
                 let n = l.len();
                 let l = l.iter().zip(repeat_n(sequent, n));
-                let mut sequents = Vec::with_capacity(n);
-                for (p, mut sequent) in l {
+                for (p, mut sequent) in l.rev() {
                     let state = sequent.insert_to_ant(p);
-                    sequents.push((sequent, state));
+                    vec.push((sequent, state));
                 }
-                sequents
+                n
             }
         }
     }
@@ -350,16 +344,21 @@ impl Node {
         }
     }
     #[inline(never)]
-    fn make_proof_tree(&mut self, sequent: Sequent) -> ProofState {
+    fn make_proof_tree<'a>(
+        &mut self,
+        sequent: Sequent<'a>,
+        vec: &mut Vec<(Sequent<'a>, bool)>,
+    ) -> ProofState {
         use ProofState::*;
-        if let Some(TacticResult { tactic, sequents }) = sequent.apply_tactic() {
+        if let Some((tactic, n)) = sequent.apply_tactic(vec) {
             let mut node = Node::new(tactic);
             let mut result = Provable;
-            for (sequent, state) in sequents {
+            for _ in 0..n {
+                let (sequent, state) = vec.pop().unwrap();
                 if state {
                     node.subproofs.push(ProofTree::Leaf(Provable))
                 } else {
-                    let state0 = node.make_proof_tree(sequent);
+                    let state0 = node.make_proof_tree(sequent, vec);
                     if state0 == UnProvable {
                         result = UnProvable;
                     }
@@ -437,6 +436,7 @@ pub fn example() {
     // let s = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43) <-> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o31 ∧ o43) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o43) ∨ (o11 ∧ o21 ∧ o33 ∧ o41) ∨ (o11 ∧ o21 ∧ o33 ∧ o42) ∨ (o11 ∧ o21 ∧ o33 ∧ o43) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o43) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o43) ∨ (o11 ∧ o22 ∧ o33 ∧ o41) ∨ (o11 ∧ o22 ∧ o33 ∧ o42) ∨ (o11 ∧ o22 ∧ o33 ∧ o43) ∨ (o11 ∧ o23 ∧ o31 ∧ o41) ∨ (o11 ∧ o23 ∧ o31 ∧ o42) ∨ (o11 ∧ o23 ∧ o31 ∧ o43) ∨ (o11 ∧ o23 ∧ o32 ∧ o41) ∨ (o11 ∧ o23 ∧ o32 ∧ o42) ∨ (o11 ∧ o23 ∧ o32 ∧ o43) ∨ (o11 ∧ o23 ∧ o33 ∧ o41) ∨ (o11 ∧ o23 ∧ o33 ∧ o42) ∨ (o11 ∧ o23 ∧ o33 ∧ o43) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o43) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o43) ∨ (o12 ∧ o21 ∧ o33 ∧ o41) ∨ (o12 ∧ o21 ∧ o33 ∧ o42) ∨ (o12 ∧ o21 ∧ o33 ∧ o43) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o43) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o43) ∨ (o12 ∧ o22 ∧ o33 ∧ o41) ∨ (o12 ∧ o22 ∧ o33 ∧ o42) ∨ (o12 ∧ o22 ∧ o33 ∧ o43) ∨ (o12 ∧ o23 ∧ o31 ∧ o41) ∨ (o12 ∧ o23 ∧ o31 ∧ o42) ∨ (o12 ∧ o23 ∧ o31 ∧ o43) ∨ (o12 ∧ o23 ∧ o32 ∧ o41) ∨ (o12 ∧ o23 ∧ o32 ∧ o42) ∨ (o12 ∧ o23 ∧ o32 ∧ o43) ∨ (o12 ∧ o23 ∧ o33 ∧ o41) ∨ (o12 ∧ o23 ∧ o33 ∧ o42) ∨ (o12 ∧ o23 ∧ o33 ∧ o43) ∨ (o13 ∧ o21 ∧ o31 ∧ o41) ∨ (o13 ∧ o21 ∧ o31 ∧ o42) ∨ (o13 ∧ o21 ∧ o31 ∧ o43) ∨ (o13 ∧ o21 ∧ o32 ∧ o41) ∨ (o13 ∧ o21 ∧ o32 ∧ o42) ∨ (o13 ∧ o21 ∧ o32 ∧ o43) ∨ (o13 ∧ o21 ∧ o33 ∧ o41) ∨ (o13 ∧ o21 ∧ o33 ∧ o42) ∨ (o13 ∧ o21 ∧ o33 ∧ o43) ∨ (o13 ∧ o22 ∧ o31 ∧ o41) ∨ (o13 ∧ o22 ∧ o31 ∧ o42) ∨ (o13 ∧ o22 ∧ o31 ∧ o43) ∨ (o13 ∧ o22 ∧ o32 ∧ o41) ∨ (o13 ∧ o22 ∧ o32 ∧ o42) ∨ (o13 ∧ o22 ∧ o32 ∧ o43) ∨ (o13 ∧ o22 ∧ o33 ∧ o41) ∨ (o13 ∧ o22 ∧ o33 ∧ o42) ∨ (o13 ∧ o22 ∧ o33 ∧ o43) ∨ (o13 ∧ o23 ∧ o31 ∧ o41) ∨ (o13 ∧ o23 ∧ o31 ∧ o42) ∨ (o13 ∧ o23 ∧ o31 ∧ o43) ∨ (o13 ∧ o23 ∧ o32 ∧ o41) ∨ (o13 ∧ o23 ∧ o32 ∧ o42) ∨ (o13 ∧ o23 ∧ o32 ∧ o43) ∨ (o13 ∧ o23 ∧ o33 ∧ o41) ∨ (o13 ∧ o23 ∧ o33 ∧ o42) ∨ (o13 ∧ o23 ∧ o33 ∧ o43)";
 
     // let s = "P and Q to Q and P";
+    // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
     // let s = "(((a⇔b)⇔c) -> (a⇔(b⇔c)))";
 
@@ -450,8 +450,9 @@ pub fn example() {
     // let arena = Arena::new();
     // let fml = arena.alloc(fml);
     sequent.insert_to_suc(&fml);
+    let mut vec = vec![];
     let start_time = Instant::now();
-    let result = node.make_proof_tree(sequent);
+    let result = node.make_proof_tree(sequent, &mut vec);
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{result:?}");
@@ -474,5 +475,6 @@ pub fn example_for_bench(fml: &Formula) -> ProofState {
     let mut node = Node::new(Tactic::LNot);
     let mut sequent = Sequent::default();
     sequent.insert_to_suc(&fml);
-    node.make_proof_tree(sequent)
+    let mut vec = vec![];
+    node.make_proof_tree(sequent, &mut vec)
 }
