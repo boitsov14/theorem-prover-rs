@@ -58,6 +58,30 @@ pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
     Some((fml, inf))
 }
 
+pub fn from_tptp(s: &str) -> String {
+    let s = s
+        .lines()
+        .filter(|line| !line.trim_start().starts_with('%'))
+        .collect::<String>();
+
+    let mut axioms: Vec<String> = vec![];
+    let conjecture;
+
+    let re_axiom = Regex::new(r#"fof\(([^,]+),axiom,(.+?)\)\."#).unwrap();
+    for cap in re_axiom.captures_iter(&s) {
+        axioms.push(cap[2].trim().to_string());
+    }
+
+    let re_conjecture = Regex::new(r#"fof\(([^,]+),conjecture,(.+?)\)\."#).unwrap();
+    let cap = re_conjecture.captures(&s).unwrap();
+    conjecture = cap[2].trim().to_string();
+
+    axioms
+        .iter()
+        .rev()
+        .fold(conjecture, |acc, axiom| format!("({}) -> ({})", axiom, acc))
+}
+
 peg::parser!( grammar parser() for str {
     use PFormula::*;
     use PTerm::*;
@@ -632,5 +656,28 @@ mod tests {
             .unwrap()
             .into_formula_rec(&mut inf);
         assert_eq!(fml2.universal_quantify(), fml);
+    }
+
+    #[test]
+    fn test_parse_tptp() {
+        let s = r#"
+% Comments : 
+%--------------------------------------------------------------------------
+fof(axiom1,axiom,(
+s)).
+
+fof(axiom2,axiom,(
+( ~(( t => r) ) => p) )).
+
+fof(con,conjecture,(
+( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) 
+)).
+
+%--------------------------------------------------------------------------
+"#;
+        assert_eq!(
+            from_tptp(s),
+            "((s)) -> (((( ~(( t => r) ) => p) )) -> ((( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) )))"
+        )
     }
 }
