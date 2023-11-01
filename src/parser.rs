@@ -80,6 +80,7 @@ pub fn from_tptp(s: &str) -> String {
         .iter()
         .rev()
         .fold(conjecture, |acc, axiom| format!("({}) -> ({})", axiom, acc))
+        .replace('$', "")
 }
 
 peg::parser!( grammar parser() for str {
