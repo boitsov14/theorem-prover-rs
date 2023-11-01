@@ -464,3 +464,34 @@ pub fn example_for_bench(fml: &Formula) -> ProofState {
     let mut vec = vec![];
     node.make_proof_tree(sequent, &mut vec)
 }
+
+pub fn example_iltp_prop() {
+    use crate::parser::from_tptp;
+    use crate::parser::parse;
+    use crate::prover::ProofState::Provable;
+    use std::fs;
+    use std::time::Instant;
+
+    let exclude_list = fs::read_to_string("benches/iltp_prop_exclude").unwrap();
+    let exclude_list = exclude_list.lines().collect::<Vec<_>>();
+
+    let entries = fs::read_dir("benches/iltp_prop").unwrap();
+    for entry in entries {
+        let file = entry.unwrap().path();
+        let file_name = file.file_name().unwrap().to_str().unwrap();
+        if exclude_list.contains(&file_name) {
+            continue;
+        }
+        println!();
+        println!("{file_name}");
+        let s = fs::read_to_string(&file).unwrap();
+        let (fml, inf) = parse(&from_tptp(&s)).unwrap();
+        // println!("{}", fml.display(&inf));
+        let start_time = Instant::now();
+        let result = example_for_bench(&fml);
+        let end_time = Instant::now();
+        let elapsed_time = end_time.duration_since(start_time);
+        println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+        assert_eq!(result, Provable);
+    }
+}

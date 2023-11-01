@@ -1,17 +1,18 @@
-use std::fs;
-
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::fs;
 use theorem_prover_rs::parser::*;
 use theorem_prover_rs::prover::*;
 
-fn from_elem(c: &mut Criterion) {
+fn from_example_prop(c: &mut Criterion) {
     let fs = fs::read_to_string("benches/examples.txt").unwrap();
     let fmls = fs
         .lines()
+        .filter(|s| !s.is_empty())
         .map(|s| parse(s).unwrap().0)
         .map(|fml| fml.universal_quantify());
 
-    let mut group = c.benchmark_group("prop");
+    let mut group = c.benchmark_group("example_prop");
+    group.sample_size(10);
 
     for ref fml in fmls {
         group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
@@ -21,5 +22,32 @@ fn from_elem(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, from_elem);
+fn from_iltp_prop(c: &mut Criterion) {
+    let mut fmls = vec![];
+    let list = vec!["SYJ201+1.008.p", "SYJ206+1.008.p", "SYJ212+1.008.p"];
+
+    let entries = fs::read_dir("benches/iltp_prop").unwrap();
+    for entry in entries {
+        let file = entry.unwrap().path();
+        let file_name = file.file_name().unwrap().to_str().unwrap();
+        if !list.contains(&file_name) {
+            continue;
+        }
+        let s = fs::read_to_string(&file).unwrap();
+        let (fml, _) = parse(&from_tptp(&s)).unwrap();
+        fmls.push(fml);
+    }
+
+    let mut group = c.benchmark_group("iltp_prop");
+    group.sample_size(10);
+
+    for ref fml in fmls {
+        group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
+            b.iter(|| example_for_bench(fml));
+        });
+    }
+    group.finish();
+}
+
+criterion_group!(benches, from_example_prop, from_iltp_prop);
 criterion_main!(benches);
