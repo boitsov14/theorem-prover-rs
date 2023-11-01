@@ -1,9 +1,7 @@
-use indexmap::IndexSet;
-
 use crate::formula::{Formula, Term};
-
 use crate::naming::NamingInfo;
 use core::hash::BuildHasherDefault;
+use indexmap::IndexSet;
 use itertools::repeat_n;
 use rustc_hash::FxHasher;
 use strum::{EnumIter, IntoEnumIterator};
