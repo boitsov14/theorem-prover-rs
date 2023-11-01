@@ -7,6 +7,7 @@ use crate::parser::parse;
 
 fn main() {
     prover::example();
+    // prover::example_iltp_prop();
     return;
 
     println!("Hello, world!");
