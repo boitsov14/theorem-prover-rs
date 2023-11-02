@@ -1,7 +1,11 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use mimalloc::MiMalloc;
 use std::fs;
 use theorem_prover_rs::parser::*;
 use theorem_prover_rs::prover::*;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn from_example_prop(c: &mut Criterion) {
     let fs = fs::read_to_string("benches/examples.txt").unwrap();
