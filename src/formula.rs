@@ -185,7 +185,7 @@ impl Formula {
         }
     }
 
-    fn is_iff(&self) -> bool {
+    pub fn is_iff(&self) -> bool {
         use Formula::*;
         match self {
             And(l) => {

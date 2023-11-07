@@ -1,5 +1,4 @@
-use crate::formula::{Formula, Term};
-use crate::prover::PlainSequent;
+use crate::{formula::{Formula, Term}, prover::Sequent};
 use indexmap::IndexSet;
 use std::fmt;
 
@@ -218,12 +217,12 @@ impl fmt::Display for Formula {
     }
 }
 
-pub struct PlainSequentDisplay<'a, 'b> {
-    sequent: &'a PlainSequent<'b>,
+pub struct SequentDisplay<'a, 'b> {
+    sequent: &'a Sequent<'b>,
     inf: &'a NamingInfo,
 }
 
-impl fmt::Display for PlainSequentDisplay<'_, '_> {
+impl fmt::Display for SequentDisplay<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -245,9 +244,15 @@ impl fmt::Display for PlainSequentDisplay<'_, '_> {
     }
 }
 
-impl<'b> PlainSequent<'b> {
-    pub fn display<'a>(&'a self, inf: &'a NamingInfo) -> PlainSequentDisplay<'a, 'b> {
-        PlainSequentDisplay { sequent: self, inf }
+impl<'b> Sequent<'b> {
+    pub fn display<'a>(&'a self, inf: &'a NamingInfo) -> SequentDisplay<'a, 'b> {
+        SequentDisplay { sequent: self, inf }
+    }
+}
+
+impl fmt::Display for Sequent<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.display(&NamingInfo::new()))
     }
 }
 
