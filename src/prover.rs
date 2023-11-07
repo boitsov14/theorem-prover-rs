@@ -302,8 +302,6 @@ pub fn example() {
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
     // let s = "(((a⇔b)⇔c) -> (a⇔(b⇔c)))";
 
-    let s = "(((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔i)))))))))";
-
     let Some((fml, inf)) = parse(s) else {
         return;
     };
