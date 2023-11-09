@@ -55,44 +55,48 @@ impl<'a> Sequent<'a> {
     fn get_fml(&self) -> Option<(&'a Formula, SequentType)> {
         use Formula::*;
         use SequentType::*;
-        let mut p_nary = None;
-        // TODO: 2023/11/04 for文4回まわすのとどっちが早いか
-        // TODO: 2023/11/07 不要なfmlは削除できるか
-        // TODO: 2023/11/07 unaryなものも必要性のチェックをするか
         for fml in &self.ant {
             match fml {
-                Predicate(..) => continue,
                 Not(_) | And(_) => {
                     return Some((fml, Ant));
                 }
-                Or(l) => {
-                    if p_nary.is_none() && l.iter().all(|p| !self.ant.contains(p)) {
-                        p_nary = Some((*fml, Ant));
-                    }
-                }
-                Implies(p, q) => {
-                    if p_nary.is_none() && !self.suc.contains(&**p) && !self.ant.contains(&**q) {
-                        p_nary = Some((fml, Ant));
-                    }
-                }
-                All(_, _) | Exists(_, _) => unimplemented!(),
+                _ => continue,
             }
         }
         for fml in &self.suc {
             match fml {
-                Predicate(..) => continue,
                 Not(_) | Or(_) | Implies(..) => {
                     return Some((fml, Suc));
                 }
-                And(l) => {
-                    if p_nary.is_none() && l.iter().all(|p| !self.suc.contains(p)) {
-                        p_nary = Some((fml, Suc));
-                    }
-                }
-                All(_, _) | Exists(_, _) => unimplemented!(),
+                _ => continue,
             }
         }
-        p_nary
+        for fml in &self.ant {
+            match fml {
+                Or(l) => {
+                    if l.iter().all(|p| !self.ant.contains(p)) {
+                        return Some((fml, Ant));
+                    }
+                }
+                Implies(p, q) => {
+                    if !self.suc.contains(&**p) && !self.ant.contains(&**q) {
+                        return Some((fml, Ant));
+                    }
+                }
+                _ => continue,
+            }
+        }
+        for fml in &self.suc {
+            match fml {
+                And(l) => {
+                    if l.iter().all(|p| !self.suc.contains(p)) {
+                        return Some((fml, Suc));
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
     }
 
     #[inline(never)]
