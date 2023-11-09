@@ -21,32 +21,26 @@ enum SequentType {
 }
 
 #[derive(Debug)]
-enum ProofTree {
+enum ProofTree<'a> {
     Leaf(ProofState),
-    Node(Node),
+    Node(Node<'a>),
 }
 
 #[derive(Debug)]
-struct Node {
-    tactic: Tactic,
-    subproofs: Vec<ProofTree>,
+struct Node<'a> {
+    tactic: Tactic<'a>,
+    subproofs: Vec<ProofTree<'a>>,
 }
 
 #[derive(Debug, Clone)]
-struct Tactic {
-    pos: usize,
+struct Tactic<'a> {
+    fml: &'a Formula,
     seq_type: SequentType,
 }
 
-impl Tactic {
-    fn new(pos: usize, seq_type: SequentType) -> Self {
-        Self { pos, seq_type }
-    }
-    fn dummy() -> Self {
-        Self {
-            pos: 0,
-            seq_type: SequentType::Ant,
-        }
+impl<'a> Tactic<'a> {
+    fn new(fml: &'a Formula, seq_type: SequentType) -> Self {
+        Self { fml, seq_type }
     }
 }
 
@@ -58,7 +52,7 @@ pub enum ProofState {
 
 impl<'a> Sequent<'a> {
     #[inline(never)]
-    fn get_fml(&mut self) -> Option<(usize, SequentType)> {
+    fn get_fml(&self) -> Option<(&'a Formula, SequentType)> {
         use Formula::*;
         use SequentType::*;
         let mut p_nary = None;
@@ -66,35 +60,34 @@ impl<'a> Sequent<'a> {
         // TODO: 2023/11/04 for文4回まわすのとどっちが早いか
         // TODO: 2023/11/07 不要なfmlは削除できるか
         // TODO: 2023/11/07 unaryなものも必要性のチェックをするか
-        // TODO: 2023/11/07 リターンはfmlでは難しいか
-        for (i, fml) in self.ant.iter().enumerate().rev() {
+        for fml in self.ant.iter().rev() {
             match fml {
                 Predicate(..) => continue,
                 Not(_) | And(_) => {
-                    return Some((i, Ant));
+                    return Some((fml, Ant));
                 }
                 Or(l) => {
                     if p_nary.is_none() && l.iter().all(|p| !self.ant.contains(p)) {
-                        p_nary = Some((i, Ant));
+                        p_nary = Some((*fml, Ant));
                     }
                 }
                 Implies(p, q) => {
                     if p_nary.is_none() && !self.suc.contains(&**p) && !self.ant.contains(&**q) {
-                        p_nary = Some((i, Ant));
+                        p_nary = Some((fml, Ant));
                     }
                 }
                 All(_, _) | Exists(_, _) => unimplemented!(),
             }
         }
-        for (i, fml) in self.suc.iter().enumerate().rev() {
+        for fml in self.suc.iter().rev() {
             match fml {
                 Predicate(..) => continue,
                 Not(_) | Or(_) | Implies(..) => {
-                    return Some((i, Suc));
+                    return Some((fml, Suc));
                 }
                 And(l) => {
                     if p_nary.is_none() && l.iter().all(|p| !self.suc.contains(p)) {
-                        p_nary = Some((i, Suc));
+                        p_nary = Some((fml, Suc));
                     }
                 }
                 All(_, _) | Exists(_, _) => unimplemented!(),
@@ -104,116 +97,114 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(never)]
-    fn apply_tactic(mut self, vec: &mut Vec<(Sequent<'a>, bool)>) -> Option<(Tactic, usize)> {
+    fn apply_tactic(
+        mut self,
+        fml: &'a Formula,
+        seq_type: &SequentType,
+        vec: &mut Vec<(Sequent<'a>, bool)>,
+    ) -> usize {
         use Formula::*;
         use SequentType::*;
-        // TODO: 2023/11/07 get_fmlは外出ししたい
-        let (pos, seq_type) = self.get_fml()?;
-        let n = match seq_type {
-            Ant => {
-                let fml = self.ant[pos];
-                match fml {
-                    Not(p) => {
-                        self.ant.swap_remove_index(pos);
+        match seq_type {
+            Ant => match fml {
+                Not(p) => {
+                    self.ant.remove(fml);
+                    self.suc.insert(p);
+                    let is_proved = self.ant.contains(&**p);
+                    vec.push((self, is_proved));
+                    1
+                }
+                And(l) => {
+                    self.ant.remove(fml);
+                    for p in l {
+                        self.ant.insert(p);
+                    }
+                    let is_proved = l.iter().any(|p| self.suc.contains(p));
+                    vec.push((self, is_proved));
+                    1
+                }
+                Or(l) => {
+                    self.ant.remove(fml);
+                    for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
+                        seq.ant.insert(p);
+                        let is_proved = seq.suc.contains(p);
+                        vec.push((seq, is_proved));
+                    }
+                    l.len()
+                }
+                Implies(p, q) => {
+                    self.ant.remove(fml);
+                    let mut seq_l = self.clone();
+                    let mut seq_r = self;
+                    seq_l.suc.insert(p);
+                    let is_proved_l = seq_l.ant.contains(&**p);
+                    seq_r.ant.insert(q);
+                    let is_proved_r = seq_r.suc.contains(&**q);
+                    vec.push((seq_r, is_proved_r));
+                    vec.push((seq_l, is_proved_l));
+                    2
+                }
+                All(..) | Exists(..) => unimplemented!(),
+                Predicate(..) => unreachable!(),
+            },
+            Suc => match fml {
+                Not(p) => {
+                    self.suc.remove(fml);
+                    self.ant.insert(p);
+                    let is_proved = self.suc.contains(&**p);
+                    vec.push((self, is_proved));
+                    1
+                }
+                And(l) => {
+                    self.suc.remove(fml);
+                    for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
+                        seq.suc.insert(p);
+                        let is_proved = seq.ant.contains(p);
+                        vec.push((seq, is_proved));
+                    }
+                    l.len()
+                }
+                Or(l) => {
+                    self.suc.remove(fml);
+                    for p in l {
                         self.suc.insert(p);
-                        let is_proved = self.ant.contains(&**p);
-                        vec.push((self, is_proved));
-                        1
                     }
-                    And(l) => {
-                        self.ant.swap_remove_index(pos);
-                        for p in l {
-                            self.ant.insert(p);
-                        }
-                        let is_proved = l.iter().any(|p| self.suc.contains(p));
-                        vec.push((self, is_proved));
-                        1
-                    }
-                    Or(l) => {
-                        self.ant.swap_remove_index(pos);
-                        for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
-                            seq.ant.insert(p);
-                            let is_proved = seq.suc.contains(p);
-                            vec.push((seq, is_proved));
-                        }
-                        l.len()
-                    }
-                    Implies(p, q) => {
-                        self.ant.swap_remove_index(pos);
-                        let mut seq_l = self.clone();
-                        let mut seq_r = self;
-                        seq_l.suc.insert(p);
-                        let is_proved_l = seq_l.ant.contains(&**p);
-                        seq_r.ant.insert(q);
-                        let is_proved_r = seq_r.suc.contains(&**q);
-                        vec.push((seq_r, is_proved_r));
-                        vec.push((seq_l, is_proved_l));
-                        2
-                    }
-                    All(..) | Exists(..) => unimplemented!(),
-                    Predicate(..) => unreachable!(),
+                    let is_proved = l.iter().any(|p| self.ant.contains(p));
+                    vec.push((self, is_proved));
+                    1
                 }
-            }
-            Suc => {
-                let fml = self.suc[pos];
-                match fml {
-                    Not(p) => {
-                        self.suc.swap_remove_index(pos);
-                        self.ant.insert(p);
-                        let is_proved = self.suc.contains(&**p);
-                        vec.push((self, is_proved));
-                        1
-                    }
-                    And(l) => {
-                        self.suc.swap_remove_index(pos);
-                        for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
-                            seq.suc.insert(p);
-                            let is_proved = seq.ant.contains(p);
-                            vec.push((seq, is_proved));
-                        }
-                        l.len()
-                    }
-                    Or(l) => {
-                        self.suc.swap_remove_index(pos);
-                        for p in l {
-                            self.suc.insert(p);
-                        }
-                        let is_proved = l.iter().any(|p| self.ant.contains(p));
-                        vec.push((self, is_proved));
-                        1
-                    }
-                    Implies(p, q) => {
-                        self.suc.swap_remove_index(pos);
-                        self.ant.insert(p);
-                        self.suc.insert(q);
-                        let is_proved = self.suc.contains(&**p) || self.ant.contains(&**q);
-                        vec.push((self, is_proved));
-                        1
-                    }
-                    All(..) | Exists(..) => unimplemented!(),
-                    Predicate(..) => unreachable!(),
+                Implies(p, q) => {
+                    self.suc.remove(fml);
+                    self.ant.insert(p);
+                    self.suc.insert(q);
+                    let is_proved = self.suc.contains(&**p) || self.ant.contains(&**q);
+                    vec.push((self, is_proved));
+                    1
                 }
-            }
-        };
-        Some((Tactic::new(pos, seq_type), n))
+                All(..) | Exists(..) => unimplemented!(),
+                Predicate(..) => unreachable!(),
+            },
+        }
     }
 }
 
-impl Node {
-    fn new(tactic: Tactic) -> Self {
+impl<'a> Node<'a> {
+    fn new(tactic: Tactic<'a>) -> Self {
         Self {
             tactic,
             subproofs: Vec::with_capacity(2),
         }
     }
     #[inline(never)]
-    fn make_proof_tree<'a>(
+    fn make_proof_tree(
         &mut self,
         sequent: Sequent<'a>,
         vec: &mut Vec<(Sequent<'a>, bool)>,
     ) -> ProofState {
         use ProofState::*;
-        if let Some((tactic, n)) = sequent.apply_tactic(vec) {
+        if let Some((fml, seq_type)) = sequent.get_fml() {
+            let n = sequent.apply_tactic(fml, &seq_type, vec);
+            let tactic = Tactic::new(fml, seq_type);
             // let Tactic { pos, seq_type } = tactic.clone();
             // let fml = match seq_type {
             //     SequentType::Ant => &sequent.ant[pos],
@@ -282,9 +273,9 @@ pub fn example() {
     // let s = "((o11 ∨ o12 ∨ o13 ∨ o14 ∨ o15) ∧ (o21 ∨ o22 ∨ o23 ∨ o24 ∨ o25) ∧ (o31 ∨ o32 ∨ o33 ∨ o34 ∨ o35) ∧ (o41 ∨ o42 ∨ o43 ∨ o44 ∨ o45) ∧ (o51 ∨ o52 ∨ o53 ∨ o54 ∨ o55) ∧ (o61 ∨ o62 ∨ o63 ∨ o64 ∨ o65)) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o11 ∧ o41) ∨ (o11 ∧ o51) ∨ (o11 ∧ o61) ∨ (o21 ∧ o31) ∨ (o21 ∧ o41) ∨ (o21 ∧ o51) ∨ (o21 ∧ o61) ∨ (o31 ∧ o41) ∨ (o31 ∧ o51) ∨ (o31 ∧ o61) ∨ (o41 ∧ o51) ∨ (o41 ∧ o61) ∨ (o51 ∧ o61) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o12 ∧ o42) ∨ (o12 ∧ o52) ∨ (o12 ∧ o62) ∨ (o22 ∧ o32) ∨ (o22 ∧ o42) ∨ (o22 ∧ o52) ∨ (o22 ∧ o62) ∨ (o32 ∧ o42) ∨ (o32 ∧ o52) ∨ (o32 ∧ o62) ∨ (o42 ∧ o52) ∨ (o42 ∧ o62) ∨(o52 ∧ o62) ∨(o13 ∧ o23) ∨ (o13 ∧ o33) ∨ (o13 ∧ o43) ∨ (o13 ∧ o53) ∨ (o13 ∧ o63) ∨ (o23 ∧ o33) ∨ (o23 ∧ o43) ∨ (o23 ∧ o53) ∨ (o23 ∧ o63) ∨ (o33 ∧ o43) ∨ (o33 ∧ o53) ∨ (o33 ∧ o63) ∨ (o43 ∧ o53) ∨ (o43 ∧ o63) ∨ (o53 ∧ o63) ∨ (o14 ∧ o24) ∨ (o14 ∧ o34) ∨ (o14 ∧ o44) ∨ (o14 ∧ o54) ∨ (o14 ∧ o64) ∨ (o24 ∧ o34) ∨ (o24 ∧ o44) ∨ (o24 ∧ o54) ∨ (o24 ∧ o64) ∨ (o34 ∧ o44) ∨ (o34 ∧ o54) ∨ (o34 ∧ o64) ∨ (o44 ∧ o54) ∨ (o44 ∧ o64) ∨(o54 ∧ o64) ∨ (o15 ∧ o25) ∨ (o15 ∧ o35) ∨ (o15 ∧ o45) ∨ (o15 ∧ o55) ∨ (o15 ∧ o65) ∨ (o25 ∧ o35) ∨ (o25 ∧ o45) ∨ (o25 ∧ o55) ∨ (o25 ∧ o65) ∨ (o35 ∧ o45) ∨ (o35 ∧ o55) ∨ (o35 ∧ o65) ∨ (o45 ∧ o55) ∨ (o45 ∧ o65) ∨(o55 ∧ o65))";
     // 55ms vs Error
     // let s = "(o11 ∨ o12 ∨ o13) ∧ (o21 ∨ o22 ∨ o23) ∧ (o31 ∨ o32 ∨ o33) ∧ (o41 ∨ o42 ∨ o43) <-> (o11 ∧ o21 ∧ o31 ∧ o41) ∨ (o11 ∧ o21 ∧ o31 ∧ o42) ∨ (o11 ∧ o21 ∧ o31 ∧ o43) ∨ (o11 ∧ o21 ∧ o32 ∧ o41) ∨ (o11 ∧ o21 ∧ o32 ∧ o42) ∨ (o11 ∧ o21 ∧ o32 ∧ o43) ∨ (o11 ∧ o21 ∧ o33 ∧ o41) ∨ (o11 ∧ o21 ∧ o33 ∧ o42) ∨ (o11 ∧ o21 ∧ o33 ∧ o43) ∨ (o11 ∧ o22 ∧ o31 ∧ o41) ∨ (o11 ∧ o22 ∧ o31 ∧ o42) ∨ (o11 ∧ o22 ∧ o31 ∧ o43) ∨ (o11 ∧ o22 ∧ o32 ∧ o41) ∨ (o11 ∧ o22 ∧ o32 ∧ o42) ∨ (o11 ∧ o22 ∧ o32 ∧ o43) ∨ (o11 ∧ o22 ∧ o33 ∧ o41) ∨ (o11 ∧ o22 ∧ o33 ∧ o42) ∨ (o11 ∧ o22 ∧ o33 ∧ o43) ∨ (o11 ∧ o23 ∧ o31 ∧ o41) ∨ (o11 ∧ o23 ∧ o31 ∧ o42) ∨ (o11 ∧ o23 ∧ o31 ∧ o43) ∨ (o11 ∧ o23 ∧ o32 ∧ o41) ∨ (o11 ∧ o23 ∧ o32 ∧ o42) ∨ (o11 ∧ o23 ∧ o32 ∧ o43) ∨ (o11 ∧ o23 ∧ o33 ∧ o41) ∨ (o11 ∧ o23 ∧ o33 ∧ o42) ∨ (o11 ∧ o23 ∧ o33 ∧ o43) ∨ (o12 ∧ o21 ∧ o31 ∧ o41) ∨ (o12 ∧ o21 ∧ o31 ∧ o42) ∨ (o12 ∧ o21 ∧ o31 ∧ o43) ∨ (o12 ∧ o21 ∧ o32 ∧ o41) ∨ (o12 ∧ o21 ∧ o32 ∧ o42) ∨ (o12 ∧ o21 ∧ o32 ∧ o43) ∨ (o12 ∧ o21 ∧ o33 ∧ o41) ∨ (o12 ∧ o21 ∧ o33 ∧ o42) ∨ (o12 ∧ o21 ∧ o33 ∧ o43) ∨ (o12 ∧ o22 ∧ o31 ∧ o41) ∨ (o12 ∧ o22 ∧ o31 ∧ o42) ∨ (o12 ∧ o22 ∧ o31 ∧ o43) ∨ (o12 ∧ o22 ∧ o32 ∧ o41) ∨ (o12 ∧ o22 ∧ o32 ∧ o42) ∨ (o12 ∧ o22 ∧ o32 ∧ o43) ∨ (o12 ∧ o22 ∧ o33 ∧ o41) ∨ (o12 ∧ o22 ∧ o33 ∧ o42) ∨ (o12 ∧ o22 ∧ o33 ∧ o43) ∨ (o12 ∧ o23 ∧ o31 ∧ o41) ∨ (o12 ∧ o23 ∧ o31 ∧ o42) ∨ (o12 ∧ o23 ∧ o31 ∧ o43) ∨ (o12 ∧ o23 ∧ o32 ∧ o41) ∨ (o12 ∧ o23 ∧ o32 ∧ o42) ∨ (o12 ∧ o23 ∧ o32 ∧ o43) ∨ (o12 ∧ o23 ∧ o33 ∧ o41) ∨ (o12 ∧ o23 ∧ o33 ∧ o42) ∨ (o12 ∧ o23 ∧ o33 ∧ o43) ∨ (o13 ∧ o21 ∧ o31 ∧ o41) ∨ (o13 ∧ o21 ∧ o31 ∧ o42) ∨ (o13 ∧ o21 ∧ o31 ∧ o43) ∨ (o13 ∧ o21 ∧ o32 ∧ o41) ∨ (o13 ∧ o21 ∧ o32 ∧ o42) ∨ (o13 ∧ o21 ∧ o32 ∧ o43) ∨ (o13 ∧ o21 ∧ o33 ∧ o41) ∨ (o13 ∧ o21 ∧ o33 ∧ o42) ∨ (o13 ∧ o21 ∧ o33 ∧ o43) ∨ (o13 ∧ o22 ∧ o31 ∧ o41) ∨ (o13 ∧ o22 ∧ o31 ∧ o42) ∨ (o13 ∧ o22 ∧ o31 ∧ o43) ∨ (o13 ∧ o22 ∧ o32 ∧ o41) ∨ (o13 ∧ o22 ∧ o32 ∧ o42) ∨ (o13 ∧ o22 ∧ o32 ∧ o43) ∨ (o13 ∧ o22 ∧ o33 ∧ o41) ∨ (o13 ∧ o22 ∧ o33 ∧ o42) ∨ (o13 ∧ o22 ∧ o33 ∧ o43) ∨ (o13 ∧ o23 ∧ o31 ∧ o41) ∨ (o13 ∧ o23 ∧ o31 ∧ o42) ∨ (o13 ∧ o23 ∧ o31 ∧ o43) ∨ (o13 ∧ o23 ∧ o32 ∧ o41) ∨ (o13 ∧ o23 ∧ o32 ∧ o42) ∨ (o13 ∧ o23 ∧ o32 ∧ o43) ∨ (o13 ∧ o23 ∧ o33 ∧ o41) ∨ (o13 ∧ o23 ∧ o33 ∧ o42) ∨ (o13 ∧ o23 ∧ o33 ∧ o43)";
-    // 152ms -> 220ms vs 1405ms
+    // 152ms -> 220ms -> 362ms vs 1405ms
     // let s = "((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔j))))))))))";
-    // 523ms -> 890ms vs 2418ms
+    // 523ms -> 890ms -> 1426ms vs 2418ms
     let s = "(((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔k)))))))))))";
     // 1889ms -> 3577ms vs out of memory
     // let s = "((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔l))))))))))))";
@@ -307,7 +298,8 @@ pub fn example() {
     };
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
-    let mut node = Node::new(Tactic::dummy());
+    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
+    let mut node = Node::new(dummy_tactic);
     let mut seq = Sequent::default();
     seq.suc.insert(&fml);
     let mut vec = vec![];
@@ -320,7 +312,8 @@ pub fn example() {
 }
 
 pub fn example_for_bench(fml: &Formula) -> ProofState {
-    let mut node = Node::new(Tactic::dummy());
+    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
+    let mut node = Node::new(dummy_tactic);
     let mut seq = Sequent::default();
     seq.suc.insert(&fml);
     let mut vec = vec![];
