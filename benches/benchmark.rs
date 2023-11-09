@@ -28,7 +28,7 @@ fn from_example_prop(c: &mut Criterion) {
 
 fn from_iltp_prop(c: &mut Criterion) {
     let mut fmls = vec![];
-    let list = vec!["SYJ201+1.008.p", "SYJ206+1.008.p", "SYJ212+1.008.p"];
+    let list = vec!["SYJ202+1.004.p", "SYJ206+1.010.p"];
 
     let entries = fs::read_dir("benches/iltp_prop").unwrap();
     for entry in entries {
