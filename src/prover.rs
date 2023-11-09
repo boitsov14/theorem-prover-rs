@@ -56,11 +56,10 @@ impl<'a> Sequent<'a> {
         use Formula::*;
         use SequentType::*;
         let mut p_nary = None;
-        // TODO: 2023/11/03 rev()を使うかどうか(パフォーマンス要比較)
         // TODO: 2023/11/04 for文4回まわすのとどっちが早いか
         // TODO: 2023/11/07 不要なfmlは削除できるか
         // TODO: 2023/11/07 unaryなものも必要性のチェックをするか
-        for fml in self.ant.iter().rev() {
+        for fml in &self.ant {
             match fml {
                 Predicate(..) => continue,
                 Not(_) | And(_) => {
@@ -79,7 +78,7 @@ impl<'a> Sequent<'a> {
                 All(_, _) | Exists(_, _) => unimplemented!(),
             }
         }
-        for fml in self.suc.iter().rev() {
+        for fml in &self.suc {
             match fml {
                 Predicate(..) => continue,
                 Not(_) | Or(_) | Implies(..) => {
