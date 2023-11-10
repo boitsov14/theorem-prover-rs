@@ -4,6 +4,8 @@ use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::repeat_n;
 use rustc_hash::FxHasher;
+use std::fs::File;
+use std::io::{BufWriter, Result, Write};
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
@@ -206,50 +208,15 @@ impl<'a> Node<'a> {
         if let Some((fml, seq_type)) = sequent.get_fml() {
             let n = sequent.apply_tactic(fml, &seq_type, vec);
             let tactic = Tactic::new(fml, seq_type);
-            // let Tactic { pos, seq_type } = tactic.clone();
-            // let fml = match seq_type {
-            //     SequentType::Ant => &sequent.ant[pos],
-            //     SequentType::Suc => &sequent.suc[pos],
-            // };
-            // use Formula::*;
-            // let mut sig = match fml {
-            //     Not(_) => "¬",
-            //     And(_) => "∧",
-            //     Or(_) => "∨",
-            //     Implies(_, _) => "→",
-            //     All(_, _) => "∀",
-            //     Exists(_, _) => "∃",
-            //     Predicate(_, _) => unreachable!(),
-            // }
-            // .to_string();
-            // if fml.is_iff() {
-            //     sig = "↔".to_string();
-            // }
-            // match seq_type {
-            //     SequentType::Ant => {
-            //         sig.push_str(": Left");
-            //     }
-            //     SequentType::Suc => {
-            //         sig.push_str(": Right");
-            //     }
-            // }
-            // println!("{}", sig);
-            // for (seq, _) in vec.iter().rev() {
-            //     println!("{}", &seq.display(inf));
-            // }
             let mut node = Node::new(tactic);
             let mut result = Provable;
             for _ in 0..n {
-                let (sequent, state) = vec.pop().unwrap();
-                if state {
-                    // println!("Axiom");
-                    // for (seq, _) in vec.iter().rev() {
-                    //     println!("{}", &seq.display(inf));
-                    // }
+                let (sequent, is_proved) = vec.pop().unwrap();
+                if is_proved {
                     node.subproofs.push(ProofTree::Leaf(Provable))
                 } else {
-                    let state0 = node.make_proof_tree(sequent, vec);
-                    if state0 == UnProvable {
+                    let state = node.make_proof_tree(sequent, vec);
+                    if state == UnProvable {
                         result = UnProvable;
                     }
                 }
@@ -261,6 +228,78 @@ impl<'a> Node<'a> {
             UnProvable
         }
     }
+}
+
+impl<'a> ProofTree<'a> {
+    fn write(
+        &self,
+        sequent: Sequent<'a>,
+        vec: &mut Vec<(Sequent<'a>, bool)>,
+        inf: &NamingInfo,
+        latex: bool,
+        console: bool,
+        f: &mut BufWriter<impl Write>,
+    ) -> Result<()> {
+        if console {
+            writeln!(f, "{}", &sequent.display(inf))?;
+            for (seq, _) in vec.iter().rev() {
+                writeln!(f, "{}", &seq.display(inf))?;
+            }
+        }
+        match self {
+            ProofTree::Leaf(state) => {
+                use ProofState::*;
+                match state {
+                    Provable => {
+                        writeln!(f, "Axiom")?;
+                    }
+                    UnProvable => {
+                        writeln!(f, "UnProvable")?;
+                    }
+                }
+            }
+            ProofTree::Node(node) => {
+                let Tactic { fml, seq_type } = &node.tactic;
+                let n = sequent.apply_tactic(fml, seq_type, vec);
+                assert_eq!(n, node.subproofs.len());
+                let label = get_label(fml, seq_type);
+                if console {
+                    writeln!(f, "{label}")?;
+                }
+                for proof in &node.subproofs {
+                    let (sequent, is_proved) = vec.pop().unwrap();
+                    proof.write(sequent, vec, inf, latex, console, f)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn get_label(fml: &Formula, seq_type: &SequentType) -> String {
+    use Formula::*;
+    let mut label = match fml {
+        Not(_) => "¬",
+        And(_) => "∧",
+        Or(_) => "∨",
+        Implies(_, _) => "→",
+        All(_, _) => "∀",
+        Exists(_, _) => "∃",
+        Predicate(_, _) => unreachable!(),
+    }
+    .to_string();
+    if fml.is_iff() {
+        label = "↔".to_string();
+    }
+    match seq_type {
+        SequentType::Ant => {
+            label.push_str(": Left");
+        }
+        SequentType::Suc => {
+            label.push_str(": Right");
+        }
+    }
+    label
 }
 
 pub fn example() {
@@ -284,7 +323,7 @@ pub fn example() {
     // let s = "((((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔m)⇔n)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔(l⇔(m⇔n))))))))))))))";
 
     // let s = "P and Q to Q and P";
-    // let s = "P or Q to Q or P";
+    let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
 
     let Some((fml, inf)) = parse(s) else {
@@ -298,11 +337,21 @@ pub fn example() {
     seq.suc.insert(&fml);
     let mut vec = vec![];
     let start_time = Instant::now();
-    let result = node.make_proof_tree(seq, &mut vec);
+    let result = node.make_proof_tree(seq.clone(), &mut vec);
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     assert_eq!(result, ProofState::Provable);
+
+    // let s = File::create("proof.txt").unwrap();
+    let s = vec![];
+    let mut w = BufWriter::new(s);
+    let node = &node.subproofs[0];
+    node.write(seq, &mut vec, &inf, false, true, &mut w)
+        .unwrap();
+    writeln!(w, "{result:?}").unwrap();
+    // w.flush().unwrap();
+    println!("{}", String::from_utf8(w.into_inner().unwrap()).unwrap());
 }
 
 pub fn example_for_bench(fml: &Formula) -> ProofState {
