@@ -1,5 +1,5 @@
 use crate::formula::Formula;
-use crate::naming::NamingInfo;
+use crate::naming::{Latex, NamingInfo};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::repeat_n;
@@ -251,17 +251,27 @@ impl<'a> ProofTree<'a> {
                         if console {
                             writeln!(f, "Axiom")?;
                         }
+                        if latex {
+                            writeln!(
+                                f,
+                                r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                                seq.display(inf).to_latex()
+                            )?;
+                        }
                     }
                     UnProvable => {
                         if console {
                             writeln!(f, "UnProvable")?;
+                        }
+                        if latex {
+                            writeln!(f, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
                         }
                     }
                 }
             }
             ProofTree::Node(node) => {
                 let Tactic { fml, seq_type } = &node.tactic;
-                let len = seq.apply_tactic(fml, *seq_type, seqs);
+                let len = seq.clone().apply_tactic(fml, *seq_type, seqs);
                 assert_eq!(len, node.subproofs.len());
                 let label = get_label(fml, seq_type, latex);
                 if console {
@@ -269,6 +279,13 @@ impl<'a> ProofTree<'a> {
                 }
                 for proof in &node.subproofs {
                     proof.write(seqs, inf, latex, console, f)?;
+                }
+                if latex {
+                    writeln!(
+                        f,
+                        r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
+                        seq.display(inf).to_latex()
+                    )?;
                 }
             }
         }
@@ -281,42 +298,42 @@ fn get_label(fml: &Formula, seq_type: &SequentType, latex: bool) -> String {
     let mut label = match fml {
         Not(_) => {
             if latex {
-                r"\lnot"
+                r"$\lnot$"
             } else {
                 "¬"
             }
         }
         And(_) => {
             if latex {
-                r"\land"
+                r"$\land$"
             } else {
                 "∧"
             }
         }
         Or(_) => {
             if latex {
-                r"\lor"
+                r"$\lor$"
             } else {
                 "∨"
             }
         }
         Implies(_, _) => {
             if latex {
-                r"\rightarrow"
+                r"$\rightarrow$"
             } else {
                 "→"
             }
         }
         All(_, _) => {
             if latex {
-                r"\forall"
+                r"$\forall$"
             } else {
                 "∀"
             }
         }
         Exists(_, _) => {
             if latex {
-                r"\exists"
+                r"$\exists$"
             } else {
                 "∃"
             }
@@ -325,7 +342,7 @@ fn get_label(fml: &Formula, seq_type: &SequentType, latex: bool) -> String {
     }
     .to_string();
     if fml.is_iff() {
-        label = if latex { r"\leftrightarrow" } else { "↔" }.into();
+        label = if latex { r"$\leftrightarrow$" } else { "↔" }.into();
     }
     match seq_type {
         SequentType::Ant => {
