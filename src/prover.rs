@@ -16,7 +16,7 @@ pub struct Sequent<'a> {
     pub suc: FxIndexSet<&'a Formula>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum SequentType {
     Ant,
     Suc,
@@ -103,8 +103,8 @@ impl<'a> Sequent<'a> {
     fn apply_tactic(
         mut self,
         fml: &'a Formula,
-        seq_type: &SequentType,
-        vec: &mut Vec<(Sequent<'a>, bool)>,
+        seq_type: SequentType,
+        seqs: &mut Vec<(Sequent<'a>, bool)>,
     ) -> usize {
         use Formula::*;
         use SequentType::*;
@@ -114,7 +114,7 @@ impl<'a> Sequent<'a> {
                     self.ant.remove(fml);
                     self.suc.insert(p);
                     let is_proved = self.ant.contains(&**p);
-                    vec.push((self, is_proved));
+                    seqs.push((self, is_proved));
                     1
                 }
                 And(l) => {
@@ -123,7 +123,7 @@ impl<'a> Sequent<'a> {
                         self.ant.insert(p);
                     }
                     let is_proved = l.iter().any(|p| self.suc.contains(p));
-                    vec.push((self, is_proved));
+                    seqs.push((self, is_proved));
                     1
                 }
                 Or(l) => {
@@ -131,7 +131,7 @@ impl<'a> Sequent<'a> {
                     for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
                         seq.ant.insert(p);
                         let is_proved = seq.suc.contains(p);
-                        vec.push((seq, is_proved));
+                        seqs.push((seq, is_proved));
                     }
                     l.len()
                 }
@@ -143,8 +143,8 @@ impl<'a> Sequent<'a> {
                     let is_proved_l = seq_l.ant.contains(&**p);
                     seq_r.ant.insert(q);
                     let is_proved_r = seq_r.suc.contains(&**q);
-                    vec.push((seq_r, is_proved_r));
-                    vec.push((seq_l, is_proved_l));
+                    seqs.push((seq_r, is_proved_r));
+                    seqs.push((seq_l, is_proved_l));
                     2
                 }
                 All(..) | Exists(..) => unimplemented!(),
@@ -155,15 +155,16 @@ impl<'a> Sequent<'a> {
                     self.suc.remove(fml);
                     self.ant.insert(p);
                     let is_proved = self.suc.contains(&**p);
-                    vec.push((self, is_proved));
+                    seqs.push((self, is_proved));
                     1
                 }
                 And(l) => {
+                    // TODO: 2023/11/11 trueの場合
                     self.suc.remove(fml);
                     for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
                         seq.suc.insert(p);
                         let is_proved = seq.ant.contains(p);
-                        vec.push((seq, is_proved));
+                        seqs.push((seq, is_proved));
                     }
                     l.len()
                 }
@@ -173,7 +174,7 @@ impl<'a> Sequent<'a> {
                         self.suc.insert(p);
                     }
                     let is_proved = l.iter().any(|p| self.ant.contains(p));
-                    vec.push((self, is_proved));
+                    seqs.push((self, is_proved));
                     1
                 }
                 Implies(p, q) => {
@@ -181,7 +182,7 @@ impl<'a> Sequent<'a> {
                     self.ant.insert(p);
                     self.suc.insert(q);
                     let is_proved = self.suc.contains(&**p) || self.ant.contains(&**q);
-                    vec.push((self, is_proved));
+                    seqs.push((self, is_proved));
                     1
                 }
                 All(..) | Exists(..) => unimplemented!(),
@@ -199,26 +200,22 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn make_proof_tree(
-        &mut self,
-        sequent: Sequent<'a>,
-        vec: &mut Vec<(Sequent<'a>, bool)>,
-    ) -> ProofState {
+    fn make_proof_tree(&mut self, seqs: &mut Vec<(Sequent<'a>, bool)>) -> ProofState {
         use ProofState::*;
-        if let Some((fml, seq_type)) = sequent.get_fml() {
-            let n = sequent.apply_tactic(fml, &seq_type, vec);
+        let (seq, is_proved) = seqs.pop().unwrap();
+        if is_proved {
+            self.subproofs.push(ProofTree::Leaf(Provable));
+            Provable
+        } else if let Some((fml, seq_type)) = seq.get_fml() {
+            let len = seq.apply_tactic(fml, seq_type, seqs);
             let tactic = Tactic::new(fml, seq_type);
             let mut node = Node::new(tactic);
             let mut result = Provable;
-            for _ in 0..n {
-                let (sequent, is_proved) = vec.pop().unwrap();
-                if is_proved {
-                    node.subproofs.push(ProofTree::Leaf(Provable))
-                } else {
-                    let state = node.make_proof_tree(sequent, vec);
-                    if state == UnProvable {
-                        result = UnProvable;
-                    }
+            for _ in 0..len {
+                let state = node.make_proof_tree(seqs);
+                if state == UnProvable {
+                    // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
+                    result = UnProvable;
                 }
             }
             self.subproofs.push(ProofTree::Node(node));
@@ -233,24 +230,24 @@ impl<'a> Node<'a> {
 impl<'a> ProofTree<'a> {
     fn write(
         &self,
-        sequent: Sequent<'a>,
-        vec: &mut Vec<(Sequent<'a>, bool)>,
+        seqs: &mut Vec<(Sequent<'a>, bool)>,
         inf: &NamingInfo,
         latex: bool,
         console: bool,
         f: &mut BufWriter<impl Write>,
     ) -> Result<()> {
         if console {
-            writeln!(f, "{}", &sequent.display(inf))?;
-            for (seq, _) in vec.iter().rev() {
+            for (seq, _) in seqs.iter().rev() {
                 writeln!(f, "{}", &seq.display(inf))?;
             }
         }
+        let (seq, _) = seqs.pop().unwrap();
         match self {
             ProofTree::Leaf(state) => {
                 use ProofState::*;
                 match state {
                     Provable => {
+                        assert!(!seq.ant.is_disjoint(&seq.suc));
                         writeln!(f, "Axiom")?;
                     }
                     UnProvable => {
@@ -260,15 +257,14 @@ impl<'a> ProofTree<'a> {
             }
             ProofTree::Node(node) => {
                 let Tactic { fml, seq_type } = &node.tactic;
-                let n = sequent.apply_tactic(fml, seq_type, vec);
-                assert_eq!(n, node.subproofs.len());
+                let len = seq.apply_tactic(fml, *seq_type, seqs);
+                assert_eq!(len, node.subproofs.len());
                 let label = get_label(fml, seq_type);
                 if console {
                     writeln!(f, "{label}")?;
                 }
                 for proof in &node.subproofs {
-                    let (sequent, is_proved) = vec.pop().unwrap();
-                    proof.write(sequent, vec, inf, latex, console, f)?;
+                    proof.write(seqs, inf, latex, console, f)?;
                 }
             }
         }
@@ -335,9 +331,9 @@ pub fn example() {
     let mut node = Node::new(dummy_tactic);
     let mut seq = Sequent::default();
     seq.suc.insert(&fml);
-    let mut vec = vec![];
+    let mut seqs = vec![(seq.clone(), false)];
     let start_time = Instant::now();
-    let result = node.make_proof_tree(seq.clone(), &mut vec);
+    let result = node.make_proof_tree(&mut seqs);
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -347,8 +343,9 @@ pub fn example() {
     let s = vec![];
     let mut w = BufWriter::new(s);
     let node = &node.subproofs[0];
-    node.write(seq, &mut vec, &inf, false, true, &mut w)
-        .unwrap();
+    let mut seqs = vec![(seq, false)];
+    node.write(&mut seqs, &inf, false, true, &mut w).unwrap();
+    assert!(seqs.is_empty());
     writeln!(w, "{result:?}").unwrap();
     // w.flush().unwrap();
     println!("{}", String::from_utf8(w.into_inner().unwrap()).unwrap());
@@ -359,8 +356,8 @@ pub fn example_for_bench(fml: &Formula) -> ProofState {
     let mut node = Node::new(dummy_tactic);
     let mut seq = Sequent::default();
     seq.suc.insert(&fml);
-    let mut vec = vec![];
-    node.make_proof_tree(seq, &mut vec)
+    let mut seqs = vec![(seq, false)];
+    node.make_proof_tree(&mut seqs)
 }
 
 pub fn example_iltp_prop() {
