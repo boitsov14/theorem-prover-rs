@@ -9,7 +9,7 @@ use mimalloc::MiMalloc;
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-    prover::example();
+    prover::example().unwrap();
     // prover::example_iltp_prop();
     return;
 

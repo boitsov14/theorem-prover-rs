@@ -248,10 +248,14 @@ impl<'a> ProofTree<'a> {
                 match state {
                     Provable => {
                         assert!(!seq.ant.is_disjoint(&seq.suc));
-                        writeln!(f, "Axiom")?;
+                        if console {
+                            writeln!(f, "Axiom")?;
+                        }
                     }
                     UnProvable => {
-                        writeln!(f, "UnProvable")?;
+                        if console {
+                            writeln!(f, "UnProvable")?;
+                        }
                     }
                 }
             }
@@ -298,7 +302,7 @@ fn get_label(fml: &Formula, seq_type: &SequentType) -> String {
     label
 }
 
-pub fn example() {
+pub fn example() -> Result<()> {
     use crate::parser::parse;
     use std::time::Instant;
     // 107ms vs 8411ms
@@ -323,7 +327,7 @@ pub fn example() {
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
 
     let Some((fml, inf)) = parse(s) else {
-        return;
+        return Ok(());
     };
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
@@ -339,16 +343,32 @@ pub fn example() {
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     assert_eq!(result, ProofState::Provable);
 
-    // let s = File::create("proof.txt").unwrap();
     let s = vec![];
     let mut w = BufWriter::new(s);
     let node = &node.subproofs[0];
-    let mut seqs = vec![(seq, false)];
-    node.write(&mut seqs, &inf, false, true, &mut w).unwrap();
+    let mut seqs = vec![(seq.clone(), false)];
+    node.write(&mut seqs, &inf, false, true, &mut w)?;
     assert!(seqs.is_empty());
-    writeln!(w, "{result:?}").unwrap();
-    // w.flush().unwrap();
+    writeln!(w, ">> {result:?}")?;
+    // w.flush()?;
     println!("{}", String::from_utf8(w.into_inner().unwrap()).unwrap());
+
+    let s = File::create("proof.tex")?;
+    let mut w = BufWriter::new(s);
+    writeln!(
+        w,
+        r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
+    )?;
+    writeln!(w, r"\usepackage{{ebproof}}")?;
+    writeln!(w, r"\begin{{document}}")?;
+    writeln!(w, r"\begin{{prooftree}}")?;
+    let mut seqs = vec![(seq, false)];
+    node.write(&mut seqs, &inf, true, false, &mut w)?;
+    assert!(seqs.is_empty());
+    writeln!(w, r"\end{{prooftree}}")?;
+    writeln!(w, r"\end{{document}}")?;
+    // w.flush()?;
+    Ok(())
 }
 
 pub fn example_for_bench(fml: &Formula) -> ProofState {
