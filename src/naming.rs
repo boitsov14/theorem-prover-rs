@@ -1,4 +1,7 @@
-use crate::{formula::{Formula, Term}, prover::Sequent};
+use crate::{
+    formula::{Formula, Term},
+    prover::Sequent,
+};
 use indexmap::IndexSet;
 use std::fmt;
 
@@ -241,6 +244,26 @@ impl fmt::Display for SequentDisplay<'_, '_> {
                 .join(", ")
         )?;
         Ok(())
+    }
+}
+
+impl Latex for SequentDisplay<'_, '_> {
+    fn to_latex(&self) -> String {
+        format!(
+            r"{} &\vdash {}",
+            self.sequent
+                .ant
+                .iter()
+                .map(|fml| fml.display(self.inf).to_latex())
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.sequent
+                .suc
+                .iter()
+                .map(|fml| fml.display(self.inf).to_latex())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 }
 
