@@ -263,7 +263,7 @@ impl<'a> ProofTree<'a> {
                 let Tactic { fml, seq_type } = &node.tactic;
                 let len = seq.apply_tactic(fml, *seq_type, seqs);
                 assert_eq!(len, node.subproofs.len());
-                let label = get_label(fml, seq_type);
+                let label = get_label(fml, seq_type, latex);
                 if console {
                     writeln!(f, "{label}")?;
                 }
@@ -276,20 +276,56 @@ impl<'a> ProofTree<'a> {
     }
 }
 
-fn get_label(fml: &Formula, seq_type: &SequentType) -> String {
+fn get_label(fml: &Formula, seq_type: &SequentType, latex: bool) -> String {
     use Formula::*;
     let mut label = match fml {
-        Not(_) => "¬",
-        And(_) => "∧",
-        Or(_) => "∨",
-        Implies(_, _) => "→",
-        All(_, _) => "∀",
-        Exists(_, _) => "∃",
+        Not(_) => {
+            if latex {
+                r"\lnot"
+            } else {
+                "¬"
+            }
+        }
+        And(_) => {
+            if latex {
+                r"\land"
+            } else {
+                "∧"
+            }
+        }
+        Or(_) => {
+            if latex {
+                r"\lor"
+            } else {
+                "∨"
+            }
+        }
+        Implies(_, _) => {
+            if latex {
+                r"\rightarrow"
+            } else {
+                "→"
+            }
+        }
+        All(_, _) => {
+            if latex {
+                r"\forall"
+            } else {
+                "∀"
+            }
+        }
+        Exists(_, _) => {
+            if latex {
+                r"\exists"
+            } else {
+                "∃"
+            }
+        }
         Predicate(_, _) => unreachable!(),
     }
     .to_string();
     if fml.is_iff() {
-        label = "↔".to_string();
+        label = if latex { r"\leftrightarrow" } else { "↔" }.into();
     }
     match seq_type {
         SequentType::Ant => {
