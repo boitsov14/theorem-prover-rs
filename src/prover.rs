@@ -52,6 +52,12 @@ pub enum ProofState {
     UnProvable,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum OutputType {
+    Console,
+    Latex,
+}
+
 impl<'a> Sequent<'a> {
     fn get_fml(&self) -> Option<(&'a Formula, SequentType)> {
         use Formula::*;
@@ -232,11 +238,11 @@ impl<'a> ProofTree<'a> {
         &self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         inf: &NamingInfo,
-        latex: bool,
-        console: bool,
+        output: OutputType,
         f: &mut BufWriter<impl Write>,
     ) -> Result<()> {
-        if console {
+        use OutputType::*;
+        if matches!(output, Console) {
             for (seq, _) in seqs.iter().rev() {
                 writeln!(f, "{}", &seq.display(inf))?;
             }
@@ -248,39 +254,41 @@ impl<'a> ProofTree<'a> {
                 match state {
                     Provable => {
                         assert!(!seq.ant.is_disjoint(&seq.suc));
-                        if console {
-                            writeln!(f, "Axiom")?;
-                        }
-                        if latex {
-                            writeln!(
-                                f,
-                                r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                                seq.display(inf).to_latex()
-                            )?;
+                        match output {
+                            Console => {
+                                writeln!(f, "Axiom")?;
+                            }
+                            Latex => {
+                                writeln!(
+                                    f,
+                                    r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                                    seq.display(inf).to_latex()
+                                )?;
+                            }
                         }
                     }
-                    UnProvable => {
-                        if console {
+                    UnProvable => match output {
+                        Console => {
                             writeln!(f, "UnProvable")?;
                         }
-                        if latex {
+                        Latex => {
                             writeln!(f, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
                         }
-                    }
+                    },
                 }
             }
             ProofTree::Node(node) => {
                 let Tactic { fml, seq_type } = &node.tactic;
                 let len = seq.clone().apply_tactic(fml, *seq_type, seqs);
                 assert_eq!(len, node.subproofs.len());
-                let label = get_label(fml, seq_type, latex);
-                if console {
+                let label = get_label(fml, seq_type, output);
+                if matches!(output, Console) {
                     writeln!(f, "{label}")?;
                 }
                 for proof in &node.subproofs {
-                    proof.write(seqs, inf, latex, console, f)?;
+                    proof.write(seqs, inf, output, f)?;
                 }
-                if latex {
+                if matches!(output, Latex) {
                     writeln!(
                         f,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
@@ -293,56 +301,43 @@ impl<'a> ProofTree<'a> {
     }
 }
 
-fn get_label(fml: &Formula, seq_type: &SequentType, latex: bool) -> String {
+fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> String {
     use Formula::*;
+    use OutputType::*;
     let mut label = match fml {
-        Not(_) => {
-            if latex {
-                r"$\lnot$"
-            } else {
-                "¬"
-            }
-        }
-        And(_) => {
-            if latex {
-                r"$\land$"
-            } else {
-                "∧"
-            }
-        }
-        Or(_) => {
-            if latex {
-                r"$\lor$"
-            } else {
-                "∨"
-            }
-        }
-        Implies(_, _) => {
-            if latex {
-                r"$\rightarrow$"
-            } else {
-                "→"
-            }
-        }
-        All(_, _) => {
-            if latex {
-                r"$\forall$"
-            } else {
-                "∀"
-            }
-        }
-        Exists(_, _) => {
-            if latex {
-                r"$\exists$"
-            } else {
-                "∃"
-            }
-        }
+        Not(_) => match output {
+            Console => "¬",
+            Latex => r"$\lnot$",
+        },
+        And(_) => match output {
+            Console => "∧",
+            Latex => r"$\land$",
+        },
+        Or(_) => match output {
+            Console => "∨",
+            Latex => r"$\lor$",
+        },
+        Implies(_, _) => match output {
+            Console => "→",
+            Latex => r"$\rightarrow$",
+        },
+        All(_, _) => match output {
+            Console => "∀",
+            Latex => r"$\forall$",
+        },
+        Exists(_, _) => match output {
+            Console => "∃",
+            Latex => r"$\exists$",
+        },
         Predicate(_, _) => unreachable!(),
     }
     .to_string();
     if fml.is_iff() {
-        label = if latex { r"$\leftrightarrow$" } else { "↔" }.into();
+        label = match output {
+            Console => "↔",
+            Latex => r"$\leftrightarrow$",
+        }
+        .into();
     }
     match seq_type {
         SequentType::Ant => {
@@ -375,9 +370,10 @@ pub fn example() -> Result<()> {
     // 38,633ms
     // let s = "((((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔m)⇔n)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔(l⇔(m⇔n))))))))))))))";
 
-    // let s = "P and Q to Q and P";
-    let s = "P or Q to Q or P";
+    let s = "P and Q to Q and P";
+    // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
+    // let s = "(a⇔b)⇔(b⇔a)";
 
     let Some((fml, inf)) = parse(s) else {
         return Ok(());
@@ -400,10 +396,9 @@ pub fn example() -> Result<()> {
     let mut w = BufWriter::new(s);
     let node = &node.subproofs[0];
     let mut seqs = vec![(seq.clone(), false)];
-    node.write(&mut seqs, &inf, false, true, &mut w)?;
+    node.write(&mut seqs, &inf, OutputType::Console, &mut w)?;
     assert!(seqs.is_empty());
     writeln!(w, ">> {result:?}")?;
-    // w.flush()?;
     println!("{}", String::from_utf8(w.into_inner().unwrap()).unwrap());
 
     let s = File::create("proof.tex")?;
@@ -416,11 +411,10 @@ pub fn example() -> Result<()> {
     writeln!(w, r"\begin{{document}}")?;
     writeln!(w, r"\begin{{prooftree}}")?;
     let mut seqs = vec![(seq, false)];
-    node.write(&mut seqs, &inf, true, false, &mut w)?;
+    node.write(&mut seqs, &inf, OutputType::Latex, &mut w)?;
     assert!(seqs.is_empty());
     writeln!(w, r"\end{{prooftree}}")?;
     writeln!(w, r"\end{{document}}")?;
-    // w.flush()?;
     Ok(())
 }
 
