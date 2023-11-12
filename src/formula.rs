@@ -1,15 +1,13 @@
-use enum_variant_type::EnumVariantType;
 use maplit::hashset;
 use std::collections::HashSet;
 
-#[derive(Clone, Debug, EnumVariantType, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
     Var(usize),
     Function(usize, Vec<Term>),
 }
 
-#[derive(Clone, Debug, EnumVariantType, Eq, Hash, PartialEq)]
-#[evt(derive(Clone, Debug, Eq, Hash, PartialEq))]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Formula {
     Predicate(usize, Vec<Term>),
     Not(Box<Formula>),
@@ -20,11 +18,8 @@ pub enum Formula {
     Exists(Vec<usize>, Box<Formula>),
 }
 
-pub static F_TRUE: Formula = Formula::And(vec![]);
-pub static F_FALSE: Formula = Formula::Or(vec![]);
-
-pub static TRUE: And = And(vec![]);
-pub static FALSE: Or = Or(vec![]);
+pub static TRUE: Formula = Formula::And(vec![]);
+pub static FALSE: Formula = Formula::Or(vec![]);
 
 impl Term {
     fn fv(&self, vars: &mut HashSet<usize>) {
@@ -121,34 +116,6 @@ fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
 }
 */
 
-impl Not {
-    #[inline(never)]
-    pub fn new(p: Formula) -> Self {
-        Self(Box::new(p))
-    }
-}
-
-impl Implies {
-    #[inline(never)]
-    pub fn new(p: Formula, q: Formula) -> Self {
-        Self(Box::new(p), Box::new(q))
-    }
-}
-
-impl All {
-    #[inline(never)]
-    pub fn new(vars: Vec<usize>, p: Formula) -> Self {
-        Self(vars, Box::new(p))
-    }
-}
-
-impl Exists {
-    #[inline(never)]
-    pub fn new(vars: Vec<usize>, p: Formula) -> Self {
-        Self(vars, Box::new(p))
-    }
-}
-
 impl Formula {
     // TODO: 2023/09/06 parserでしか使用しないなら移動
     /// Returns all the free variables of the formula.
@@ -198,7 +165,7 @@ impl Formula {
 
 impl Default for Formula {
     fn default() -> Self {
-        F_TRUE.clone()
+        TRUE.clone()
     }
 }
 
