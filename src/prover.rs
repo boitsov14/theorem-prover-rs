@@ -23,13 +23,13 @@ enum SequentType {
 }
 
 #[derive(Debug)]
-enum ProofTree<'a> {
+pub enum ProofTree<'a> {
     Leaf(ProofState),
     Node(Node<'a>),
 }
 
 #[derive(Debug)]
-struct Node<'a> {
+pub struct Node<'a> {
     tactic: Tactic<'a>,
     subproofs: Vec<ProofTree<'a>>,
 }
@@ -206,7 +206,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn make_proof_tree(&mut self, seqs: &mut Vec<(Sequent<'a>, bool)>) -> ProofState {
+    fn prove(&mut self, seqs: &mut Vec<(Sequent<'a>, bool)>) -> ProofState {
         use ProofState::*;
         let (seq, is_proved) = seqs.pop().unwrap();
         if is_proved {
@@ -218,7 +218,7 @@ impl<'a> Node<'a> {
             let mut node = Node::new(tactic);
             let mut result = Provable;
             for _ in 0..len {
-                let state = node.make_proof_tree(seqs);
+                let state = node.prove(seqs);
                 if matches!(state, UnProvable) {
                     // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
                     result = UnProvable;
@@ -350,6 +350,55 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
     label
 }
 
+impl Formula {
+    fn to_seqs(&self) -> Vec<(Sequent, bool)> {
+        let mut seq = Sequent::default();
+        seq.suc.insert(self);
+        vec![(seq, false)]
+    }
+}
+
+pub fn prove(fml: &Formula) -> (ProofState, ProofTree) {
+    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
+    let mut node = Node::new(dummy_tactic);
+    let mut seqs = fml.to_seqs();
+    let result = node.prove(&mut seqs);
+    let proof = node.subproofs.remove(0);
+    (result, proof)
+}
+
+fn print_proof(proof: &ProofTree, fml: &Formula, inf: &NamingInfo) -> Result<()> {
+    let mut w = BufWriter::new(vec![]);
+    let mut seqs = fml.to_seqs();
+    proof.write(&mut seqs, &inf, OutputType::Console, &mut w)?;
+    assert!(seqs.is_empty());
+    println!("{}", String::from_utf8(w.into_inner()?).unwrap());
+    Ok(())
+}
+
+fn write_proof_latex(
+    proof: &ProofTree,
+    fml: &Formula,
+    inf: &NamingInfo,
+    file_name: &str,
+) -> Result<()> {
+    let s = File::create(format!("{file_name}.tex"))?;
+    let mut w = BufWriter::new(s);
+    let mut seqs = fml.to_seqs();
+    writeln!(
+        w,
+        r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
+    )?;
+    writeln!(w, r"\usepackage{{ebproof}}")?;
+    writeln!(w, r"\begin{{document}}")?;
+    writeln!(w, r"\begin{{prooftree}}")?;
+    proof.write(&mut seqs, &inf, OutputType::Latex, &mut w)?;
+    assert!(seqs.is_empty());
+    writeln!(w, r"\end{{prooftree}}")?;
+    writeln!(w, r"\end{{document}}")?;
+    Ok(())
+}
+
 pub fn example() -> Result<()> {
     use crate::parser::parse;
     use std::time::Instant;
@@ -380,51 +429,18 @@ pub fn example() -> Result<()> {
     };
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
-    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
-    let mut node = Node::new(dummy_tactic);
-    let mut seq = Sequent::default();
-    seq.suc.insert(&fml);
-    let mut seqs = vec![(seq.clone(), false)];
+
     let start_time = Instant::now();
-    let result = node.make_proof_tree(&mut seqs);
+    let (result, proof) = prove(&fml);
     let end_time = Instant::now();
+    println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     assert!(matches!(result, ProofState::Provable));
 
-    let s = vec![];
-    let mut w = BufWriter::new(s);
-    let node = &node.subproofs[0];
-    let mut seqs = vec![(seq.clone(), false)];
-    node.write(&mut seqs, &inf, OutputType::Console, &mut w)?;
-    assert!(seqs.is_empty());
-    writeln!(w, ">> {result:?}")?;
-    println!("{}", String::from_utf8(w.into_inner().unwrap()).unwrap());
-
-    let s = File::create("proof.tex")?;
-    let mut w = BufWriter::new(s);
-    writeln!(
-        w,
-        r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
-    )?;
-    writeln!(w, r"\usepackage{{ebproof}}")?;
-    writeln!(w, r"\begin{{document}}")?;
-    writeln!(w, r"\begin{{prooftree}}")?;
-    let mut seqs = vec![(seq, false)];
-    node.write(&mut seqs, &inf, OutputType::Latex, &mut w)?;
-    assert!(seqs.is_empty());
-    writeln!(w, r"\end{{prooftree}}")?;
-    writeln!(w, r"\end{{document}}")?;
+    print_proof(&proof, &fml, &inf)?;
+    write_proof_latex(&proof, &fml, &inf, "proof")?;
     Ok(())
-}
-
-pub fn example_for_bench(fml: &Formula) -> ProofState {
-    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
-    let mut node = Node::new(dummy_tactic);
-    let mut seq = Sequent::default();
-    seq.suc.insert(&fml);
-    let mut seqs = vec![(seq, false)];
-    node.make_proof_tree(&mut seqs)
 }
 
 pub fn example_iltp_prop() {
@@ -449,7 +465,7 @@ pub fn example_iltp_prop() {
         let (fml, inf) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&inf));
         let start_time = Instant::now();
-        let result = example_for_bench(&fml);
+        let (result, _) = prove(&fml);
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);

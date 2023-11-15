@@ -20,7 +20,7 @@ fn from_example_prop(c: &mut Criterion) {
 
     for ref fml in fmls {
         group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| example_for_bench(fml));
+            b.iter(|| prove(fml));
         });
     }
     group.finish();
@@ -47,7 +47,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
             for fml in &fmls {
-                example_for_bench(fml);
+                prove(fml);
             }
         });
     });
@@ -74,7 +74,7 @@ fn from_iltp_prop_1(c: &mut Criterion) {
 
     for ref fml in fmls {
         group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| example_for_bench(fml));
+            b.iter(|| prove(fml));
         });
     }
     group.finish();
