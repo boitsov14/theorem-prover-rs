@@ -46,7 +46,7 @@ impl<'a> Tactic<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ProofState {
     Provable,
     UnProvable,
@@ -219,7 +219,7 @@ impl<'a> Node<'a> {
             let mut result = Provable;
             for _ in 0..len {
                 let state = node.make_proof_tree(seqs);
-                if state == UnProvable {
+                if matches!(state, UnProvable) {
                     // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
                     result = UnProvable;
                 }
@@ -390,7 +390,7 @@ pub fn example() -> Result<()> {
     let end_time = Instant::now();
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-    assert_eq!(result, ProofState::Provable);
+    assert!(matches!(result, ProofState::Provable));
 
     let s = vec![];
     let mut w = BufWriter::new(s);
@@ -453,6 +453,6 @@ pub fn example_iltp_prop() {
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-        assert_eq!(result, ProofState::Provable);
+        assert!(matches!(result, ProofState::Provable));
     }
 }
