@@ -1,0 +1,28 @@
+---
+source: src/prover.rs
+expression: "prove(\"(P iff Q) to (Q iff P)\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{Q &\vdash Q, P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash Q, P, Q \rightarrow P}
+\infer{0}[\scriptsize Axiom]{P &\vdash Q, P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash Q, P, P \rightarrow Q}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash Q \leftrightarrow P, P, Q}
+\infer{0}[\scriptsize Axiom]{P &\vdash Q \leftrightarrow P, P}
+\infer{2}[\scriptsize $\rightarrow$: Left]{Q \rightarrow P &\vdash Q \leftrightarrow P, P}
+\infer{0}[\scriptsize Axiom]{Q &\vdash Q \leftrightarrow P, Q}
+\infer{0}[\scriptsize Axiom]{Q, P &\vdash P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{Q, P &\vdash Q \rightarrow P}
+\infer{0}[\scriptsize Axiom]{Q, P &\vdash Q}
+\infer{1}[\scriptsize $\rightarrow$: Right]{Q, P &\vdash P \rightarrow Q}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{Q, P &\vdash Q \leftrightarrow P}
+\infer{2}[\scriptsize $\rightarrow$: Left]{Q \rightarrow P, Q &\vdash Q \leftrightarrow P}
+\infer{2}[\scriptsize $\rightarrow$: Left]{P \rightarrow Q, Q \rightarrow P &\vdash Q \leftrightarrow P}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{P \leftrightarrow Q &\vdash Q \leftrightarrow P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash (P \leftrightarrow Q) \rightarrow (Q \leftrightarrow P)}
+\end{prooftree}
+\end{document}
+

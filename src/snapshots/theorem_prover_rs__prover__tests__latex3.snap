@@ -1,0 +1,17 @@
+---
+source: src/prover.rs
+expression: "prove(\"P and Q and R to R and Q and P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{P, Q, R &\vdash R}
+\infer{0}[\scriptsize Axiom]{P, Q, R &\vdash Q}
+\infer{0}[\scriptsize Axiom]{P, Q, R &\vdash P}
+\infer{3}[\scriptsize $\land$: Right]{P, Q, R &\vdash R \land Q \land P}
+\infer{1}[\scriptsize $\land$: Left]{P \land Q \land R &\vdash R \land Q \land P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash (P \land Q \land R) \rightarrow (R \land Q \land P)}
+\end{prooftree}
+\end{document}
+

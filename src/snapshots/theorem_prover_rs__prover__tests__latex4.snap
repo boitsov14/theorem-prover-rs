@@ -1,0 +1,17 @@
+---
+source: src/prover.rs
+expression: "prove(\"P or Q or R to R or Q or P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{P &\vdash R, Q, P}
+\infer{0}[\scriptsize Axiom]{Q &\vdash R, Q, P}
+\infer{0}[\scriptsize Axiom]{R &\vdash R, Q, P}
+\infer{3}[\scriptsize $\lor$: Left]{P \lor Q \lor R &\vdash R, Q, P}
+\infer{1}[\scriptsize $\lor$: Right]{P \lor Q \lor R &\vdash R \lor Q \lor P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash (P \lor Q \lor R) \rightarrow (R \lor Q \lor P)}
+\end{prooftree}
+\end{document}
+

@@ -1,0 +1,19 @@
+---
+source: src/prover.rs
+expression: "prove(\"P to (P to Q) to (Q to R) to R\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{P, Q \rightarrow R &\vdash R, P}
+\infer{0}[\scriptsize Axiom]{P, Q &\vdash R, Q}
+\infer{0}[\scriptsize Axiom]{P, Q, R &\vdash R}
+\infer{2}[\scriptsize $\rightarrow$: Left]{P, Q \rightarrow R, Q &\vdash R}
+\infer{2}[\scriptsize $\rightarrow$: Left]{P, P \rightarrow Q, Q \rightarrow R &\vdash R}
+\infer{1}[\scriptsize $\rightarrow$: Right]{P, P \rightarrow Q &\vdash (Q \rightarrow R) \rightarrow R}
+\infer{1}[\scriptsize $\rightarrow$: Right]{P &\vdash (P \rightarrow Q) \rightarrow ((Q \rightarrow R) \rightarrow R)}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash P \rightarrow ((P \rightarrow Q) \rightarrow ((Q \rightarrow R) \rightarrow R))}
+\end{prooftree}
+\end{document}
+

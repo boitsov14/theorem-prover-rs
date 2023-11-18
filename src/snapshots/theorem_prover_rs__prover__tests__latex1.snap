@@ -1,0 +1,12 @@
+---
+source: src/prover.rs
+expression: "prove(\"P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\hypo{ &\vdash P}
+\end{prooftree}
+\end{document}
+

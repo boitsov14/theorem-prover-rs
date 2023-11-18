@@ -1,0 +1,15 @@
+---
+source: src/prover.rs
+expression: "prove(\"not not P to P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{P &\vdash P}
+\infer{1}[\scriptsize $\lnot$: Right]{ &\vdash P, \lnot P}
+\infer{1}[\scriptsize $\lnot$: Left]{\lnot \lnot P &\vdash P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash \lnot \lnot P \rightarrow P}
+\end{prooftree}
+\end{document}
+

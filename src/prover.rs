@@ -482,3 +482,52 @@ pub fn example_iltp_prop() {
         assert!(matches!(result, ProofState::Provable));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+    use insta::assert_snapshot;
+
+    #[test]
+    fn test_latex1() {
+        assert_snapshot!(prove("P"));
+    }
+
+    #[test]
+    fn test_latex2() {
+        assert_snapshot!(prove("not not P to P"));
+    }
+
+    #[test]
+    fn test_latex3() {
+        assert_snapshot!(prove("P and Q and R to R and Q and P"));
+    }
+
+    #[test]
+    fn test_latex4() {
+        assert_snapshot!(prove("P or Q or R to R or Q or P"));
+    }
+
+    #[test]
+    fn test_latex5() {
+        assert_snapshot!(prove("P to (P to Q) to (Q to R) to R"));
+    }
+
+    #[test]
+    fn test_latex6() {
+        assert_snapshot!(prove("(P iff Q) to (Q iff P)"));
+    }
+
+    fn prove(s: &str) -> String {
+        // parse
+        let (fml, inf) = parse(s).unwrap();
+        let fml = fml.universal_quantify();
+        // prove
+        let (_, proof) = fml.prove();
+        // latex
+        let mut w = BufWriter::new(vec![]);
+        proof.write(&fml, &inf, OutputType::Latex, &mut w).unwrap();
+        String::from_utf8(w.into_inner().unwrap()).unwrap()
+    }
+}
