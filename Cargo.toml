@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indexmap = "2.0.2"
-itertools = "0.11.0"
+indexmap = "2.1.0"
+itertools = "0.12.0"
 maplit = "1.0.2"
 mimalloc = { version = "0.1.39", default-features = false }
-peg = "0.8.1"
-regex = "1.9.5"
+peg = "0.8.2"
+regex = "1.10.2"
 rustc-hash = "1.1.0"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.22"
