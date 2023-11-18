@@ -2,7 +2,6 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use mimalloc::MiMalloc;
 use std::fs;
 use theorem_prover_rs::parser::*;
-use theorem_prover_rs::prover::*;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -20,7 +19,7 @@ fn from_example_prop(c: &mut Criterion) {
 
     for ref fml in fmls {
         group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| prove(fml));
+            b.iter(|| fml.assert_provable());
         });
     }
     group.finish();
@@ -47,7 +46,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
             for fml in &fmls {
-                prove(fml);
+                fml.assert_provable();
             }
         });
     });
@@ -74,7 +73,7 @@ fn from_iltp_prop_1(c: &mut Criterion) {
 
     for ref fml in fmls {
         group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| prove(fml));
+            b.iter(|| fml.assert_provable());
         });
     }
     group.finish();

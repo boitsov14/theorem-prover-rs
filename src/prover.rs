@@ -23,13 +23,13 @@ enum SequentType {
 }
 
 #[derive(Debug)]
-pub enum ProofTree<'a> {
+enum ProofTree<'a> {
     Leaf(ProofState),
     Node(Node<'a>),
 }
 
 #[derive(Debug)]
-pub struct Node<'a> {
+struct Node<'a> {
     tactic: Tactic<'a>,
     subproofs: Vec<ProofTree<'a>>,
 }
@@ -47,7 +47,7 @@ impl<'a> Tactic<'a> {
 }
 
 #[derive(Debug)]
-pub enum ProofState {
+enum ProofState {
     Provable,
     UnProvable,
 }
@@ -234,17 +234,17 @@ impl<'a> Node<'a> {
 }
 
 impl<'a> ProofTree<'a> {
-    fn write(
+    fn write_rec(
         &self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         inf: &NamingInfo,
         output: OutputType,
-        f: &mut BufWriter<impl Write>,
+        w: &mut BufWriter<impl Write>,
     ) -> Result<()> {
         use OutputType::*;
         if matches!(output, Console) {
             for (seq, _) in seqs.iter().rev() {
-                writeln!(f, "{}", &seq.display(inf))?;
+                writeln!(w, "{}", &seq.display(inf))?;
             }
         }
         let (seq, _) = seqs.pop().unwrap();
@@ -256,11 +256,11 @@ impl<'a> ProofTree<'a> {
                         assert!(!seq.ant.is_disjoint(&seq.suc));
                         match output {
                             Console => {
-                                writeln!(f, "Axiom")?;
+                                writeln!(w, "Axiom")?;
                             }
                             Latex => {
                                 writeln!(
-                                    f,
+                                    w,
                                     r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
                                     seq.display(inf).to_latex()
                                 )?;
@@ -269,10 +269,10 @@ impl<'a> ProofTree<'a> {
                     }
                     UnProvable => match output {
                         Console => {
-                            writeln!(f, "UnProvable")?;
+                            writeln!(w, "UnProvable")?;
                         }
                         Latex => {
-                            writeln!(f, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
+                            writeln!(w, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
                         }
                     },
                 }
@@ -283,19 +283,46 @@ impl<'a> ProofTree<'a> {
                 assert_eq!(len, node.subproofs.len());
                 let label = get_label(fml, seq_type, output);
                 if matches!(output, Console) {
-                    writeln!(f, "{label}")?;
+                    writeln!(w, "{label}")?;
                 }
                 for proof in &node.subproofs {
-                    proof.write(seqs, inf, output, f)?;
+                    proof.write_rec(seqs, inf, output, w)?;
                 }
                 if matches!(output, Latex) {
                     writeln!(
-                        f,
+                        w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
                         seq.display(inf).to_latex()
                     )?;
                 }
             }
+        }
+        Ok(())
+    }
+
+    fn write(
+        &self,
+        fml: &Formula,
+        inf: &NamingInfo,
+        output: OutputType,
+        w: &mut BufWriter<impl Write>,
+    ) -> Result<()> {
+        use OutputType::*;
+        let mut seqs = fml.to_seqs();
+        if matches!(output, Latex) {
+            writeln!(
+                w,
+                r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
+            )?;
+            writeln!(w, r"\usepackage{{ebproof}}")?;
+            writeln!(w, r"\begin{{document}}")?;
+            writeln!(w, r"\begin{{prooftree}}")?;
+        }
+        self.write_rec(&mut seqs, &inf, output, w)?;
+        assert!(seqs.is_empty());
+        if matches!(output, Latex) {
+            writeln!(w, r"\end{{prooftree}}")?;
+            writeln!(w, r"\end{{document}}")?;
         }
         Ok(())
     }
@@ -356,47 +383,20 @@ impl Formula {
         seq.suc.insert(self);
         vec![(seq, false)]
     }
-}
 
-pub fn prove(fml: &Formula) -> (ProofState, ProofTree) {
-    let dummy_tactic = Tactic::new(&fml, SequentType::Suc);
-    let mut node = Node::new(dummy_tactic);
-    let mut seqs = fml.to_seqs();
-    let result = node.prove(&mut seqs);
-    let proof = node.subproofs.remove(0);
-    (result, proof)
-}
+    fn prove(&self) -> (ProofState, ProofTree) {
+        let dummy_tactic = Tactic::new(&self, SequentType::Suc);
+        let mut node = Node::new(dummy_tactic);
+        let mut seqs = self.to_seqs();
+        let result = node.prove(&mut seqs);
+        let proof = node.subproofs.remove(0);
+        (result, proof)
+    }
 
-fn print_proof(proof: &ProofTree, fml: &Formula, inf: &NamingInfo) -> Result<()> {
-    let mut w = BufWriter::new(vec![]);
-    let mut seqs = fml.to_seqs();
-    proof.write(&mut seqs, &inf, OutputType::Console, &mut w)?;
-    assert!(seqs.is_empty());
-    println!("{}", String::from_utf8(w.into_inner()?).unwrap());
-    Ok(())
-}
-
-fn write_proof_latex(
-    proof: &ProofTree,
-    fml: &Formula,
-    inf: &NamingInfo,
-    file_name: &str,
-) -> Result<()> {
-    let s = File::create(format!("{file_name}.tex"))?;
-    let mut w = BufWriter::new(s);
-    let mut seqs = fml.to_seqs();
-    writeln!(
-        w,
-        r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
-    )?;
-    writeln!(w, r"\usepackage{{ebproof}}")?;
-    writeln!(w, r"\begin{{document}}")?;
-    writeln!(w, r"\begin{{prooftree}}")?;
-    proof.write(&mut seqs, &inf, OutputType::Latex, &mut w)?;
-    assert!(seqs.is_empty());
-    writeln!(w, r"\end{{prooftree}}")?;
-    writeln!(w, r"\end{{document}}")?;
-    Ok(())
+    pub fn assert_provable(&self) {
+        let (result, _) = self.prove();
+        assert!(matches!(result, ProofState::Provable));
+    }
 }
 
 pub fn example() -> Result<()> {
@@ -424,22 +424,32 @@ pub fn example() -> Result<()> {
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
     // let s = "(a⇔b)⇔(b⇔a)";
 
+    // parse
     let Some((fml, inf)) = parse(s) else {
         return Ok(());
     };
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
 
+    // prove
     let start_time = Instant::now();
-    let (result, proof) = prove(&fml);
+    let (result, proof) = fml.prove();
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     assert!(matches!(result, ProofState::Provable));
 
-    print_proof(&proof, &fml, &inf)?;
-    write_proof_latex(&proof, &fml, &inf, "proof")?;
+    // print console
+    let mut w = BufWriter::new(vec![]);
+    proof.write(&fml, &inf, OutputType::Console, &mut w)?;
+    println!("{}", String::from_utf8_lossy(&w.into_inner()?));
+
+    // write latex
+    let f = File::create("proof.tex")?;
+    let mut w = BufWriter::new(f);
+    proof.write(&fml, &inf, OutputType::Latex, &mut w)?;
+
     Ok(())
 }
 
@@ -465,7 +475,7 @@ pub fn example_iltp_prop() {
         let (fml, inf) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&inf));
         let start_time = Instant::now();
-        let (result, _) = prove(&fml);
+        let (result, _) = fml.prove();
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
