@@ -1,3 +1,6 @@
+README.md
+exclude.txt
+
 SYJ202+1.004.p
 SYJ202+1.005.p
 SYJ202+1.006.p
