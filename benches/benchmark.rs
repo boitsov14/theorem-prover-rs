@@ -28,7 +28,7 @@ fn from_example_prop(c: &mut Criterion) {
 fn from_iltp_prop_0(c: &mut Criterion) {
     let mut fmls = vec![];
 
-    let exclude_list = fs::read_to_string("benches/iltp_prop_exclude.txt").unwrap();
+    let exclude_list = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
     let exclude_list = exclude_list.lines().collect::<Vec<_>>();
 
     let entries = fs::read_dir("benches/iltp_prop").unwrap();
