@@ -607,6 +607,14 @@ mod tests {
         );
         let fml = formula("false or P or false or Q or false").unwrap();
         assert_eq!(fml, Or(vec![formula("P").unwrap(), formula("Q").unwrap()]));
+        let fml = formula("true and P").unwrap();
+        assert_eq!(fml, formula("P").unwrap());
+        let fml = formula("P and true").unwrap();
+        assert_eq!(fml, formula("P").unwrap());
+        let fml = formula("false or P").unwrap();
+        assert_eq!(fml, formula("P").unwrap());
+        let fml = formula("P or false").unwrap();
+        assert_eq!(fml, formula("P").unwrap());
     }
 
     #[test]
