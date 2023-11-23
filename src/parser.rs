@@ -115,12 +115,20 @@ peg::parser!( grammar parser() for str {
                     Or(ps)
                 }
                 (Or(mut ps), q) => {
-                    ps.push(q);
-                    Or(ps)
+                    if ps.is_empty() {
+                        q
+                    } else {
+                        ps.push(q);
+                        Or(ps)
+                    }
                 }
                 (p, Or(mut qs)) => {
-                    qs.insert(0, p);
-                    Or(qs)
+                    if qs.is_empty() {
+                        p
+                    } else {
+                        qs.insert(0, p);
+                        Or(qs)
+                    }
                 }
                 (p, q) => Or(vec![p, q]),
             }
@@ -133,12 +141,20 @@ peg::parser!( grammar parser() for str {
                     And(ps)
                 }
                 (And(mut ps), q) => {
-                    ps.push(q);
-                    And(ps)
+                    if ps.is_empty() {
+                        q
+                    } else {
+                        ps.push(q);
+                        And(ps)
+                    }
                 }
                 (p, And(mut qs)) => {
-                    qs.insert(0, p);
-                    And(qs)
+                    if qs.is_empty() {
+                        p
+                    } else {
+                        qs.insert(0, p);
+                        And(qs)
+                    }
                 }
                 (p, q) => And(vec![p, q]),
             }
