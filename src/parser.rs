@@ -186,13 +186,13 @@ peg::parser!( grammar parser() for str {
         "(" _ p:formula() _ ")" { p }
     } / expected!("formula")
 
-    rule ASCII_ALPHA_GREEK() = ['a'..='z' | 'A'..='Z' | 'α'..='ω' | 'Α'..='Ω' ]
+    rule ASCII_ALPHA() = ['a'..='z' | 'A'..='Z' ]
     rule ASCII_DIGIT_HYPHEN_APOSTROPHE() = ['0'..='9' | '_' | '\'' ]
-    rule ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE() = ASCII_ALPHA_GREEK() / ASCII_DIGIT_HYPHEN_APOSTROPHE()
+    rule ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE() = ASCII_ALPHA() / ASCII_DIGIT_HYPHEN_APOSTROPHE()
 
-    rule var() = ASCII_ALPHA_GREEK() ASCII_DIGIT_HYPHEN_APOSTROPHE()*
-    rule function_name() = ASCII_ALPHA_GREEK() ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE()*
-    rule predicate_name() = quiet!{ ASCII_ALPHA_GREEK() ASCII_ALPHANUMERIC_GREEK_HYPHEN_APOSTROPHE()* } / expected!("predicate")
+    rule var() = ASCII_ALPHA() ASCII_DIGIT_HYPHEN_APOSTROPHE()*
+    rule function_name() = ASCII_ALPHA() ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE()*
+    rule predicate_name() = quiet!{ ASCII_ALPHA() ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE()* } / expected!("predicate")
 
     rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" } / expected!("true")
     rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
