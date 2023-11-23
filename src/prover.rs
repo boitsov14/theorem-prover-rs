@@ -67,7 +67,7 @@ impl<'a> Sequent<'a> {
                 Not(_) | And(_) => {
                     return Some((fml, Ant));
                 }
-                _ => continue,
+                _ => {}
             }
         }
         for fml in &self.suc {
@@ -75,7 +75,7 @@ impl<'a> Sequent<'a> {
                 Not(_) | Or(_) | Implies(..) => {
                     return Some((fml, Suc));
                 }
-                _ => continue,
+                _ => {}
             }
         }
         for fml in &self.ant {
@@ -90,7 +90,7 @@ impl<'a> Sequent<'a> {
                         return Some((fml, Ant));
                     }
                 }
-                _ => continue,
+                _ => {}
             }
         }
         for fml in &self.suc {
@@ -100,7 +100,7 @@ impl<'a> Sequent<'a> {
                         return Some((fml, Suc));
                     }
                 }
-                _ => continue,
+                _ => {}
             }
         }
         None
@@ -336,6 +336,7 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
             Console => "¬",
             Latex => r"$\lnot$",
         },
+        // TODO: 2023/11/23 iffの場合，trueの場合（true, /top）をここに追記．falseの場合も同様．
         And(_) => match output {
             Console => "∧",
             Latex => r"$\land$",
@@ -344,19 +345,19 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
             Console => "∨",
             Latex => r"$\lor$",
         },
-        Implies(_, _) => match output {
+        Implies(..) => match output {
             Console => "→",
             Latex => r"$\rightarrow$",
         },
-        All(_, _) => match output {
+        All(..) => match output {
             Console => "∀",
             Latex => r"$\forall$",
         },
-        Exists(_, _) => match output {
+        Exists(..) => match output {
             Console => "∃",
             Latex => r"$\exists$",
         },
-        Predicate(_, _) => unreachable!(),
+        Predicate(..) => unreachable!(),
     }
     .to_string();
     if fml.is_iff() {
