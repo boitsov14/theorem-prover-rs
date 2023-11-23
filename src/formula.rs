@@ -151,16 +151,6 @@ impl Formula {
             }
         }
     }
-
-    pub fn is_iff(&self) -> bool {
-        use Formula::*;
-        match self {
-            And(l) => {
-                matches!(l.as_slice(), [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r)
-            }
-            _ => false,
-        }
-    }
 }
 
 impl Default for Formula {

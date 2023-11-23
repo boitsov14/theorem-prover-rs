@@ -331,19 +331,34 @@ impl<'a> ProofTree<'a> {
 fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> String {
     use Formula::*;
     use OutputType::*;
-    let mut label = match fml {
+    let fml_type = match fml {
         Not(_) => match output {
             Console => "¬",
             Latex => r"$\lnot$",
         },
-        // TODO: 2023/11/23 iffの場合，trueの場合（true, /top）をここに追記．falseの場合も同様．
-        And(_) => match output {
-            Console => "∧",
-            Latex => r"$\land$",
+        And(l) => match l.as_slice() {
+            [] => match output {
+                Console => "true",
+                Latex => r"$\top$",
+            },
+            [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r => match output {
+                Console => "↔",
+                Latex => r"$\leftrightarrow$",
+            },
+            _ => match output {
+                Console => "∧",
+                Latex => r"$\land$",
+            },
         },
-        Or(_) => match output {
-            Console => "∨",
-            Latex => r"$\lor$",
+        Or(l) => match l.as_slice() {
+            [] => match output {
+                Console => "false",
+                Latex => r"$\bot$",
+            },
+            _ => match output {
+                Console => "∨",
+                Latex => r"$\lor$",
+            },
         },
         Implies(..) => match output {
             Console => "→",
@@ -358,24 +373,12 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
             Latex => r"$\exists$",
         },
         Predicate(..) => unreachable!(),
-    }
-    .to_string();
-    if fml.is_iff() {
-        label = match output {
-            Console => "↔",
-            Latex => r"$\leftrightarrow$",
-        }
-        .into();
-    }
-    match seq_type {
-        SequentType::Ant => {
-            label.push_str(": Left");
-        }
-        SequentType::Suc => {
-            label.push_str(": Right");
-        }
-    }
-    label
+    };
+    let seq_type = match seq_type {
+        SequentType::Ant => ": Left",
+        SequentType::Suc => ": Right",
+    };
+    format!("{fml_type}{seq_type}")
 }
 
 impl Formula {
@@ -424,6 +427,11 @@ pub fn example() -> Result<()> {
     // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
     // let s = "(a⇔b)⇔(b⇔a)";
+
+    // let s = "P to true";
+    // let s = "P to false";
+    // let s = "false to P";
+    // let s = "true to P";
 
     // parse
     let Some((fml, inf)) = parse(s) else {
