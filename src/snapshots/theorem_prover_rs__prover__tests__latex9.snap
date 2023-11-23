@@ -1,0 +1,14 @@
+---
+source: src/prover.rs
+expression: "prove(\"true to P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\hypo{ &\vdash P}
+\infer{1}[\scriptsize $\top$: Left]{\top &\vdash P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash \top \rightarrow P}
+\end{prooftree}
+\end{document}
+

@@ -528,6 +528,26 @@ mod tests {
         assert_snapshot!(prove("(P iff Q) to (Q iff P)"));
     }
 
+    #[test]
+    fn test_latex7() {
+        assert_snapshot!(prove("P to true"));
+    }
+
+    #[test]
+    fn test_latex8() {
+        assert_snapshot!(prove("P to false"));
+    }
+
+    #[test]
+    fn test_latex9() {
+        assert_snapshot!(prove("true to P"));
+    }
+
+    #[test]
+    fn test_latex10() {
+        assert_snapshot!(prove("false to P"));
+    }
+
     fn prove(s: &str) -> String {
         // parse
         let (fml, inf) = parse(s).unwrap();

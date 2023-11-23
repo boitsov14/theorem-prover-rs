@@ -1,0 +1,13 @@
+---
+source: src/prover.rs
+expression: "prove(\"false to P\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize $\bot$: Left]{\bot &\vdash P}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash \bot \rightarrow P}
+\end{prooftree}
+\end{document}
+
