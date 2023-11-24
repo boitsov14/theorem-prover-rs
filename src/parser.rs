@@ -646,6 +646,8 @@ mod tests {
         assert!(fml
             .check()
             .is_err_and(|e| { matches!(e, PredicateBddError) }));
+        let (fml, _) = formula("all x ex z all x,y P(x,y,z)").unwrap().into_formula();
+        assert!(fml.check().is_ok());
     }
 
     #[test]
