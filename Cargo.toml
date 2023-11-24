@@ -13,6 +13,7 @@ mimalloc = { version = "0.1.39", default-features = false }
 peg = "0.8.2"
 regex = "1.10.2"
 rustc-hash = "1.1.0"
+thiserror = "1.0.50"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.22"
 
