@@ -1,9 +1,35 @@
 use crate::formula::{Formula, Term};
 use crate::naming::NamingInfo;
 use maplit::{hashmap, hashset};
+use peg::{error, str::LineCol};
 use regex::Regex;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
+
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("Found {lp} left parentheses and {rp} right parentheses.")]
+    ParenthesesError { lp: usize, rp: usize },
+    #[error("
+ | 
+ | {s}
+ | {}^___
+ | 
+ = expected {}", " ".repeat(e.location.column - 1), e.expected)]
+    CoreParseError {
+        s: String,
+        e: error::ParseError<LineCol>,
+    },
+    #[error("The same name of predicates must take the same number of arguments.")]
+    PredicateArityError,
+    #[error("The same name of functions must take the same number of arguments.")]
+    FunctionArityError,
+    #[error("Cannot quantify predicates.")]
+    PredicateBddError,
+    #[error("Cannot quantify functions.")]
+    FunctionBddError,
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PTerm {
@@ -25,37 +51,25 @@ pub enum PFormula {
 pub static P_TRUE: PFormula = PFormula::And(vec![]);
 pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
-pub fn parse(s: &str) -> Option<(Formula, NamingInfo)> {
+pub fn parse(s: &str) -> Result<(Formula, NamingInfo), ParseError> {
+    use ParseError::*;
     let s = s.nfkc().collect::<String>().trim().to_string();
     let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
     if lp != rp {
-        println!("Parentheses error: Found {lp} left parentheses and {rp} right parentheses.");
-        return None;
+        return Err(ParenthesesError { lp, rp });
     }
     let pfml = match parser::formula(&s) {
         Ok(pfml) => pfml,
         Err(e) => {
-            println!("Parser error");
-            println!(" | ");
-            println!(" | {s}");
-            println!(" | {}^___", " ".repeat(e.location.column - 1));
-            println!(" | ");
-            println!(" = expected {}", e.expected);
-            return None;
+            let s = s.into();
+            return Err(CoreParseError { s, e });
         }
     };
     let (fml, inf) = pfml.into_formula();
-    if !fml.check_arity() {
-        println!("Error: Predicates and functions must take the same number of arguments.");
-        return None;
-    }
-    if !fml.check_bdd_var() {
-        println!("Error: Cannot quantify predicates or functions.");
-        return None;
-    }
-    Some((fml, inf))
+    fml.check()?;
+    Ok((fml, inf))
 }
 
 pub fn from_tptp(s: &str) -> String {
@@ -263,122 +277,84 @@ impl PFormula {
 }
 
 impl Term {
-    /// Return the set of all function ids and arity in the term.
-    fn get_fns(&self, fns: &mut HashSet<(usize, usize)>) {
+    fn check(
+        &self,
+        bdd_vars: &HashSet<usize>,
+        fns: &mut HashMap<usize, usize>,
+    ) -> Result<(), ParseError> {
+        use ParseError::*;
         use Term::*;
         match self {
             Var(_) => {}
             Function(id, terms) => {
-                fns.insert((*id, terms.len()));
+                // check the arity of the function
+                if let Some(arity) = fns.get(id) {
+                    if *arity != terms.len() {
+                        return Err(FunctionArityError);
+                    }
+                } else {
+                    fns.insert(*id, terms.len());
+                }
+                // check if the function is quantified
+                if bdd_vars.contains(id) {
+                    return Err(FunctionBddError);
+                }
                 for term in terms {
-                    term.get_fns(fns);
+                    term.check(bdd_vars, fns)?;
                 }
             }
         }
+        Ok(())
     }
 }
 
 impl Formula {
-    /// Check if there is a predicate or a function with different number of arguments.
-    /// If there is, return false.
-    /// This function is mainly for performance improvement for unification.
-    fn check_arity(&self) -> bool {
-        let mut env = hashmap!();
-        for (id, arity) in self.get_preds() {
-            if env.get(&id).is_some() {
-                return false;
-            } else {
-                env.insert(id, arity);
-            }
-        }
-        let mut env = hashmap!();
-        for (id, arity) in self.get_fns() {
-            if env.get(&id).is_some() {
-                return false;
-            } else {
-                env.insert(id, arity);
-            }
-        }
-        true
+    fn check(&self) -> Result<(), ParseError> {
+        self.check_rec(hashset![], &mut hashmap![], &mut hashmap![])
     }
 
-    /// Check if there is a quantified predicate or function.
-    /// If there is, return false.
-    fn check_bdd_var(&self) -> bool {
+    fn check_rec(
+        &self,
+        mut bdd_vars: HashSet<usize>,
+        fns: &mut HashMap<usize, usize>,
+        preds: &mut HashMap<usize, usize>,
+    ) -> Result<(), ParseError> {
         use Formula::*;
-        match self {
-            Predicate(_, _) => true,
-            Not(p) => p.check_bdd_var(),
-            And(l) | Or(l) => l.iter().all(|p| p.check_bdd_var()),
-            Implies(p, q) => p.check_bdd_var() && q.check_bdd_var(),
-            All(vs, p) | Exists(vs, p) => {
-                let vs = vs.iter().cloned().collect();
-                let pred_ids: HashSet<_> = p.get_preds().into_iter().map(|(id, _)| id).collect();
-                if !pred_ids.is_disjoint(&vs) {
-                    return false;
-                }
-                let fn_ids: HashSet<_> = p.get_fns().into_iter().map(|(id, _)| id).collect();
-                if !fn_ids.is_disjoint(&vs) {
-                    return false;
-                }
-                true
-            }
-        }
-    }
-
-    /// Return the set of all function ids and arity in the formula.
-    fn get_fns(&self) -> HashSet<(usize, usize)> {
-        let mut fns = hashset!();
-        self.get_fns_rec(&mut fns);
-        fns
-    }
-
-    fn get_fns_rec(&self, fns: &mut HashSet<(usize, usize)>) {
-        use Formula::*;
-        match self {
-            Predicate(_, terms) => {
-                for term in terms {
-                    term.get_fns(fns);
-                }
-            }
-            And(l) | Or(l) => {
-                for p in l {
-                    p.get_fns_rec(fns);
-                }
-            }
-            Implies(p, q) => {
-                p.get_fns_rec(fns);
-                q.get_fns_rec(fns);
-            }
-            Not(p) | All(_, p) | Exists(_, p) => p.get_fns_rec(fns),
-        }
-    }
-
-    /// Return the set of all predicate ids and arity in the formula.
-    fn get_preds(&self) -> HashSet<(usize, usize)> {
-        let mut preds = hashset!();
-        self.get_preds_rec(&mut preds);
-        preds
-    }
-
-    fn get_preds_rec(&self, preds: &mut HashSet<(usize, usize)>) {
-        use Formula::*;
+        use ParseError::*;
         match self {
             Predicate(id, terms) => {
-                preds.insert((*id, terms.len()));
+                for term in terms {
+                    term.check(&bdd_vars, fns)?;
+                }
+                // check the arity of the predicate
+                if let Some(arity) = preds.get(id) {
+                    if *arity != terms.len() {
+                        return Err(PredicateArityError);
+                    }
+                } else {
+                    preds.insert(*id, terms.len());
+                }
+                // check if the predicate is quantified
+                if bdd_vars.contains(id) {
+                    return Err(PredicateBddError);
+                }
             }
-            Not(p) => p.get_preds_rec(preds),
+            Not(p) => p.check_rec(bdd_vars, fns, preds)?,
             And(l) | Or(l) => {
                 for p in l {
-                    p.get_preds_rec(preds);
+                    p.check_rec(bdd_vars.clone(), fns, preds)?;
                 }
             }
             Implies(p, q) => {
-                p.get_preds_rec(preds);
-                q.get_preds_rec(preds);
+                p.check_rec(bdd_vars.clone(), fns, preds)?;
+                q.check_rec(bdd_vars, fns, preds)?;
             }
-            All(_, p) | Exists(_, p) => p.get_preds_rec(preds),
+            All(vs, p) | Exists(vs, p) => {
+                bdd_vars.extend(vs);
+                p.check_rec(bdd_vars, fns, preds)?;
+            }
         }
+        Ok(())
     }
 
     pub fn universal_quantify(self) -> Self {
@@ -632,27 +608,44 @@ mod tests {
     }
 
     #[test]
-    fn test_check_arity() {
+    fn test_check() {
+        use ParseError::*;
         let (fml, _) = formula("P and P").unwrap().into_formula();
-        assert!(fml.check_arity());
+        assert!(fml.check().is_ok());
         let (fml, _) = formula("P and P(x)").unwrap().into_formula();
-        assert!(!fml.check_arity());
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, PredicateArityError) }));
         let (fml, _) = formula("P(x) and P(x,y)").unwrap().into_formula();
-        assert!(!fml.check_arity());
-        let (fml, _) = formula("P(f(x), f(x))").unwrap().into_formula();
-        assert!(fml.check_arity());
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, PredicateArityError) }));
+        let (fml, _) = formula("P(f(x), f(x)) and P(f(x), f(x))")
+            .unwrap()
+            .into_formula();
+        assert!(fml.check().is_ok());
         let (fml, _) = formula("P(f(x), f(x,y))").unwrap().into_formula();
-        assert!(!fml.check_arity());
-    }
-
-    #[test]
-    fn test_check_bdd_var() {
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, FunctionArityError) }));
+        let (fml, _) = formula("P(f(x)) and P(f(x,y))").unwrap().into_formula();
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, FunctionArityError) }));
         let (fml, _) = formula("all x,y P(f(x,y))").unwrap().into_formula();
-        assert!(fml.check_bdd_var());
-        let (fml, _) = formula("all f all x,y P(f(x,y))").unwrap().into_formula();
-        assert!(!fml.check_bdd_var());
-        let (fml, _) = formula("all P all x,y P(f(x,y))").unwrap().into_formula();
-        assert!(!fml.check_bdd_var());
+        assert!(fml.check().is_ok());
+        let (fml, _) = formula("(all Q,g P(f(Q,g))) and Q and P(g(x))")
+            .unwrap()
+            .into_formula();
+        assert!(fml.check().is_ok());
+        let (fml, _) = formula("all f P(f(x,y))").unwrap().into_formula();
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, FunctionBddError) }));
+        let (fml, _) = formula("all P P(f(x,y))").unwrap().into_formula();
+        assert!(fml
+            .check()
+            .is_err_and(|e| { matches!(e, PredicateBddError) }));
     }
 
     #[test]
@@ -685,7 +678,7 @@ mod tests {
 
     #[test]
     fn test_parse_tptp() {
-        let s = r#"
+        let s = "
 % Comments : 
 %--------------------------------------------------------------------------
 fof(axiom1,axiom,(
@@ -699,7 +692,7 @@ fof(con,conjecture,(
 )).
 
 %--------------------------------------------------------------------------
-"#;
+";
         assert_eq!(
             from_tptp(s),
             "((s)) -> (((( ~(( t => r) ) => p) )) -> ((( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) )))"

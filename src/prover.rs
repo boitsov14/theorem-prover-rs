@@ -434,9 +434,7 @@ pub fn example() -> Result<()> {
     // let s = "true to P";
 
     // parse
-    let Some((fml, inf)) = parse(s) else {
-        return Ok(());
-    };
+    let (fml, inf) = parse(s).unwrap();
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&inf));
 
