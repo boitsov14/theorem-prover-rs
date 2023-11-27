@@ -205,31 +205,28 @@ impl<'a> Node<'a> {
             subproofs: Vec::with_capacity(2),
         }
     }
+}
 
-    fn prove(&mut self, seqs: &mut Vec<(Sequent<'a>, bool)>) -> ProofState {
-        use ProofState::*;
-        let (seq, is_proved) = seqs.pop().unwrap();
-        if is_proved {
-            self.subproofs.push(ProofTree::Leaf(Provable));
-            Provable
-        } else if let Some((fml, seq_type)) = seq.get_fml() {
-            let len = seq.apply_tactic(fml, seq_type, seqs);
-            let tactic = Tactic::new(fml, seq_type);
-            let mut node = Node::new(tactic);
-            let mut result = Provable;
-            for _ in 0..len {
-                let state = node.prove(seqs);
-                if matches!(state, UnProvable) {
-                    // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
-                    result = UnProvable;
-                }
+fn prove<'a>(seqs: &mut Vec<(Sequent<'a>, bool)>) -> (ProofTree<'a>, ProofState) {
+    use ProofState::*;
+    let (seq, is_proved) = seqs.pop().unwrap();
+    if is_proved {
+        (ProofTree::Leaf(Provable), Provable)
+    } else if let Some((fml, seq_type)) = seq.get_fml() {
+        let len = seq.apply_tactic(fml, seq_type, seqs);
+        let mut node = Node::new(Tactic::new(fml, seq_type));
+        let mut result = Provable;
+        for _ in 0..len {
+            let (tree, state) = prove(seqs);
+            node.subproofs.push(tree);
+            if matches!(state, UnProvable) {
+                // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
+                result = UnProvable;
             }
-            self.subproofs.push(ProofTree::Node(node));
-            result
-        } else {
-            self.subproofs.push(ProofTree::Leaf(UnProvable));
-            UnProvable
         }
+        (ProofTree::Node(node), result)
+    } else {
+        (ProofTree::Leaf(UnProvable), UnProvable)
     }
 }
 
@@ -388,17 +385,13 @@ impl Formula {
         vec![(seq, false)]
     }
 
-    fn prove(&self) -> (ProofState, ProofTree) {
-        let dummy_tactic = Tactic::new(&self, SequentType::Suc);
-        let mut node = Node::new(dummy_tactic);
+    fn prove(&self) -> (ProofTree, ProofState) {
         let mut seqs = self.to_seqs();
-        let result = node.prove(&mut seqs);
-        let proof = node.subproofs.remove(0);
-        (result, proof)
+        prove(&mut seqs)
     }
 
     pub fn assert_provable(&self) {
-        let (result, _) = self.prove();
+        let (_, result) = self.prove();
         assert!(matches!(result, ProofState::Provable));
     }
 }
@@ -440,7 +433,7 @@ pub fn example() -> Result<()> {
 
     // prove
     let start_time = Instant::now();
-    let (result, proof) = fml.prove();
+    let (proof, result) = fml.prove();
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
@@ -482,7 +475,7 @@ pub fn example_iltp_prop() {
         let (fml, inf) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&inf));
         let start_time = Instant::now();
-        let (result, _) = fml.prove();
+        let (_, result) = fml.prove();
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -551,7 +544,7 @@ mod tests {
         let (fml, inf) = parse(s).unwrap();
         let fml = fml.universal_quantify();
         // prove
-        let (_, proof) = fml.prove();
+        let (proof, _) = fml.prove();
         // latex
         let mut w = BufWriter::new(vec![]);
         proof.write(&fml, &inf, OutputType::Latex, &mut w).unwrap();
