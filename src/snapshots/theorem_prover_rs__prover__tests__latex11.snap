@@ -1,0 +1,80 @@
+---
+source: src/prover.rs
+expression: "prove(\"(o11 ∨ o12) → ((o21 ∨ o22) → ((o31 ∨ o32) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o21 ∧ o31) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o22 ∧ o32))))\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{o11, o31, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o11, o31, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o11, o31, o21 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o11, o31, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o11, o31, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o11, o31, o22 &\vdash o21, o32, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o11, o31, o22 &\vdash o21, o32, o21 \land o31, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o11, o31, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o11, o31, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o11, o31, o22 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o11, o21 \lor o22, o31 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o11, o32, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o11, o32, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o11, o32, o21 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o11, o32, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o11, o32, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o11, o32, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o11, o32, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o11, o32, o22 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o11, o21 \lor o22, o32 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o31 \lor o32, o21 \lor o22, o11 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o12, o31, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o12 \land o32, o21}
+\infer{0}[\scriptsize Axiom]{o12, o31, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o21 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o31, o21 &\vdash o11, o11 \land o31, o32, o12 \land o22, o12 \land o32, o21}
+\infer{0}[\scriptsize Axiom]{o12, o31, o21 &\vdash o11, o11 \land o31, o32, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o21 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o12, o31, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o21 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o11, o11 \land o31, o32, o21, o12 \land o32, o12}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o11, o11 \land o31, o32, o21, o12 \land o32, o22}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o11, o11 \land o31, o32, o12 \land o22, o12 \land o32, o21}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o11, o11 \land o31, o32, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o21, o32, o21 \land o31, o11, o12 \land o32, o12}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o21, o32, o21 \land o31, o11, o12 \land o32, o22}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o21, o32, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o12, o31, o22 &\vdash o21, o32, o21 \land o31, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o12, o31, o22 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o12, o21 \lor o22, o31 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o12, o32, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o12 \land o32, o21}
+\infer{0}[\scriptsize Axiom]{o12, o32, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o31, o12}
+\infer{0}[\scriptsize Axiom]{o12, o32, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o31, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o21 &\vdash o11, o11 \land o31, o22, o12 \land o22, o12 \land o32, o31}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o21 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o32, o21 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o12, o32, o21 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o21 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{0}[\scriptsize Axiom]{o12, o32, o22 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o32, o22 &\vdash o11, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o11}
+\infer{0}[\scriptsize Axiom]{o12, o32, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22}
+\infer{0}[\scriptsize Axiom]{o12, o32, o22 &\vdash o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o32}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o22 &\vdash o22 \land o32, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o21}
+\infer{2}[\scriptsize $\land$: Right]{o12, o32, o22 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o12, o21 \lor o22, o32 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o31 \lor o32, o21 \lor o22, o12 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{2}[\scriptsize $\lor$: Left]{o11 \lor o12, o21 \lor o22, o31 \lor o32 &\vdash o11 \land o21, o11 \land o31, o21 \land o31, o12 \land o22, o12 \land o32, o22 \land o32}
+\infer{1}[\scriptsize $\lor$: Right]{o11 \lor o12, o21 \lor o22, o31 \lor o32 &\vdash (o11 \land o21) \lor (o11 \land o31) \lor (o21 \land o31) \lor (o12 \land o22) \lor (o12 \land o32) \lor (o22 \land o32)}
+\infer{1}[\scriptsize $\rightarrow$: Right]{o11 \lor o12, o21 \lor o22 &\vdash (o31 \lor o32) \rightarrow ((o11 \land o21) \lor (o11 \land o31) \lor (o21 \land o31) \lor (o12 \land o22) \lor (o12 \land o32) \lor (o22 \land o32))}
+\infer{1}[\scriptsize $\rightarrow$: Right]{o11 \lor o12 &\vdash (o21 \lor o22) \rightarrow ((o31 \lor o32) \rightarrow ((o11 \land o21) \lor (o11 \land o31) \lor (o21 \land o31) \lor (o12 \land o22) \lor (o12 \land o32) \lor (o22 \land o32)))}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash (o11 \lor o12) \rightarrow ((o21 \lor o22) \rightarrow ((o31 \lor o32) \rightarrow ((o11 \land o21) \lor (o11 \land o31) \lor (o21 \land o31) \lor (o12 \land o22) \lor (o12 \land o32) \lor (o22 \land o32))))}
+\end{prooftree}
+\end{document}
+

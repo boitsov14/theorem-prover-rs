@@ -1,0 +1,142 @@
+---
+source: src/prover.rs
+expression: "prove(\"((a1 ↔ a2) ↔ a3) ↔ (a3 ↔ (a2 ↔ a1))\")"
+---
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage{ebproof}
+\begin{document}
+\begin{prooftree}
+\infer{0}[\scriptsize Axiom]{a3 &\vdash a3, a1 \leftrightarrow a2, a2 \leftrightarrow a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a3, a1 \leftrightarrow a2, a3 \rightarrow (a2 \leftrightarrow a1)}
+\infer{0}[\scriptsize Axiom]{a1 &\vdash a3, a1, a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a3, a1, a2, a1 \rightarrow a2}
+\infer{0}[\scriptsize Axiom]{a2 &\vdash a3, a1, a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a3, a1, a2, a2 \rightarrow a1}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash a3, a1 \leftrightarrow a2, a2, a1}
+\infer{0}[\scriptsize Axiom]{a2 &\vdash a3, a1 \leftrightarrow a2, a2}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a1 \rightarrow a2 &\vdash a3, a1 \leftrightarrow a2, a2}
+\infer{0}[\scriptsize Axiom]{a1 &\vdash a3, a1 \leftrightarrow a2, a1}
+\infer{0}[\scriptsize Axiom]{a1, a2 &\vdash a3, a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a1, a2 &\vdash a3, a1 \rightarrow a2}
+\infer{0}[\scriptsize Axiom]{a1, a2 &\vdash a3, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a1, a2 &\vdash a3, a2 \rightarrow a1}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a1, a2 &\vdash a3, a1 \leftrightarrow a2}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a1 \rightarrow a2, a1 &\vdash a3, a1 \leftrightarrow a2}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a2 \rightarrow a1, a1 \rightarrow a2 &\vdash a3, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a2 \leftrightarrow a1 &\vdash a3, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a3, a1 \leftrightarrow a2, (a2 \leftrightarrow a1) \rightarrow a3}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1 \leftrightarrow a2, a3}
+\infer{0}[\scriptsize Axiom]{a1 \leftrightarrow a2 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1 \leftrightarrow a2}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3 \rightarrow (a1 \leftrightarrow a2) &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1 \leftrightarrow a2}
+\infer{0}[\scriptsize Axiom]{a3 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a3}
+\infer{0}[\scriptsize Axiom]{a3, a2 &\vdash a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a3, a1 &\vdash a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3 &\vdash a2, a1, a2 \leftrightarrow a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a3 \rightarrow (a2 \leftrightarrow a1)}
+\infer{0}[\scriptsize Axiom]{a3, a2 \leftrightarrow a1 &\vdash a2, a1, a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, (a2 \leftrightarrow a1) \rightarrow a3}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1, a2}
+\infer{0}[\scriptsize Axiom]{a3, a1 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3, a2 \rightarrow a1 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a1}
+\infer{0}[\scriptsize Axiom]{a3, a2 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1), a2}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1 &\vdash a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1 &\vdash a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3, a2, a1 &\vdash a2 \leftrightarrow a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a3 \rightarrow (a2 \leftrightarrow a1)}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1, a2 \leftrightarrow a1 &\vdash a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash (a2 \leftrightarrow a1) \rightarrow a3}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3, a2, a1 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3, a2 \rightarrow a1, a2 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3, a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a3, a1 \leftrightarrow a2 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3 \rightarrow (a1 \leftrightarrow a2), a3 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{2}[\scriptsize $\rightarrow$: Left]{(a1 \leftrightarrow a2) \rightarrow a3, a3 \rightarrow (a1 \leftrightarrow a2) &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{(a1 \leftrightarrow a2) \leftrightarrow a3 &\vdash a3 \leftrightarrow (a2 \leftrightarrow a1)}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash ((a1 \leftrightarrow a2) \leftrightarrow a3) \rightarrow (a3 \leftrightarrow (a2 \leftrightarrow a1))}
+\infer{0}[\scriptsize Axiom]{a2 &\vdash a2, a3, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2, a3, a1, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a1 &\vdash a2, a3, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2, a3, a1, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash a2 \leftrightarrow a1, a3, a1, a2}
+\infer{0}[\scriptsize Axiom]{a1 &\vdash a2 \leftrightarrow a1, a3, a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a2 \rightarrow a1 &\vdash a2 \leftrightarrow a1, a3, a1}
+\infer{0}[\scriptsize Axiom]{a2 &\vdash a2 \leftrightarrow a1, a3, a2}
+\infer{0}[\scriptsize Axiom]{a2, a1 &\vdash a3, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1 &\vdash a3, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a2, a1 &\vdash a3, a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1 &\vdash a3, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a2, a1 &\vdash a2 \leftrightarrow a1, a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a2 \rightarrow a1, a2 &\vdash a2 \leftrightarrow a1, a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a2 \leftrightarrow a1, a3}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a1 \leftrightarrow a2 &\vdash a2 \leftrightarrow a1, a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2 \leftrightarrow a1, a3, (a1 \leftrightarrow a2) \rightarrow a3}
+\infer{0}[\scriptsize Axiom]{a3 &\vdash a2 \leftrightarrow a1, a3, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2 \leftrightarrow a1, a3, a3 \rightarrow (a1 \leftrightarrow a2)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a3, a2 \leftrightarrow a1}
+\infer{0}[\scriptsize Axiom]{a3 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{(a2 \leftrightarrow a1) \rightarrow a3 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a3}
+\infer{0}[\scriptsize Axiom]{a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a2, a3, a1, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a2, a3, a1, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a2, a2 \leftrightarrow a1, a1, a3}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a1 \leftrightarrow a2 &\vdash a2, a2 \leftrightarrow a1, a1, a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2, a2 \leftrightarrow a1, a1, (a1 \leftrightarrow a2) \rightarrow a3}
+\infer{0}[\scriptsize Axiom]{a3, a2 &\vdash a2, a1 \leftrightarrow a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1 \leftrightarrow a2, a1, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a3, a1 &\vdash a2, a1 \leftrightarrow a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1 \leftrightarrow a2, a1, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3 &\vdash a2, a2 \leftrightarrow a1, a1, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash a2, a2 \leftrightarrow a1, a1, a3 \rightarrow (a1 \leftrightarrow a2)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1, a1, a2}
+\infer{0}[\scriptsize Axiom]{a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1, a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a2 \rightarrow a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1, a1}
+\infer{0}[\scriptsize Axiom]{a2 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1, a2}
+\infer{0}[\scriptsize Axiom]{a2, a1, a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a3, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a2, a1, a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a3, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a2, a1, a1 \rightarrow a2, a2 \rightarrow a1 &\vdash a2 \leftrightarrow a1, a3}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a2, a1, a1 \leftrightarrow a2 &\vdash a2 \leftrightarrow a1, a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1 &\vdash a2 \leftrightarrow a1, (a1 \leftrightarrow a2) \rightarrow a3}
+\infer{0}[\scriptsize Axiom]{a2, a1, a3 &\vdash a1 \leftrightarrow a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1, a3 &\vdash a1 \leftrightarrow a2, a2 \rightarrow a1}
+\infer{0}[\scriptsize Axiom]{a2, a1, a3 &\vdash a1 \leftrightarrow a2, a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1, a3 &\vdash a1 \leftrightarrow a2, a1 \rightarrow a2}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a2, a1, a3 &\vdash a2 \leftrightarrow a1, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a2, a1 &\vdash a2 \leftrightarrow a1, a3 \rightarrow (a1 \leftrightarrow a2)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a2, a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a2 \rightarrow a1, a2 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a1 \rightarrow a2, a2 \rightarrow a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2 \leftrightarrow a1}
+\infer{0}[\scriptsize Axiom]{a3, a1 \leftrightarrow a2 &\vdash a2, a1, a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, (a1 \leftrightarrow a2) \rightarrow a3}
+\infer{0}[\scriptsize Axiom]{a3, a1 &\vdash a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a1 \rightarrow a2}
+\infer{0}[\scriptsize Axiom]{a3, a2 &\vdash a2, a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a2 \rightarrow a1}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3 &\vdash a2, a1, a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3 &\vdash a2, a1, a3 \rightarrow (a1 \leftrightarrow a2)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a1, a2}
+\infer{0}[\scriptsize Axiom]{a3, a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a1}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3, a2 \rightarrow a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a1}
+\infer{0}[\scriptsize Axiom]{a3, a2 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3, a2}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1, a1 \leftrightarrow a2 &\vdash a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash (a1 \leftrightarrow a2) \rightarrow a3}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1 &\vdash a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a1 \rightarrow a2}
+\infer{0}[\scriptsize Axiom]{a3, a2, a1 &\vdash a1}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a2 \rightarrow a1}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3, a2, a1 &\vdash a1 \leftrightarrow a2}
+\infer{1}[\scriptsize $\rightarrow$: Right]{a3, a2, a1 &\vdash a3 \rightarrow (a1 \leftrightarrow a2)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{a3, a2, a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3, a2 \rightarrow a1, a2 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a1 \rightarrow a2, a2 \rightarrow a1, a3 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{(a2 \leftrightarrow a1) \rightarrow a3, a2 \rightarrow a1, a1 \rightarrow a2 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{(a2 \leftrightarrow a1) \rightarrow a3, a2 \leftrightarrow a1 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{2}[\scriptsize $\rightarrow$: Left]{a3 \rightarrow (a2 \leftrightarrow a1), (a2 \leftrightarrow a1) \rightarrow a3 &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{1}[\scriptsize $\leftrightarrow$: Left]{a3 \leftrightarrow (a2 \leftrightarrow a1) &\vdash (a1 \leftrightarrow a2) \leftrightarrow a3}
+\infer{1}[\scriptsize $\rightarrow$: Right]{ &\vdash (a3 \leftrightarrow (a2 \leftrightarrow a1)) \rightarrow ((a1 \leftrightarrow a2) \leftrightarrow a3)}
+\infer{2}[\scriptsize $\leftrightarrow$: Right]{ &\vdash ((a1 \leftrightarrow a2) \leftrightarrow a3) \leftrightarrow (a3 \leftrightarrow (a2 \leftrightarrow a1))}
+\end{prooftree}
+\end{document}
+
