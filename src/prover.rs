@@ -4,19 +4,21 @@ use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::repeat_n;
 use rustc_hash::FxHasher;
+use std::cell::OnceCell;
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
+use typed_arena::Arena;
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Sequent of formulae
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Sequent<'a> {
     pub ant: FxIndexSet<&'a Formula>,
     pub suc: FxIndexSet<&'a Formula>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum SequentType {
     Ant,
     Suc,
@@ -24,8 +26,9 @@ enum SequentType {
 
 #[derive(Debug)]
 enum ProofTree<'a> {
-    Leaf(ProofState),
+    Proved,
     Node(Node<'a>),
+    Unresolved(&'a OnceCell<ProofTree<'a>>),
 }
 
 #[derive(Debug)]
@@ -34,7 +37,7 @@ struct Node<'a> {
     subproofs: Vec<ProofTree<'a>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Tactic<'a> {
     fml: &'a Formula,
     seq_type: SequentType,
@@ -52,7 +55,7 @@ enum ProofState {
     UnProvable,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum OutputType {
     Console,
     Latex,
@@ -207,26 +210,33 @@ impl<'a> Node<'a> {
     }
 }
 
-fn prove<'a>(seqs: &mut Vec<(Sequent<'a>, bool)>) -> (ProofTree<'a>, ProofState) {
-    use ProofState::*;
+fn prove<'a>(
+    seqs: &mut Vec<(Sequent<'a>, bool)>,
+    unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
+    arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+) -> (ProofTree<'a>, bool) {
     let (seq, is_proved) = seqs.pop().unwrap();
     if is_proved {
-        (ProofTree::Leaf(Provable), Provable)
+        (ProofTree::Proved, true)
     } else if let Some((fml, seq_type)) = seq.get_fml() {
         let len = seq.apply_tactic(fml, seq_type, seqs);
         let mut node = Node::new(Tactic::new(fml, seq_type));
-        let mut result = Provable;
+        let mut is_proved = true;
+        // TODO: 2023/11/30 for文で書くか，iterを使うか
         for _ in 0..len {
-            let (tree, state) = prove(seqs);
+            let (tree, is_proved0) = prove(seqs, unresolved, arena);
             node.subproofs.push(tree);
-            if matches!(state, UnProvable) {
+            if !is_proved0 {
                 // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
-                result = UnProvable;
+                is_proved = false;
             }
         }
-        (ProofTree::Node(node), result)
+        (ProofTree::Node(node), is_proved)
     } else {
-        (ProofTree::Leaf(UnProvable), UnProvable)
+        let cell = arena.alloc(OnceCell::new());
+        let tree = ProofTree::Unresolved(cell);
+        unresolved.push((cell, seq));
+        (tree, false)
     }
 }
 
@@ -246,34 +256,30 @@ impl<'a> ProofTree<'a> {
         }
         let (seq, _) = seqs.pop().unwrap();
         match self {
-            ProofTree::Leaf(state) => {
-                use ProofState::*;
-                match state {
-                    Provable => {
-                        assert!(!seq.ant.is_disjoint(&seq.suc));
-                        match output {
-                            Console => {
-                                writeln!(w, "Axiom")?;
-                            }
-                            Latex => {
-                                writeln!(
-                                    w,
-                                    r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                                    seq.display(inf).to_latex()
-                                )?;
-                            }
-                        }
+            ProofTree::Proved => {
+                assert!(!seq.ant.is_disjoint(&seq.suc));
+                match output {
+                    Console => {
+                        writeln!(w, "Axiom")?;
                     }
-                    UnProvable => match output {
-                        Console => {
-                            writeln!(w, "UnProvable")?;
-                        }
-                        Latex => {
-                            writeln!(w, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
-                        }
-                    },
+                    Latex => {
+                        writeln!(
+                            w,
+                            r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                            seq.display(inf).to_latex()
+                        )?;
+                    }
                 }
             }
+            // TODO: 2023/12/02 Unresolvedがあとから解決された場合の処理
+            ProofTree::Unresolved(_) => match output {
+                Console => {
+                    writeln!(w, "UnProvable")?;
+                }
+                Latex => {
+                    writeln!(w, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
+                }
+            },
             ProofTree::Node(node) => {
                 let Tactic { fml, seq_type } = &node.tactic;
                 let len = seq.clone().apply_tactic(fml, *seq_type, seqs);
@@ -299,7 +305,7 @@ impl<'a> ProofTree<'a> {
 
     fn write(
         &self,
-        fml: &Formula,
+        fml: &'a Formula,
         inf: &NamingInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
@@ -385,14 +391,32 @@ impl Formula {
         vec![(seq, false)]
     }
 
-    fn prove(&self) -> (ProofTree, ProofState) {
+    fn prove<'a>(&'a self, arena: &'a Arena<OnceCell<ProofTree<'a>>>) -> (ProofTree, bool) {
         let mut seqs = self.to_seqs();
-        prove(&mut seqs)
+        let mut seqs_waiting = vec![];
+        let (tree, is_proved) = prove(&mut seqs, &mut seqs_waiting, &arena);
+        // println!("------");
+        // println!("{is_proved}");
+        // println!("{}", seqs.len());
+        // println!("{:#?}", tree);
+        // println!("------");
+        // for (cell, seq) in seqs_waiting {
+        //     println!("{:#?}", seq);
+        //     let tactic = Tactic::new(self, SequentType::Ant);
+        //     let node = Node::new(tactic);
+        //     let tree = ProofTree::Node(node);
+        //     cell.set(tree).unwrap();
+        // }
+        // println!("------");
+        // println!("{:#?}", tree);
+        // println!("------");
+        (tree, is_proved)
     }
 
     pub fn assert_provable(&self) {
-        let (_, result) = self.prove();
-        assert!(matches!(result, ProofState::Provable));
+        let arena = Arena::new();
+        let (_, is_proved) = self.prove(&arena);
+        assert!(is_proved);
     }
 }
 
@@ -408,7 +432,7 @@ pub fn example() -> Result<()> {
     // 233ms vs 1405ms
     // let s = "((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔j))))))))))";
     // 817ms vs 2418ms
-    let s = "(((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔k)))))))))))";
+    // let s = "(((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔k)))))))))))";
     // 2,965ms vs out of memory
     // let s = "((((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔l)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔(k⇔l))))))))))))";
     // 10,567ms
@@ -432,13 +456,14 @@ pub fn example() -> Result<()> {
     println!("{}", fml.display(&inf));
 
     // prove
+    let arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, result) = fml.prove();
+    let (proof, is_proved) = fml.prove(&arena);
     let end_time = Instant::now();
-    println!(">> {result:?}");
+    println!(">> {is_proved:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-    assert!(matches!(result, ProofState::Provable));
+    assert!(is_proved);
 
     // print console
     let mut w = BufWriter::new(vec![]);
@@ -474,12 +499,13 @@ pub fn example_iltp_prop() {
         let s = fs::read_to_string(&file).unwrap();
         let (fml, inf) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&inf));
+        let arena = Arena::new();
         let start_time = Instant::now();
-        let (_, result) = fml.prove();
+        let (_, is_proved) = fml.prove(&arena);
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-        assert!(matches!(result, ProofState::Provable));
+        assert!(is_proved);
     }
 }
 
@@ -539,12 +565,23 @@ mod tests {
         assert_snapshot!(prove("false to P"));
     }
 
+    #[test]
+    fn test_latex11() {
+        assert_snapshot!(prove("(o11 ∨ o12) → ((o21 ∨ o22) → ((o31 ∨ o32) → ((o11 ∧ o21) ∨ (o11 ∧ o31) ∨ (o21 ∧ o31) ∨ (o12 ∧ o22) ∨ (o12 ∧ o32) ∨ (o22 ∧ o32))))"));
+    }
+
+    #[test]
+    fn test_latex12() {
+        assert_snapshot!(prove("((a1 ↔ a2) ↔ a3) ↔ (a3 ↔ (a2 ↔ a1))"));
+    }
+
     fn prove(s: &str) -> String {
         // parse
         let (fml, inf) = parse(s).unwrap();
         let fml = fml.universal_quantify();
         // prove
-        let (proof, _) = fml.prove();
+        let arena = Arena::new();
+        let (proof, _) = fml.prove(&arena);
         // latex
         let mut w = BufWriter::new(vec![]);
         proof.write(&fml, &inf, OutputType::Latex, &mut w).unwrap();
