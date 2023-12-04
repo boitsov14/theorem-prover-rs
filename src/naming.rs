@@ -194,6 +194,7 @@ impl Latex for FormulaDisplay<'_> {
             .replace('↔', r"\leftrightarrow")
             .replace('∀', r"\forall ")
             .replace('∃', r"\exists ")
+            .replace('_', r"\_")
     }
 }
 
