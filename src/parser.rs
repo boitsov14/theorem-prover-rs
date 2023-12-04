@@ -1,5 +1,6 @@
 use crate::formula::{Formula, Term};
 use crate::naming::NamingInfo;
+use indexmap::IndexSet;
 use maplit::{hashmap, hashset};
 use peg::{error, str::LineCol};
 use regex::Regex;
@@ -37,15 +38,15 @@ pub enum PTerm {
     Function(String, Vec<PTerm>),
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PFormula {
     Predicate(String, Vec<PTerm>),
     Not(Box<PFormula>),
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
     Implies(Box<PFormula>, Box<PFormula>),
-    All(Vec<String>, Box<PFormula>),
-    Exists(Vec<String>, Box<PFormula>),
+    All(IndexSet<String>, Box<PFormula>),
+    Exists(IndexSet<String>, Box<PFormula>),
 }
 
 pub static P_TRUE: PFormula = PFormula::And(vec![]);
@@ -176,7 +177,7 @@ peg::parser!( grammar parser() for str {
         --
         not() _ p:@ { Not(Box::new(p)) }
         all() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs: Vec<_> = vs.iter().map(|s| s.to_string()).collect();
+            let mut vs = vs.iter().map(|s| s.to_string()).collect::<IndexSet<_>>();
             match p {
                 All(ws, q) => {
                     vs.extend(ws);
@@ -186,7 +187,7 @@ peg::parser!( grammar parser() for str {
             }
         }
         exists() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs: Vec<_> = vs.iter().map(|s| s.to_string()).collect();
+            let mut vs = vs.iter().map(|s| s.to_string()).collect::<IndexSet<_>>();
             match p {
                 Exists(ws, q) => {
                     vs.extend(ws);
@@ -376,6 +377,7 @@ impl Formula {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indexmap::indexset;
     use parser::{formula, term};
 
     #[test]
@@ -462,14 +464,14 @@ mod tests {
         assert_eq!(
             formula("all x P(x)").unwrap(),
             All(
-                vec!["x".into()],
+                indexset!["x".into()],
                 Box::new(Predicate("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("all x, y P(x, y)").unwrap(),
             All(
-                vec!["x".into(), "y".into()],
+                indexset!["x".into(), "y".into()],
                 Box::new(Predicate(
                     "P".into(),
                     vec![Var("x".into()), Var("y".into())]
@@ -479,14 +481,14 @@ mod tests {
         assert_eq!(
             formula("ex x P(x)").unwrap(),
             Exists(
-                vec!["x".into()],
+                indexset!["x".into()],
                 Box::new(Predicate("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("ex x, y P(x, y)").unwrap(),
             Exists(
-                vec!["x".into(), "y".into()],
+                indexset!["x".into(), "y".into()],
                 Box::new(Predicate(
                     "P".into(),
                     vec![Var("x".into()), Var("y".into())]
@@ -569,10 +571,10 @@ mod tests {
         assert_eq!(
             fml,
             All(
-                vec!["x".into(), "y".into(), "z".into(), "u".into()],
+                indexset!["x".into(), "y".into(), "z".into(), "u".into()],
                 Box::new(Exists(
-                    vec!["v".into(), "w".into()],
-                    Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
+                    indexset!["v".into(), "w".into()],
+                    Box::new(All(indexset!["h".into()], Box::new(formula("P").unwrap())))
                 ))
             )
         );
