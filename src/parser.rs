@@ -610,46 +610,17 @@ mod tests {
     #[test]
     fn test_check() {
         use ParseError::*;
-        let (fml, _) = formula("P and P").unwrap().into_formula();
-        assert!(fml.check().is_ok());
-        let (fml, _) = formula("P and P(x)").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, PredicateArityError) }));
-        let (fml, _) = formula("P(x) and P(x,y)").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, PredicateArityError) }));
-        let (fml, _) = formula("P(f(x), f(x)) and P(f(x), f(x))")
-            .unwrap()
-            .into_formula();
-        assert!(fml.check().is_ok());
-        let (fml, _) = formula("P(f(x), f(x,y))").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, FunctionArityError) }));
-        let (fml, _) = formula("P(f(x)) and P(f(x,y))").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, FunctionArityError) }));
-        let (fml, _) = formula("all x,y P(f(x,y))").unwrap().into_formula();
-        assert!(fml.check().is_ok());
-        let (fml, _) = formula("(all Q,g P(f(Q,g))) and Q and P(g(x))")
-            .unwrap()
-            .into_formula();
-        assert!(fml.check().is_ok());
-        let (fml, _) = formula("all f P(f(x,y))").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, FunctionBddError) }));
-        let (fml, _) = formula("all P P(f(x,y))").unwrap().into_formula();
-        assert!(fml
-            .check()
-            .is_err_and(|e| { matches!(e, PredicateBddError) }));
-        let (fml, _) = formula("all x ex z all x,y P(x,y,z)")
-            .unwrap()
-            .into_formula();
-        assert!(fml.check().is_ok());
+        assert!(parse("P and P").is_ok());
+        assert!(parse("P and P(x)").is_err_and(|e| { matches!(e, PredicateArityError) }));
+        assert!(parse("P(x) and P(x,y)").is_err_and(|e| { matches!(e, PredicateArityError) }));
+        assert!(parse("P(f(x), f(x)) and P(f(x), f(x))").is_ok());
+        assert!(parse("P(f(x), f(x,y))").is_err_and(|e| { matches!(e, FunctionArityError) }));
+        assert!(parse("P(f(x)) and P(f(x,y))").is_err_and(|e| { matches!(e, FunctionArityError) }));
+        assert!(parse("all x,y P(f(x,y))").is_ok());
+        assert!(parse("(all Q,g P(f(Q,g))) and Q and P(g(x))").is_ok());
+        assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, FunctionBddError) }));
+        assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, PredicateBddError) }));
+        assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
     }
 
     #[test]
