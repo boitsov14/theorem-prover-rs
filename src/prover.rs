@@ -27,26 +27,17 @@ enum SequentType {
 #[derive(Debug)]
 enum ProofTree<'a> {
     Proved,
-    Node(Node<'a>),
+    Node {
+        tactic: Tactic<'a>,
+        subproofs: Vec<ProofTree<'a>>,
+    },
     Unresolved(&'a OnceCell<ProofTree<'a>>),
-}
-
-#[derive(Debug)]
-struct Node<'a> {
-    tactic: Tactic<'a>,
-    subproofs: Vec<ProofTree<'a>>,
 }
 
 #[derive(Debug)]
 struct Tactic<'a> {
     fml: &'a Formula,
     seq_type: SequentType,
-}
-
-impl<'a> Tactic<'a> {
-    fn new(fml: &'a Formula, seq_type: SequentType) -> Self {
-        Self { fml, seq_type }
-    }
 }
 
 #[derive(Debug)]
@@ -201,40 +192,33 @@ impl<'a> Sequent<'a> {
     }
 }
 
-impl<'a> Node<'a> {
-    fn new(tactic: Tactic<'a>) -> Self {
-        Self {
-            tactic,
-            subproofs: Vec::with_capacity(2),
-        }
-    }
-}
-
 fn prove<'a>(
     seqs: &mut Vec<(Sequent<'a>, bool)>,
     unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
     arena: &'a Arena<OnceCell<ProofTree<'a>>>,
 ) -> (ProofTree<'a>, bool) {
+    use ProofTree::*;
     let (seq, is_proved) = seqs.pop().unwrap();
     if is_proved {
-        (ProofTree::Proved, true)
+        (Proved, true)
     } else if let Some((fml, seq_type)) = seq.get_fml() {
         let len = seq.apply_tactic(fml, seq_type, seqs);
-        let mut node = Node::new(Tactic::new(fml, seq_type));
+        let mut subproofs = Vec::with_capacity(len);
         let mut is_proved = true;
         // TODO: 2023/11/30 for文で書くか，iterを使うか
         for _ in 0..len {
             let (tree, is_proved0) = prove(seqs, unresolved, arena);
-            node.subproofs.push(tree);
+            subproofs.push(tree);
             if !is_proved0 {
                 // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
                 is_proved = false;
             }
         }
-        (ProofTree::Node(node), is_proved)
+        let tactic = Tactic { fml, seq_type };
+        (Node { tactic, subproofs }, is_proved)
     } else {
         let cell = arena.alloc(OnceCell::new());
-        let tree = ProofTree::Unresolved(cell);
+        let tree = Unresolved(cell);
         unresolved.push((cell, seq));
         (tree, false)
     }
@@ -249,6 +233,7 @@ impl<'a> ProofTree<'a> {
         w: &mut BufWriter<impl Write>,
     ) -> Result<()> {
         use OutputType::*;
+        use ProofTree::*;
         if matches!(output, Console) {
             for (seq, _) in seqs.iter().rev() {
                 writeln!(w, "{}", &seq.display(inf))?;
@@ -256,7 +241,7 @@ impl<'a> ProofTree<'a> {
         }
         let (seq, _) = seqs.pop().unwrap();
         match self {
-            ProofTree::Proved => {
+            Proved => {
                 assert!(!seq.ant.is_disjoint(&seq.suc));
                 match output {
                     Console => {
@@ -272,7 +257,7 @@ impl<'a> ProofTree<'a> {
                 }
             }
             // TODO: 2023/12/02 Unresolvedがあとから解決された場合の処理
-            ProofTree::Unresolved(_) => match output {
+            Unresolved(_) => match output {
                 Console => {
                     writeln!(w, "UnProvable")?;
                 }
@@ -280,15 +265,15 @@ impl<'a> ProofTree<'a> {
                     writeln!(w, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
                 }
             },
-            ProofTree::Node(node) => {
-                let Tactic { fml, seq_type } = &node.tactic;
+            Node { tactic, subproofs } => {
+                let Tactic { fml, seq_type } = tactic;
                 let len = seq.clone().apply_tactic(fml, *seq_type, seqs);
-                assert_eq!(len, node.subproofs.len());
+                assert_eq!(len, subproofs.len());
                 let label = get_label(fml, seq_type, output);
                 if matches!(output, Console) {
                     writeln!(w, "{label}")?;
                 }
-                for proof in &node.subproofs {
+                for proof in subproofs {
                     proof.write_rec(seqs, inf, output, w)?;
                 }
                 if matches!(output, Latex) {
@@ -402,9 +387,14 @@ impl Formula {
         // println!("------");
         // for (cell, seq) in seqs_waiting {
         //     println!("{:#?}", seq);
-        //     let tactic = Tactic::new(self, SequentType::Ant);
-        //     let node = Node::new(tactic);
-        //     let tree = ProofTree::Node(node);
+        //     let tactic = Tactic {
+        //         fml: self,
+        //         seq_type: SequentType::Ant,
+        //     };
+        //     let tree = ProofTree::Node {
+        //         tactic,
+        //         subproofs: vec![],
+        //     };
         //     cell.set(tree).unwrap();
         // }
         // println!("------");
