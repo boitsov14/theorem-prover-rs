@@ -593,6 +593,8 @@ mod tests {
         assert_eq!(fml, formula("P").unwrap());
         let fml = formula("P or false").unwrap();
         assert_eq!(fml, formula("P").unwrap());
+        let fml = formula("all x, y, z, x, y, z all x, y, z ex w, v, u ex u, v, w, w, v, u P").unwrap();
+        assert_eq!(fml, formula("all x, y, z ex u, v, w P").unwrap());
     }
 
     #[test]
