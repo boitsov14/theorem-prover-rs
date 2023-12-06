@@ -2,12 +2,11 @@ use crate::{
     formula::{Formula, Term},
     prover::Sequent,
 };
-use indexmap::IndexSet;
 use std::fmt;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct NamingInfo {
-    names: IndexSet<String>,
+    names: Vec<Option<String>>,
 }
 
 impl NamingInfo {
@@ -16,12 +15,20 @@ impl NamingInfo {
     }
 
     pub fn get_id(&mut self, s: String) -> usize {
-        let (id, _) = self.names.insert_full(s);
-        id
+        self.names
+            .iter()
+            .position(|name| name.as_deref() == Some(&s))
+            .unwrap_or_else(|| {
+                self.names.push(Some(s));
+                self.names.len() - 1
+            })
     }
 
     fn get_name(&self, id: usize) -> String {
-        self.names.get_index(id).unwrap_or(&id.to_string()).clone()
+        self.names
+            .get(id)
+            .and_then(|name| name.clone())
+            .unwrap_or_else(|| id.to_string())
     }
 }
 
