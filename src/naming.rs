@@ -24,6 +24,11 @@ impl NamingInfo {
             })
     }
 
+    pub fn make_new_empty_id(&mut self) -> usize {
+        self.names.push(None);
+        self.names.len() - 1
+    }
+
     fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
