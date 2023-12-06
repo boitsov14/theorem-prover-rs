@@ -3,7 +3,7 @@ use crate::naming::{Latex, NamingInfo};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::repeat_n;
-use rustc_hash::{FxHashSet, FxHasher};
+use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
@@ -16,7 +16,7 @@ type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 pub struct Sequent<'a> {
     pub ant: FxIndexSet<&'a Formula>,
     pub suc: FxIndexSet<&'a Formula>,
-    pub fv: FxHashSet<usize>,
+    pub fv: Vec<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -148,7 +148,11 @@ impl<'a> Sequent<'a> {
                     seqs.push((seq_l, is_proved_l));
                     2
                 }
-                All(..) | Exists(..) => unimplemented!(),
+                Exists(vs, p) => {
+                    self.ant.remove(fml);
+                    todo!()
+                }
+                All(..) => unimplemented!(),
                 Predicate(..) => unreachable!(),
             },
             Suc => match fml {
@@ -186,7 +190,11 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, is_proved));
                     1
                 }
-                All(..) | Exists(..) => unimplemented!(),
+                All(..) => {
+                    self.suc.remove(fml);
+                    todo!()
+                }
+                Exists(..) => unimplemented!(),
                 Predicate(..) => unreachable!(),
             },
         }
@@ -196,7 +204,8 @@ impl<'a> Sequent<'a> {
 fn prove<'a>(
     seqs: &mut Vec<(Sequent<'a>, bool)>,
     unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
-    arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+    fml_arena: &'a Arena<Formula>,
+    tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
 ) -> (ProofTree<'a>, bool) {
     use ProofTree::*;
     let (seq, is_proved) = seqs.pop().unwrap();
@@ -208,7 +217,7 @@ fn prove<'a>(
         let mut is_proved = true;
         // TODO: 2023/11/30 for文で書くか，iterを使うか
         for _ in 0..len {
-            let (tree, is_proved0) = prove(seqs, unresolved, arena);
+            let (tree, is_proved0) = prove(seqs, unresolved, fml_arena, tree_arena);
             subproofs.push(tree);
             if !is_proved0 {
                 // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
@@ -218,7 +227,7 @@ fn prove<'a>(
         let tactic = Tactic { fml, seq_type };
         (Node { tactic, subproofs }, is_proved)
     } else {
-        let cell = arena.alloc(OnceCell::new());
+        let cell = tree_arena.alloc(OnceCell::new());
         let tree = Unresolved(cell);
         unresolved.push((cell, seq));
         (tree, false)
@@ -377,10 +386,14 @@ impl Formula {
         vec![(seq, false)]
     }
 
-    fn prove<'a>(&'a self, arena: &'a Arena<OnceCell<ProofTree<'a>>>) -> (ProofTree, bool) {
+    fn prove<'a>(
+        &'a self,
+        fml_arena: &'a Arena<Formula>,
+        tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+    ) -> (ProofTree, bool) {
         let mut seqs = self.to_seqs();
         let mut seqs_waiting = vec![];
-        let (tree, is_proved) = prove(&mut seqs, &mut seqs_waiting, &arena);
+        let (tree, is_proved) = prove(&mut seqs, &mut seqs_waiting, fml_arena, tree_arena);
         // println!("------");
         // println!("{is_proved}");
         // println!("{}", seqs.len());
@@ -405,8 +418,9 @@ impl Formula {
     }
 
     pub fn assert_provable(&self) {
-        let arena = Arena::new();
-        let (_, is_proved) = self.prove(&arena);
+        let fml_arena = Arena::new();
+        let tree_arena = Arena::new();
+        let (_, is_proved) = self.prove(&fml_arena, &tree_arena);
         assert!(is_proved);
     }
 }
@@ -447,9 +461,10 @@ pub fn example() -> Result<()> {
     println!("{}", fml.display(&inf));
 
     // prove
-    let arena = Arena::new();
+    let fml_arena = Arena::new();
+    let tree_arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, is_proved) = fml.prove(&arena);
+    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena);
     let end_time = Instant::now();
     println!(">> {is_proved:?}");
     let elapsed_time = end_time.duration_since(start_time);
@@ -490,9 +505,10 @@ pub fn example_iltp_prop() {
         let s = fs::read_to_string(&file).unwrap();
         let (fml, inf) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&inf));
-        let arena = Arena::new();
+        let fml_arena = Arena::new();
+        let tree_arena = Arena::new();
         let start_time = Instant::now();
-        let (_, is_proved) = fml.prove(&arena);
+        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena);
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -571,8 +587,9 @@ mod tests {
         let (fml, inf) = parse(s).unwrap();
         let fml = fml.universal_quantify();
         // prove
-        let arena = Arena::new();
-        let (proof, _) = fml.prove(&arena);
+        let fml_arena = Arena::new();
+        let tree_arena = Arena::new();
+        let (proof, _) = fml.prove(&fml_arena, &tree_arena);
         // latex
         let mut w = BufWriter::new(vec![]);
         proof.write(&fml, &inf, OutputType::Latex, &mut w).unwrap();
