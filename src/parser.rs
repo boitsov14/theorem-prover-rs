@@ -1,5 +1,5 @@
 use crate::formula::{Formula, Term};
-use crate::naming::NamingInfo;
+use crate::naming::EntitiesInfo;
 use indexmap::IndexSet;
 use maplit::{hashmap, hashset};
 use peg::{error, str::LineCol};
@@ -52,7 +52,7 @@ pub enum PFormula {
 pub static P_TRUE: PFormula = PFormula::And(vec![]);
 pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
-pub fn parse(s: &str) -> Result<(Formula, NamingInfo), ParseError> {
+pub fn parse(s: &str) -> Result<(Formula, EntitiesInfo), ParseError> {
     use ParseError::*;
     let s = s.nfkc().collect::<String>().trim().to_string();
     let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
@@ -68,9 +68,9 @@ pub fn parse(s: &str) -> Result<(Formula, NamingInfo), ParseError> {
             return Err(CoreParseError { s, e });
         }
     };
-    let (fml, inf) = pfml.into_formula();
+    let (fml, entities) = pfml.into_formula();
     fml.check()?;
-    Ok((fml, inf))
+    Ok((fml, entities))
 }
 
 pub fn from_tptp(s: &str) -> String {
@@ -79,7 +79,7 @@ pub fn from_tptp(s: &str) -> String {
         .filter(|line| !line.trim_start().starts_with('%'))
         .collect::<String>();
 
-    let mut axioms: Vec<String> = vec![];
+    let mut axioms = vec![];
     let conjecture;
 
     let re_axiom = Regex::new(r#"fof\(([^,]+),axiom,(.+?)\)\."#).unwrap();
@@ -201,13 +201,13 @@ peg::parser!( grammar parser() for str {
         "(" _ p:formula() _ ")" { p }
     } / expected!("formula")
 
-    rule ASCII_ALPHA() = ['a'..='z' | 'A'..='Z' ]
-    rule ASCII_DIGIT_HYPHEN_APOSTROPHE() = ['0'..='9' | '_' | '\'' ]
-    rule ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE() = ASCII_ALPHA() / ASCII_DIGIT_HYPHEN_APOSTROPHE()
+    rule ALPHA() = ['a'..='z' | 'A'..='Z' ]
+    rule DIGIT() = ['0'..='9' | '_' | '\'' ]
+    rule ALPHANUMERIC() = ALPHA() / DIGIT()
 
-    rule var() = ASCII_ALPHA() ASCII_DIGIT_HYPHEN_APOSTROPHE()*
-    rule function_name() = ASCII_ALPHA() ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE()*
-    rule predicate_name() = quiet!{ ASCII_ALPHA() ASCII_ALPHANUMERIC_HYPHEN_APOSTROPHE()* } / expected!("predicate")
+    rule var() = ALPHA() DIGIT()*
+    rule function_name() = ALPHA() ALPHANUMERIC()*
+    rule predicate_name() = quiet!{ ALPHA() ALPHANUMERIC()* } / expected!("predicate")
 
     rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" } / expected!("true")
     rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
@@ -224,14 +224,14 @@ peg::parser!( grammar parser() for str {
 });
 
 impl PTerm {
-    fn into_term(self, inf: &mut NamingInfo) -> Term {
+    fn into_term(self, entities: &mut EntitiesInfo) -> Term {
         match self {
-            PTerm::Var(name) => Term::Var(inf.get_id(name)),
+            PTerm::Var(name) => Term::Var(entities.get_id(name)),
             PTerm::Function(name, pterms) => Term::Function(
-                inf.get_id(name),
+                entities.get_id(name),
                 pterms
                     .into_iter()
-                    .map(|pterm| pterm.into_term(inf))
+                    .map(|pterm| pterm.into_term(entities))
                     .collect(),
             ),
         }
@@ -239,39 +239,49 @@ impl PTerm {
 }
 
 impl PFormula {
-    fn into_formula(self) -> (Formula, NamingInfo) {
-        let mut inf = NamingInfo::new();
-        let fml = self.into_formula_rec(&mut inf);
-        (fml, inf)
+    fn into_formula(self) -> (Formula, EntitiesInfo) {
+        let mut entities = EntitiesInfo::new();
+        let fml = self.into_formula_rec(&mut entities);
+        (fml, entities)
     }
 
-    fn into_formula_rec(self, inf: &mut NamingInfo) -> Formula {
+    fn into_formula_rec(self, entities: &mut EntitiesInfo) -> Formula {
         match self {
             PFormula::Predicate(name, pterms) => Formula::Predicate(
-                inf.get_id(name),
+                entities.get_id(name),
                 pterms
                     .into_iter()
-                    .map(|pterm| pterm.into_term(inf))
+                    .map(|pterm| pterm.into_term(entities))
                     .collect(),
             ),
-            PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(inf))),
-            PFormula::And(l) => {
-                Formula::And(l.into_iter().map(|p| p.into_formula_rec(inf)).collect())
-            }
-            PFormula::Or(l) => {
-                Formula::Or(l.into_iter().map(|p| p.into_formula_rec(inf)).collect())
-            }
+            PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(entities))),
+            PFormula::And(l) => Formula::And(
+                l.into_iter()
+                    .map(|p| p.into_formula_rec(entities))
+                    .collect(),
+            ),
+            PFormula::Or(l) => Formula::Or(
+                l.into_iter()
+                    .map(|p| p.into_formula_rec(entities))
+                    .collect(),
+            ),
             PFormula::Implies(p, q) => Formula::Implies(
-                Box::new(p.into_formula_rec(inf)),
-                Box::new(q.into_formula_rec(inf)),
+                Box::new(p.into_formula_rec(entities)),
+                Box::new(q.into_formula_rec(entities)),
             ),
             PFormula::All(names, p) => Formula::All(
-                names.into_iter().map(|name| inf.get_id(name)).collect(),
-                Box::new(p.into_formula_rec(inf)),
+                names
+                    .into_iter()
+                    .map(|name| entities.get_id(name))
+                    .collect(),
+                Box::new(p.into_formula_rec(entities)),
             ),
             PFormula::Exists(names, p) => Formula::Exists(
-                names.into_iter().map(|name| inf.get_id(name)).collect(),
-                Box::new(p.into_formula_rec(inf)),
+                names
+                    .into_iter()
+                    .map(|name| entities.get_id(name))
+                    .collect(),
+                Box::new(p.into_formula_rec(entities)),
             ),
         }
     }
@@ -360,7 +370,7 @@ impl Formula {
 
     pub fn universal_quantify(self) -> Self {
         use Formula::All;
-        let mut fv: Vec<_> = self.free_vars().into_iter().collect();
+        let mut fv = self.free_vars().into_iter().collect::<Vec<_>>();
         if fv.is_empty() {
             return self;
         }
@@ -607,8 +617,8 @@ mod tests {
         ];
         for pair in l {
             let (s, expected) = pair;
-            let (fml, inf) = parse(s).unwrap();
-            assert_eq!(fml.display(&inf).to_string(), expected);
+            let (fml, entities) = parse(s).unwrap();
+            assert_eq!(fml.display(&entities).to_string(), expected);
         }
     }
 
@@ -630,14 +640,16 @@ mod tests {
 
     #[test]
     fn test_universal_quantify() {
-        let mut inf = NamingInfo::new();
+        let mut entities = EntitiesInfo::new();
 
         let fml = formula("all x,y P(f(x,y))")
             .unwrap()
-            .into_formula_rec(&mut inf);
+            .into_formula_rec(&mut entities);
         assert_eq!(fml.clone().universal_quantify(), fml);
 
-        let fml1 = formula("P(f(x,y))").unwrap().into_formula_rec(&mut inf);
+        let fml1 = formula("P(f(x,y))")
+            .unwrap()
+            .into_formula_rec(&mut entities);
         let Formula::All(vs1, p1) = fml1.universal_quantify() else {
             unreachable!()
         };
@@ -652,7 +664,7 @@ mod tests {
 
         let fml2 = formula("all y P(f(x,y))")
             .unwrap()
-            .into_formula_rec(&mut inf);
+            .into_formula_rec(&mut entities);
         assert_eq!(fml2.universal_quantify(), fml);
     }
 

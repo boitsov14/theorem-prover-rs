@@ -7,74 +7,78 @@ use theorem_prover_rs::parser::*;
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn from_example_prop(c: &mut Criterion) {
-    let fs = fs::read_to_string("benches/examples.txt").unwrap();
-    let fmls = fs
-        .lines()
-        .filter(|s| !s.is_empty())
-        .map(|s| parse(s).unwrap().0)
-        .map(|fml| fml.universal_quantify());
-
     let mut group = c.benchmark_group("example_prop");
     group.sample_size(10);
 
-    for ref fml in fmls {
-        group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| fml.assert_provable());
-        });
+    let s = fs::read_to_string("benches/examples.txt").unwrap();
+    let fmls = s.lines().filter(|s| !s.is_empty()).map(|s| {
+        let (fml, entities) = parse(s).unwrap();
+        (fml.universal_quantify(), entities)
+    });
+
+    for (ref fml, mut entities) in fmls {
+        group.bench_with_input(
+            BenchmarkId::from_parameter(fml.display(&entities)),
+            fml,
+            |b, fml| {
+                b.iter(|| fml.assert_provable(&mut entities));
+            },
+        );
     }
     group.finish();
 }
 
 fn from_iltp_prop_0(c: &mut Criterion) {
-    let mut fmls = vec![];
+    let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
+    let exclude_list = s.lines().collect::<Vec<_>>();
 
-    let exclude_list = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = exclude_list.lines().collect::<Vec<_>>();
-
-    let entries = fs::read_dir("benches/iltp_prop").unwrap();
-    for entry in entries {
-        let file = entry.unwrap().path();
-        let file_name = file.file_name().unwrap().to_str().unwrap();
-        if exclude_list.contains(&file_name) {
-            continue;
-        }
-        let s = fs::read_to_string(&file).unwrap();
-        let (fml, _) = parse(&from_tptp(&s)).unwrap();
-        fmls.push(fml);
-    }
+    let mut fmls = fs::read_dir("benches/iltp_prop")
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|file| {
+            let file_name = file.file_name().unwrap().to_str().unwrap();
+            !exclude_list.contains(&file_name)
+        })
+        .map(|file| {
+            let s = fs::read_to_string(&file).unwrap();
+            parse(&from_tptp(&s)).unwrap()
+        });
 
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
-            for fml in &fmls {
-                fml.assert_provable();
+            for (fml, mut entities) in &mut fmls {
+                fml.assert_provable(&mut entities);
             }
         });
     });
 }
 
 fn from_iltp_prop_1(c: &mut Criterion) {
-    let mut fmls = vec![];
-    let list = vec!["SYJ202+1.004.p", "SYJ206+1.010.p"];
-
-    let entries = fs::read_dir("benches/iltp_prop").unwrap();
-    for entry in entries {
-        let file = entry.unwrap().path();
-        let file_name = file.file_name().unwrap().to_str().unwrap();
-        if !list.contains(&file_name) {
-            continue;
-        }
-        let s = fs::read_to_string(&file).unwrap();
-        let (fml, _) = parse(&from_tptp(&s)).unwrap();
-        fmls.push(fml);
-    }
-
     let mut group = c.benchmark_group("iltp_prop_1");
     group.sample_size(10);
 
-    for ref fml in fmls {
-        group.bench_with_input(BenchmarkId::from_parameter(fml), fml, |b, fml| {
-            b.iter(|| fml.assert_provable());
+    let list = vec!["SYJ202+1.004.p", "SYJ206+1.010.p"];
+
+    let fmls = fs::read_dir("benches/iltp_prop")
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|file| {
+            let file_name = file.file_name().unwrap().to_str().unwrap();
+            list.contains(&file_name)
+        })
+        .map(|file| {
+            let s = fs::read_to_string(&file).unwrap();
+            parse(&from_tptp(&s)).unwrap()
         });
+
+    for (ref fml, mut entities) in fmls {
+        group.bench_with_input(
+            BenchmarkId::from_parameter(fml.display(&entities)),
+            fml,
+            |b, fml| {
+                b.iter(|| fml.assert_provable(&mut entities));
+            },
+        );
     }
     group.finish();
 }

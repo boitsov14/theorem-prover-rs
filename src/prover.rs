@@ -1,5 +1,5 @@
 use crate::formula::Formula;
-use crate::naming::{Latex, NamingInfo};
+use crate::naming::{EntitiesInfo, Latex};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::repeat_n;
@@ -206,6 +206,7 @@ fn prove<'a>(
     unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
     fml_arena: &'a Arena<Formula>,
     tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+    entities: &mut EntitiesInfo,
 ) -> (ProofTree<'a>, bool) {
     use ProofTree::*;
     let (seq, is_proved) = seqs.pop().unwrap();
@@ -217,7 +218,7 @@ fn prove<'a>(
         let mut is_proved = true;
         // TODO: 2023/11/30 for文で書くか，iterを使うか
         for _ in 0..len {
-            let (tree, is_proved0) = prove(seqs, unresolved, fml_arena, tree_arena);
+            let (tree, is_proved0) = prove(seqs, unresolved, fml_arena, tree_arena, entities);
             subproofs.push(tree);
             if !is_proved0 {
                 // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
@@ -238,7 +239,7 @@ impl<'a> ProofTree<'a> {
     fn write_rec(
         &self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
-        inf: &NamingInfo,
+        entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> Result<()> {
@@ -246,7 +247,7 @@ impl<'a> ProofTree<'a> {
         use ProofTree::*;
         if matches!(output, Console) {
             for (seq, _) in seqs.iter().rev() {
-                writeln!(w, "{}", &seq.display(inf))?;
+                writeln!(w, "{}", &seq.display(entities))?;
             }
         }
         let (seq, _) = seqs.pop().unwrap();
@@ -261,7 +262,7 @@ impl<'a> ProofTree<'a> {
                         writeln!(
                             w,
                             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                            seq.display(inf).to_latex()
+                            seq.display(entities).to_latex()
                         )?;
                     }
                 }
@@ -272,7 +273,7 @@ impl<'a> ProofTree<'a> {
                     writeln!(w, "UnProvable")?;
                 }
                 Latex => {
-                    writeln!(w, r"\hypo{{{}}}", seq.display(inf).to_latex())?;
+                    writeln!(w, r"\hypo{{{}}}", seq.display(entities).to_latex())?;
                 }
             },
             Node { tactic, subproofs } => {
@@ -284,13 +285,13 @@ impl<'a> ProofTree<'a> {
                     writeln!(w, "{label}")?;
                 }
                 for proof in subproofs {
-                    proof.write_rec(seqs, inf, output, w)?;
+                    proof.write_rec(seqs, entities, output, w)?;
                 }
                 if matches!(output, Latex) {
                     writeln!(
                         w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
-                        seq.display(inf).to_latex()
+                        seq.display(entities).to_latex()
                     )?;
                 }
             }
@@ -301,7 +302,7 @@ impl<'a> ProofTree<'a> {
     fn write(
         &self,
         fml: &'a Formula,
-        inf: &NamingInfo,
+        entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> Result<()> {
@@ -316,7 +317,7 @@ impl<'a> ProofTree<'a> {
             writeln!(w, r"\begin{{document}}")?;
             writeln!(w, r"\begin{{prooftree}}")?;
         }
-        self.write_rec(&mut seqs, &inf, output, w)?;
+        self.write_rec(&mut seqs, &entities, output, w)?;
         assert!(seqs.is_empty());
         if matches!(output, Latex) {
             writeln!(w, r"\end{{prooftree}}")?;
@@ -390,10 +391,17 @@ impl Formula {
         &'a self,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+        entities: &mut EntitiesInfo,
     ) -> (ProofTree, bool) {
         let mut seqs = self.to_seqs();
         let mut seqs_waiting = vec![];
-        let (tree, is_proved) = prove(&mut seqs, &mut seqs_waiting, fml_arena, tree_arena);
+        let (tree, is_proved) = prove(
+            &mut seqs,
+            &mut seqs_waiting,
+            fml_arena,
+            tree_arena,
+            entities,
+        );
         // println!("------");
         // println!("{is_proved}");
         // println!("{}", seqs.len());
@@ -417,10 +425,10 @@ impl Formula {
         (tree, is_proved)
     }
 
-    pub fn assert_provable(&self) {
+    pub fn assert_provable(&self, entities: &mut EntitiesInfo) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, is_proved) = self.prove(&fml_arena, &tree_arena);
+        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, entities);
         assert!(is_proved);
     }
 }
@@ -456,15 +464,15 @@ pub fn example() -> Result<()> {
     // let s = "true to P";
 
     // parse
-    let (fml, inf) = parse(s).unwrap();
+    let (fml, mut entities) = parse(s).unwrap();
     let fml = fml.universal_quantify();
-    println!("{}", fml.display(&inf));
+    println!("{}", fml.display(&entities));
 
     // prove
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena);
+    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena, &mut entities);
     let end_time = Instant::now();
     println!(">> {is_proved:?}");
     let elapsed_time = end_time.duration_since(start_time);
@@ -473,13 +481,13 @@ pub fn example() -> Result<()> {
 
     // print console
     let mut w = BufWriter::new(vec![]);
-    proof.write(&fml, &inf, OutputType::Console, &mut w)?;
+    proof.write(&fml, &entities, OutputType::Console, &mut w)?;
     println!("{}", String::from_utf8_lossy(&w.into_inner()?));
 
     // write latex
     let f = File::create("proof.tex")?;
     let mut w = BufWriter::new(f);
-    proof.write(&fml, &inf, OutputType::Latex, &mut w)?;
+    proof.write(&fml, &entities, OutputType::Latex, &mut w)?;
 
     Ok(())
 }
@@ -503,12 +511,12 @@ pub fn example_iltp_prop() {
         println!();
         println!("{file_name}");
         let s = fs::read_to_string(&file).unwrap();
-        let (fml, inf) = parse(&from_tptp(&s)).unwrap();
-        // println!("{}", fml.display(&inf));
+        let (fml, mut entities) = parse(&from_tptp(&s)).unwrap();
+        // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let start_time = Instant::now();
-        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena);
+        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena, &mut entities);
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -584,15 +592,17 @@ mod tests {
 
     fn prove(s: &str) -> String {
         // parse
-        let (fml, inf) = parse(s).unwrap();
+        let (fml, mut entities) = parse(s).unwrap();
         let fml = fml.universal_quantify();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (proof, _) = fml.prove(&fml_arena, &tree_arena);
+        let (proof, _) = fml.prove(&fml_arena, &tree_arena, &mut entities);
         // latex
         let mut w = BufWriter::new(vec![]);
-        proof.write(&fml, &inf, OutputType::Latex, &mut w).unwrap();
+        proof
+            .write(&fml, &entities, OutputType::Latex, &mut w)
+            .unwrap();
         String::from_utf8(w.into_inner().unwrap()).unwrap()
     }
 }

@@ -165,32 +165,38 @@ mod tests {
 
     #[test]
     fn test_fv() {
-        let (fml, mut inf) = parse("P(x)").unwrap();
+        let (fml, mut entities) = parse("P(x)").unwrap();
         assert_eq!(
             fml.free_vars(),
-            ["x"].map(|s| inf.get_id(s.into())).into_iter().collect()
-        );
-
-        let (fml, mut inf) = parse("P(x, f(y,z))").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["x", "y", "z"]
-                .map(|s| inf.get_id(s.into()))
+            ["x"]
+                .map(|s| entities.get_id(s.into()))
                 .into_iter()
                 .collect()
         );
 
-        let (fml, mut inf) = parse("all x,y P(x, f(y,z))").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["z"].map(|s| inf.get_id(s.into())).into_iter().collect()
-        );
-
-        let (fml, mut inf) = parse("P(x) and Q(y) iff not R(z)").unwrap();
+        let (fml, mut entities) = parse("P(x, f(y,z))").unwrap();
         assert_eq!(
             fml.free_vars(),
             ["x", "y", "z"]
-                .map(|s| inf.get_id(s.into()))
+                .map(|s| entities.get_id(s.into()))
+                .into_iter()
+                .collect()
+        );
+
+        let (fml, mut entities) = parse("all x,y P(x, f(y,z))").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["z"]
+                .map(|s| entities.get_id(s.into()))
+                .into_iter()
+                .collect()
+        );
+
+        let (fml, mut entities) = parse("P(x) and Q(y) iff not R(z)").unwrap();
+        assert_eq!(
+            fml.free_vars(),
+            ["x", "y", "z"]
+                .map(|s| entities.get_id(s.into()))
                 .into_iter()
                 .collect()
         );
