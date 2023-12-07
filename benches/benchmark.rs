@@ -42,12 +42,13 @@ fn from_iltp_prop_0(c: &mut Criterion) {
         .map(|file| {
             let s = fs::read_to_string(&file).unwrap();
             parse(&from_tptp(&s)).unwrap()
-        });
+        })
+        .collect::<Vec<_>>();
 
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
-            for (fml, mut entities) in &mut fmls {
-                fml.assert_provable(&mut entities);
+            for (fml, entities) in &mut fmls {
+                fml.assert_provable(entities);
             }
         });
     });
