@@ -498,12 +498,14 @@ pub fn example_iltp_prop() {
     use std::fs;
     use std::time::Instant;
 
-    let exclude_list = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = exclude_list.lines().collect::<Vec<_>>();
+    let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
+    let exclude_list = s.lines().collect::<Vec<_>>();
 
-    let entries = fs::read_dir("benches/iltp_prop").unwrap();
-    for entry in entries {
-        let file = entry.unwrap().path();
+    let files = fs::read_dir("benches/iltp_prop")
+        .unwrap()
+        .map(|entry| entry.unwrap().path());
+
+    for file in files {
         let file_name = file.file_name().unwrap().to_str().unwrap();
         if exclude_list.contains(&file_name) {
             continue;
