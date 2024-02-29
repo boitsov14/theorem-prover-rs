@@ -227,7 +227,7 @@ impl PTerm {
     fn into_term(self, entities: &mut EntitiesInfo) -> Term {
         match self {
             PTerm::Var(name) => Term::Var(entities.get_id(name)),
-            PTerm::Function(name, pterms) => Term::Function(
+            PTerm::Function(name, pterms) => Term::Func(
                 entities.get_id(name),
                 pterms
                     .into_iter()
@@ -297,7 +297,7 @@ impl Term {
         use Term::*;
         match self {
             Var(_) => {}
-            Function(id, terms) => {
+            Func(id, terms) => {
                 // check the arity of the function
                 if let Some(arity) = fns.get(id) {
                     if *arity != terms.len() {

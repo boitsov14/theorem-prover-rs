@@ -1,4 +1,4 @@
-use crate::formula::Formula;
+use crate::formula::{Formula, Term};
 use crate::naming::{EntitiesInfo, Latex};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
@@ -106,20 +106,23 @@ impl<'a> Sequent<'a> {
         fml: &'a Formula,
         seq_type: SequentType,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
+        fml_arena: &'a Arena<Formula>,
+        skolem_idx: &mut usize,
+        free_vars: &Vec<usize>,
     ) -> usize {
         use Formula::*;
         use SequentType::*;
         match seq_type {
             Ant => match fml {
                 Not(p) => {
-                    self.ant.remove(fml);
+                    self.ant.swap_remove(fml);
                     self.suc.insert(p);
                     let is_proved = self.ant.contains(&**p);
                     seqs.push((self, is_proved));
                     1
                 }
                 And(l) => {
-                    self.ant.remove(fml);
+                    self.ant.swap_remove(fml);
                     for p in l {
                         self.ant.insert(p);
                     }
@@ -128,7 +131,8 @@ impl<'a> Sequent<'a> {
                     1
                 }
                 Or(l) => {
-                    self.ant.remove(fml);
+                    self.ant.swap_remove(fml);
+                    // TODO: 2024/02/29 読みやすさ改善要
                     for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
                         seq.ant.insert(p);
                         let is_proved = seq.suc.contains(p);
@@ -137,7 +141,7 @@ impl<'a> Sequent<'a> {
                     l.len()
                 }
                 Implies(p, q) => {
-                    self.ant.remove(fml);
+                    self.ant.swap_remove(fml);
                     let mut seq_l = self.clone();
                     let mut seq_r = self;
                     seq_l.suc.insert(p);
@@ -149,15 +153,25 @@ impl<'a> Sequent<'a> {
                     2
                 }
                 Exists(vs, p) => {
-                    self.ant.remove(fml);
-                    todo!()
+                    self.ant.swap_remove(fml);
+                    let p = fml_arena.alloc(*p.clone());
+                    for v in vs {
+                        // TODO: 2024/02/29 要改善
+                        let free_vars = free_vars.iter().map(|v| Term::Var(*v)).collect();
+                        let skolem_term = Term::Func(*skolem_idx, free_vars);
+                        *skolem_idx += 1;
+                        p.subst(*v, &skolem_term);
+                    }
+                    self.ant.insert(p);
+                    seqs.push((self, false));
+                    1
                 }
                 All(..) => unimplemented!(),
                 Predicate(..) => unreachable!(),
             },
             Suc => match fml {
                 Not(p) => {
-                    self.suc.remove(fml);
+                    self.suc.swap_remove(fml);
                     self.ant.insert(p);
                     let is_proved = self.suc.contains(&**p);
                     seqs.push((self, is_proved));
@@ -165,7 +179,7 @@ impl<'a> Sequent<'a> {
                 }
                 And(l) => {
                     // TODO: 2023/11/11 trueの場合
-                    self.suc.remove(fml);
+                    self.suc.swap_remove(fml);
                     for (p, mut seq) in l.iter().rev().zip(repeat_n(self, l.len())) {
                         seq.suc.insert(p);
                         let is_proved = seq.ant.contains(p);
@@ -174,7 +188,7 @@ impl<'a> Sequent<'a> {
                     l.len()
                 }
                 Or(l) => {
-                    self.suc.remove(fml);
+                    self.suc.swap_remove(fml);
                     for p in l {
                         self.suc.insert(p);
                     }
@@ -183,7 +197,7 @@ impl<'a> Sequent<'a> {
                     1
                 }
                 Implies(p, q) => {
-                    self.suc.remove(fml);
+                    self.suc.swap_remove(fml);
                     self.ant.insert(p);
                     self.suc.insert(q);
                     let is_proved = self.suc.contains(&**p) || self.ant.contains(&**q);
@@ -191,7 +205,7 @@ impl<'a> Sequent<'a> {
                     1
                 }
                 All(..) => {
-                    self.suc.remove(fml);
+                    self.suc.swap_remove(fml);
                     todo!()
                 }
                 Exists(..) => unimplemented!(),
@@ -199,39 +213,45 @@ impl<'a> Sequent<'a> {
             },
         }
     }
-}
 
-fn prove<'a>(
-    seqs: &mut Vec<(Sequent<'a>, bool)>,
-    unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
-    fml_arena: &'a Arena<Formula>,
-    tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-    entities: &mut EntitiesInfo,
-) -> (ProofTree<'a>, bool) {
-    use ProofTree::*;
-    let (seq, is_proved) = seqs.pop().unwrap();
-    if is_proved {
-        (Proved, true)
-    } else if let Some((fml, seq_type)) = seq.get_fml() {
-        let len = seq.apply_tactic(fml, seq_type, seqs);
-        let mut subproofs = Vec::with_capacity(len);
-        let mut is_proved = true;
-        // TODO: 2023/11/30 for文で書くか，iterを使うか
-        for _ in 0..len {
-            let (tree, is_proved0) = prove(seqs, unresolved, fml_arena, tree_arena, entities);
-            subproofs.push(tree);
-            if !is_proved0 {
-                // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
-                is_proved = false;
+    fn prove_rec(
+        self,
+        seqs: &mut Vec<(Sequent<'a>, bool)>,
+        unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
+        fml_arena: &'a Arena<Formula>,
+        tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
+        skolem_idx: &mut usize,
+        free_vars: &mut Vec<usize>,
+    ) -> (ProofTree<'a>, bool) {
+        use ProofTree::*;
+        if let Some((fml, seq_type)) = self.get_fml() {
+            let len = self.apply_tactic(fml, seq_type, seqs, fml_arena, skolem_idx, free_vars);
+            let mut subproofs = Vec::with_capacity(len);
+            let mut is_proved = true;
+            // TODO: 2023/11/30 for文で書くか，iterを使うか
+            for _ in 0..len {
+                let (seq, is_proved0) = seqs.pop().unwrap();
+                if is_proved0 {
+                    subproofs.push(Proved);
+                    continue;
+                }
+                let (tree, is_proved0) = seq.prove_rec(
+                    seqs, unresolved, fml_arena, tree_arena, skolem_idx, free_vars,
+                );
+                subproofs.push(tree);
+                if !is_proved0 {
+                    // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
+                    is_proved = false;
+                }
             }
+            let tactic = Tactic { fml, seq_type };
+            (Node { tactic, subproofs }, is_proved)
+        } else {
+            let cell = tree_arena.alloc(OnceCell::new());
+            let tree = Unresolved(cell);
+            unresolved.push((cell, self));
+            (tree, false)
         }
-        let tactic = Tactic { fml, seq_type };
-        (Node { tactic, subproofs }, is_proved)
-    } else {
-        let cell = tree_arena.alloc(OnceCell::new());
-        let tree = Unresolved(cell);
-        unresolved.push((cell, seq));
-        (tree, false)
     }
 }
 
@@ -239,6 +259,8 @@ impl<'a> ProofTree<'a> {
     fn write_rec(
         &self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
+        fml_arena: &'a Arena<Formula>,
+        skolem_idx: &mut usize,
         entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
@@ -278,14 +300,16 @@ impl<'a> ProofTree<'a> {
             },
             Node { tactic, subproofs } => {
                 let Tactic { fml, seq_type } = tactic;
-                let len = seq.clone().apply_tactic(fml, *seq_type, seqs);
+                let len =
+                    seq.clone()
+                        .apply_tactic(fml, *seq_type, seqs, fml_arena, skolem_idx, &vec![]);
                 assert_eq!(len, subproofs.len());
                 let label = get_label(fml, seq_type, output);
                 if matches!(output, Console) {
                     writeln!(w, "{label}")?;
                 }
                 for proof in subproofs {
-                    proof.write_rec(seqs, entities, output, w)?;
+                    proof.write_rec(seqs, fml_arena, skolem_idx, entities, output, w)?;
                 }
                 if matches!(output, Latex) {
                     writeln!(
@@ -302,12 +326,12 @@ impl<'a> ProofTree<'a> {
     fn write(
         &self,
         fml: &'a Formula,
+        fml_arena: &'a Arena<Formula>,
         entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> Result<()> {
         use OutputType::*;
-        let mut seqs = fml.to_seqs();
         if matches!(output, Latex) {
             writeln!(
                 w,
@@ -317,7 +341,15 @@ impl<'a> ProofTree<'a> {
             writeln!(w, r"\begin{{document}}")?;
             writeln!(w, r"\begin{{prooftree}}")?;
         }
-        self.write_rec(&mut seqs, &entities, output, w)?;
+        let mut seqs = vec![(fml.to_seq(), false)];
+        self.write_rec(
+            &mut seqs,
+            fml_arena,
+            &mut entities.len(),
+            &entities,
+            output,
+            w,
+        )?;
         assert!(seqs.is_empty());
         if matches!(output, Latex) {
             writeln!(w, r"\end{{prooftree}}")?;
@@ -381,26 +413,26 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
 }
 
 impl Formula {
-    fn to_seqs(&self) -> Vec<(Sequent, bool)> {
+    fn to_seq(&self) -> Sequent {
         let mut seq = Sequent::default();
         seq.suc.insert(self);
-        vec![(seq, false)]
+        seq
     }
 
     fn prove<'a>(
         &'a self,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-        entities: &mut EntitiesInfo,
+        skolem_idx: usize,
     ) -> (ProofTree, bool) {
-        let mut seqs = self.to_seqs();
-        let mut seqs_waiting = vec![];
-        let (tree, is_proved) = prove(
-            &mut seqs,
-            &mut seqs_waiting,
+        let mut skolem_idx = skolem_idx;
+        let (tree, is_proved) = self.to_seq().prove_rec(
+            &mut vec![],
+            &mut vec![],
             fml_arena,
             tree_arena,
-            entities,
+            &mut skolem_idx,
+            &mut vec![],
         );
         // println!("------");
         // println!("{is_proved}");
@@ -425,10 +457,11 @@ impl Formula {
         (tree, is_proved)
     }
 
-    pub fn assert_provable(&self, entities: &mut EntitiesInfo) {
+    pub fn assert_provable(&self, entities: &EntitiesInfo) {
+        // TODO: 2024/02/29 skolem idx or entities
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, entities);
+        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, entities.len());
         assert!(is_proved);
     }
 }
@@ -438,7 +471,7 @@ pub fn example(s: &str) -> Result<()> {
     use std::time::Instant;
 
     // parse
-    let (fml, mut entities) = parse(s).unwrap();
+    let (fml, entities) = parse(s).unwrap();
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&entities));
 
@@ -446,7 +479,7 @@ pub fn example(s: &str) -> Result<()> {
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena, &mut entities);
+    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
     println!(">> {is_proved:?}");
     let elapsed_time = end_time.duration_since(start_time);
@@ -455,13 +488,13 @@ pub fn example(s: &str) -> Result<()> {
 
     // print console
     let mut w = BufWriter::new(vec![]);
-    proof.write(&fml, &entities, OutputType::Console, &mut w)?;
+    proof.write(&fml, &fml_arena, &entities, OutputType::Console, &mut w)?;
     println!("{}", String::from_utf8_lossy(&w.into_inner()?));
 
     // write latex
     let f = File::create("proof.tex")?;
     let mut w = BufWriter::new(f);
-    proof.write(&fml, &entities, OutputType::Latex, &mut w)?;
+    proof.write(&fml, &fml_arena, &entities, OutputType::Latex, &mut w)?;
 
     Ok(())
 }
@@ -487,12 +520,12 @@ pub fn example_iltp_prop() {
         println!();
         println!("{file_name}");
         let s = fs::read_to_string(&file).unwrap();
-        let (fml, mut entities) = parse(&from_tptp(&s)).unwrap();
+        let (fml, entities) = parse(&from_tptp(&s)).unwrap();
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let start_time = Instant::now();
-        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena, &mut entities);
+        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena, entities.len());
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -568,16 +601,16 @@ mod tests {
 
     fn prove(s: &str) -> String {
         // parse
-        let (fml, mut entities) = parse(s).unwrap();
+        let (fml, entities) = parse(s).unwrap();
         let fml = fml.universal_quantify();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (proof, _) = fml.prove(&fml_arena, &tree_arena, &mut entities);
+        let (proof, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
         // latex
         let mut w = BufWriter::new(vec![]);
         proof
-            .write(&fml, &entities, OutputType::Latex, &mut w)
+            .write(&fml, &fml_arena, &entities, OutputType::Latex, &mut w)
             .unwrap();
         String::from_utf8(w.into_inner().unwrap()).unwrap()
     }

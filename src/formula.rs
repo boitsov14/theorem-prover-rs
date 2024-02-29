@@ -4,7 +4,7 @@ use std::collections::HashSet;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
     Var(usize),
-    Function(usize, Vec<Term>),
+    Func(usize, Vec<Term>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -18,9 +18,6 @@ pub enum Formula {
     Exists(Vec<usize>, Box<Formula>),
 }
 
-pub static TRUE: Formula = Formula::And(vec![]);
-pub static FALSE: Formula = Formula::Or(vec![]);
-
 impl Term {
     fn fv(&self, vars: &mut HashSet<usize>) {
         use Term::*;
@@ -28,7 +25,7 @@ impl Term {
             Var(id) => {
                 vars.insert(*id);
             }
-            Function(_, terms) => {
+            Func(_, terms) => {
                 for term in terms {
                     term.fv(vars);
                 }
@@ -36,38 +33,7 @@ impl Term {
         }
     }
 
-    /*
-    // TODO: 2023/09/06 いらないかも
-    fn free_vars(&self) -> HashSet<usize> {
-        let mut vars = hashset!();
-        self.fv(&mut vars);
-        vars
-    }
-    // TODO: 2023/07/06 所有権をどうするか
-    // TODO: 2023/08/22 &mut selfとの比較
-    // TODO: 2023/08/22 そもそも必要か：substitutionだけでよいのでは
-    // TODO: 2023/08/22 subst_varの方がいい？
-    fn replace_var(self, var: usize, new_term: &Self) -> Self {
-        use Term::*;
-        match self {
-            Var(id) => {
-                if id == var {
-                    new_term.clone()
-                } else {
-                    Var(id)
-                }
-            }
-            Function(id, terms) => {
-                let terms = terms
-                    .into_iter()
-                    .map(|term| term.replace_var(var, new_term))
-                    .collect();
-                Function(id, terms)
-            }
-        }
-    }
-
-    fn replace_var2(&mut self, var: usize, new_term: &Self) {
+    fn subst(&mut self, var: usize, new_term: &Term) {
         use Term::*;
         match self {
             Var(id) => {
@@ -75,34 +41,13 @@ impl Term {
                     *self = new_term.clone();
                 }
             }
-            Function(_, terms) => {
+            Func(_, terms) => {
                 for term in terms {
-                    term.replace_var2(var, new_term);
+                    term.subst(var, new_term);
                 }
             }
         }
     }
-
-    fn replace_vars(self, map: &HashMap<usize, Self>) -> Self {
-        use Term::*;
-        match self {
-            Var(id) => {
-                if let Some(new_term) = map.get(&id) {
-                    new_term.clone()
-                } else {
-                    Var(id)
-                }
-            }
-            Function(id, terms) => {
-                let terms = terms
-                    .into_iter()
-                    .map(|term| term.replace_vars(map))
-                    .collect();
-                Function(id, terms)
-            }
-        }
-    }
-    */
 }
 
 /*
@@ -151,11 +96,31 @@ impl Formula {
             }
         }
     }
-}
 
-impl Default for Formula {
-    fn default() -> Self {
-        TRUE.clone()
+    pub fn subst(&mut self, var: usize, new_term: &Term) {
+        use Formula::*;
+        match self {
+            Predicate(_, terms) => {
+                for term in terms {
+                    term.subst(var, new_term);
+                }
+            }
+            Not(p) => p.subst(var, new_term),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.subst(var, new_term);
+                }
+            }
+            Implies(p, q) => {
+                p.subst(var, new_term);
+                q.subst(var, new_term);
+            }
+            All(vs, p) | Exists(vs, p) => {
+                if !vs.contains(&var) {
+                    p.subst(var, new_term);
+                }
+            }
+        }
     }
 }
 

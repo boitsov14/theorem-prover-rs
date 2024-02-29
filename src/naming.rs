@@ -4,7 +4,7 @@ use std::fmt;
 
 #[derive(Clone, Debug, Default)]
 pub struct EntitiesInfo {
-    names: Vec<Option<String>>,
+    names: Vec<String>,
 }
 
 impl EntitiesInfo {
@@ -15,22 +15,22 @@ impl EntitiesInfo {
     pub fn get_id(&mut self, s: String) -> usize {
         self.names
             .iter()
-            .position(|name| name.as_deref() == Some(&s))
+            .position(|name| name == &s)
             .unwrap_or_else(|| {
-                self.names.push(Some(s));
+                self.names.push(s);
                 self.names.len() - 1
             })
     }
 
-    pub fn make_new_empty_id(&mut self) -> usize {
-        self.names.push(None);
-        self.names.len() - 1
+    pub fn len(&self) -> usize {
+        self.names.len()
     }
 
+    // TODO: 2024/02/25 String or Option<String>?
     fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
-            .and_then(|name| name.clone())
+            .map(|name| name.clone())
             .unwrap_or_else(|| id.to_string())
     }
 }
@@ -49,7 +49,7 @@ impl fmt::Display for TermDisplay<'_> {
         use Term::*;
         match self.term {
             Var(id) => write!(f, "{}", self.entities.get_name(*id))?,
-            Function(id, terms) => write!(
+            Func(id, terms) => write!(
                 f,
                 "{}({})",
                 self.entities.get_name(*id),
