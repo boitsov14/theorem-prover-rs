@@ -204,9 +204,18 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, is_proved));
                     1
                 }
-                All(..) => {
+                All(vs, p) => {
                     self.suc.swap_remove(fml);
-                    todo!()
+                    let p = fml_arena.alloc(*p.clone());
+                    for v in vs {
+                        let free_vars = free_vars.iter().map(|v| Term::Var(*v)).collect();
+                        let skolem_term = Term::Func(*skolem_idx, free_vars);
+                        *skolem_idx += 1;
+                        p.subst(*v, &skolem_term);
+                    }
+                    self.suc.insert(p);
+                    seqs.push((self, false));
+                    1
                 }
                 Exists(..) => unimplemented!(),
                 Predicate(..) => unreachable!(),
