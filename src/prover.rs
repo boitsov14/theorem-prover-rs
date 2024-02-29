@@ -457,11 +457,10 @@ impl Formula {
         (tree, is_proved)
     }
 
-    pub fn assert_provable(&self, entities: &EntitiesInfo) {
-        // TODO: 2024/02/29 skolem idx or entities
+    pub fn assert_provable(&self, skolem_idx: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, entities.len());
+        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, skolem_idx);
         assert!(is_proved);
     }
 }

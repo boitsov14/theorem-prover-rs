@@ -17,12 +17,12 @@ fn from_example_prop(c: &mut Criterion) {
         (fml.universal_quantify(), entities)
     });
 
-    for (ref fml, mut entities) in fmls {
+    for (ref fml, entities) in fmls {
         group.bench_with_input(
             BenchmarkId::from_parameter(fml.display(&entities)),
             fml,
             |b, fml| {
-                b.iter(|| fml.assert_provable(&mut entities));
+                b.iter(|| fml.assert_provable(entities.len()));
             },
         );
     }
@@ -48,8 +48,8 @@ fn from_iltp_prop_0(c: &mut Criterion) {
 
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
-            for (fml, entities) in &mut fmls {
-                fml.assert_provable(entities);
+            for (fml, entities) in &fmls {
+                fml.assert_provable(entities.len());
             }
         });
     });
@@ -73,12 +73,12 @@ fn from_iltp_prop_1(c: &mut Criterion) {
             parse(&from_tptp(&s)).unwrap()
         });
 
-    for (ref fml, mut entities) in fmls {
+    for (ref fml, entities) in fmls {
         group.bench_with_input(
             BenchmarkId::from_parameter(fml.display(&entities)),
             fml,
             |b, fml| {
-                b.iter(|| fml.assert_provable(&mut entities));
+                b.iter(|| fml.assert_provable(entities.len()));
             },
         );
     }
