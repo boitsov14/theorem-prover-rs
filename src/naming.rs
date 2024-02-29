@@ -1,5 +1,6 @@
 use crate::formula::{Formula, Term};
 use crate::prover::Sequent;
+use itertools::Itertools;
 use std::fmt;
 
 #[derive(Clone, Debug, Default)]
@@ -56,7 +57,7 @@ impl fmt::Display for TermDisplay<'_> {
                 terms
                     .iter()
                     .map(|term| term.display(self.entities).to_string())
-                    .collect::<Vec<_>>()
+                    .collect_vec()
                     .join(",")
             )?,
         }
@@ -101,7 +102,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         terms
                             .iter()
                             .map(|term| term.display(self.entities).to_string())
-                            .collect::<Vec<_>>()
+                            .collect_vec()
                             .join(",")
                     )?;
                 }
@@ -132,7 +133,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         "{}",
                         l.iter()
                             .map(|p| p.display_inner(self.entities).to_string())
-                            .collect::<Vec<_>>()
+                            .collect_vec()
                             .join(" ∧ ")
                     )?;
                     if self.is_inner {
@@ -151,7 +152,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         "{}",
                         l.iter()
                             .map(|p| p.display_inner(self.entities).to_string())
-                            .collect::<Vec<_>>()
+                            .collect_vec()
                             .join(" ∨ ")
                     )?;
                     if self.is_inner {
@@ -178,7 +179,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 "∀{}{}",
                 vars.iter()
                     .map(|id| self.entities.get_name(*id))
-                    .collect::<Vec<_>>()
+                    .collect_vec()
                     .join(","),
                 p.display_inner(self.entities)
             )?,
@@ -187,7 +188,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 "∃{}{}",
                 vars.iter()
                     .map(|id| self.entities.get_name(*id))
-                    .collect::<Vec<_>>()
+                    .collect_vec()
                     .join(","),
                 p.display_inner(self.entities)
             )?,
@@ -249,13 +250,13 @@ impl fmt::Display for SequentDisplay<'_, '_> {
                 .ant
                 .iter()
                 .map(|fml| fml.display(self.entities).to_string())
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
                 .map(|fml| fml.display(self.entities).to_string())
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join(", ")
         )?;
         Ok(())
@@ -270,13 +271,13 @@ impl Latex for SequentDisplay<'_, '_> {
                 .ant
                 .iter()
                 .map(|fml| fml.display(self.entities).to_latex())
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
                 .map(|fml| fml.display(self.entities).to_latex())
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join(", ")
         )
     }

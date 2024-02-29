@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use itertools::Itertools;
 use mimalloc::MiMalloc;
 use std::fs;
 use theorem_prover_rs::parser::*;
@@ -30,7 +31,7 @@ fn from_example_prop(c: &mut Criterion) {
 
 fn from_iltp_prop_0(c: &mut Criterion) {
     let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = s.lines().collect::<Vec<_>>();
+    let exclude_list = s.lines().collect_vec();
 
     let mut fmls = fs::read_dir("benches/iltp_prop")
         .unwrap()
@@ -43,7 +44,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
             let s = fs::read_to_string(&file).unwrap();
             parse(&from_tptp(&s)).unwrap()
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
 
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {

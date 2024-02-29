@@ -1,6 +1,7 @@
 use crate::formula::{Formula, Term};
 use crate::naming::EntitiesInfo;
 use indexmap::IndexSet;
+use itertools::Itertools;
 use maplit::{hashmap, hashset};
 use peg::{error, str::LineCol};
 use regex::Regex;
@@ -370,7 +371,7 @@ impl Formula {
 
     pub fn universal_quantify(self) -> Self {
         use Formula::All;
-        let mut fv = self.free_vars().into_iter().collect::<Vec<_>>();
+        let mut fv = self.free_vars().into_iter().collect_vec();
         if fv.is_empty() {
             return self;
         }

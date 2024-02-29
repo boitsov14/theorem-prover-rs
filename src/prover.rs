@@ -2,7 +2,7 @@ use crate::formula::{Formula, Term};
 use crate::naming::{EntitiesInfo, Latex};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
-use itertools::repeat_n;
+use itertools::{repeat_n, Itertools};
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::fs::File;
@@ -506,7 +506,7 @@ pub fn example_iltp_prop() {
     use std::time::Instant;
 
     let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = s.lines().collect::<Vec<_>>();
+    let exclude_list = s.lines().collect_vec();
 
     let files = fs::read_dir("benches/iltp_prop")
         .unwrap()
