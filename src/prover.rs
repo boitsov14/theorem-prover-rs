@@ -20,7 +20,7 @@ pub struct Sequent<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum SequentType {
+enum FormulaPos {
     Ant,
     Suc,
 }
@@ -38,7 +38,7 @@ enum ProofTree<'a> {
 #[derive(Debug)]
 struct Tactic<'a> {
     fml: &'a Formula,
-    seq_type: SequentType,
+    fml_pos: FormulaPos,
 }
 
 #[derive(Debug)]
@@ -54,9 +54,9 @@ enum OutputType {
 }
 
 impl<'a> Sequent<'a> {
-    fn get_fml(&self) -> Option<(&'a Formula, SequentType)> {
+    fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
         use Formula::*;
-        use SequentType::*;
+        use FormulaPos::*;
         for fml in &self.ant {
             match fml {
                 Not(_) | And(_) | Exists(..) => {
@@ -104,15 +104,15 @@ impl<'a> Sequent<'a> {
     fn apply_tactic(
         mut self,
         fml: &'a Formula,
-        seq_type: SequentType,
+        fml_pos: FormulaPos,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
         skolem_idx: &mut usize,
         free_vars: &Vec<usize>,
     ) -> usize {
         use Formula::*;
-        use SequentType::*;
-        match seq_type {
+        use FormulaPos::*;
+        match fml_pos {
             Ant => match fml {
                 Not(p) => {
                     self.ant.swap_remove(fml);
@@ -224,8 +224,8 @@ impl<'a> Sequent<'a> {
         free_vars: &mut Vec<usize>,
     ) -> (ProofTree<'a>, bool) {
         use ProofTree::*;
-        if let Some((fml, seq_type)) = self.get_fml() {
-            let len = self.apply_tactic(fml, seq_type, seqs, fml_arena, skolem_idx, free_vars);
+        if let Some((fml, fml_pos)) = self.get_fml() {
+            let len = self.apply_tactic(fml, fml_pos, seqs, fml_arena, skolem_idx, free_vars);
             let mut subproofs = Vec::with_capacity(len);
             let mut is_proved = true;
             // TODO: 2023/11/30 for文で書くか，iterを使うか
@@ -244,7 +244,7 @@ impl<'a> Sequent<'a> {
                     is_proved = false;
                 }
             }
-            let tactic = Tactic { fml, seq_type };
+            let tactic = Tactic { fml, fml_pos };
             (Node { tactic, subproofs }, is_proved)
         } else {
             let cell = tree_arena.alloc(OnceCell::new());
@@ -299,12 +299,12 @@ impl<'a> ProofTree<'a> {
                 }
             },
             Node { tactic, subproofs } => {
-                let Tactic { fml, seq_type } = tactic;
+                let Tactic { fml, fml_pos } = tactic;
                 let len =
                     seq.clone()
-                        .apply_tactic(fml, *seq_type, seqs, fml_arena, skolem_idx, &vec![]);
+                        .apply_tactic(fml, *fml_pos, seqs, fml_arena, skolem_idx, &vec![]);
                 assert_eq!(len, subproofs.len());
-                let label = get_label(fml, seq_type, output);
+                let label = get_label(fml, fml_pos, output);
                 if matches!(output, Console) {
                     writeln!(w, "{label}")?;
                 }
@@ -359,7 +359,7 @@ impl<'a> ProofTree<'a> {
     }
 }
 
-fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> String {
+fn get_label(fml: &Formula, fml_pos: &FormulaPos, output: OutputType) -> String {
     use Formula::*;
     use OutputType::*;
     let fml_type = match fml {
@@ -405,11 +405,11 @@ fn get_label(fml: &Formula, seq_type: &SequentType, output: OutputType) -> Strin
         },
         Predicate(..) => unreachable!(),
     };
-    let seq_type = match seq_type {
-        SequentType::Ant => ": Left",
-        SequentType::Suc => ": Right",
+    let fml_pos = match fml_pos {
+        FormulaPos::Ant => ": Left",
+        FormulaPos::Suc => ": Right",
     };
-    format!("{fml_type}{seq_type}")
+    format!("{fml_type}{fml_pos}")
 }
 
 impl Formula {
@@ -443,7 +443,7 @@ impl Formula {
         //     println!("{:#?}", seq);
         //     let tactic = Tactic {
         //         fml: self,
-        //         seq_type: SequentType::Ant,
+        //         fml_pos: FormulaPos::Ant,
         //     };
         //     let tree = ProofTree::Node {
         //         tactic,
