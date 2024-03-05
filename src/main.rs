@@ -2,6 +2,7 @@ mod formula;
 mod naming;
 mod parser;
 mod prover;
+mod unification;
 
 use mimalloc::MiMalloc;
 
