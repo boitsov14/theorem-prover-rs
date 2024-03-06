@@ -33,7 +33,7 @@ impl Term {
         }
     }
 
-    fn subst(&mut self, var: usize, new_term: &Term) {
+    pub fn subst(&mut self, var: usize, new_term: &Term) {
         use Term::*;
         match self {
             Var(id) => {

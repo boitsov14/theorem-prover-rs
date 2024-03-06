@@ -40,7 +40,7 @@ pub trait Latex {
     fn to_latex(&self) -> String;
 }
 
-struct TermDisplay<'a> {
+pub struct TermDisplay<'a> {
     term: &'a Term,
     entities: &'a EntitiesInfo,
 }
@@ -66,7 +66,7 @@ impl fmt::Display for TermDisplay<'_> {
 }
 
 impl Term {
-    fn display<'a>(&'a self, entities: &'a EntitiesInfo) -> TermDisplay<'a> {
+    pub fn display<'a>(&'a self, entities: &'a EntitiesInfo) -> TermDisplay<'a> {
         TermDisplay {
             term: self,
             entities,
