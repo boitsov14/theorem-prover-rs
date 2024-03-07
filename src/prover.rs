@@ -107,7 +107,7 @@ impl<'a> Sequent<'a> {
         fml_pos: FormulaPos,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
-        skolem_idx: &mut usize,
+        new_id: &mut usize,
         free_vars: &Vec<usize>,
     ) -> usize {
         use Formula::*;
@@ -158,8 +158,8 @@ impl<'a> Sequent<'a> {
                     for v in vs {
                         // TODO: 2024/02/29 要改善
                         let free_vars = free_vars.iter().map(|v| Term::Var(*v)).collect();
-                        let skolem_term = Term::Func(*skolem_idx, free_vars);
-                        *skolem_idx += 1;
+                        let skolem_term = Term::Func(*new_id, free_vars);
+                        *new_id += 1;
                         p.subst(*v, &skolem_term);
                     }
                     self.ant.insert(p);
@@ -209,8 +209,8 @@ impl<'a> Sequent<'a> {
                     let p = fml_arena.alloc(*p.clone());
                     for v in vs {
                         let free_vars = free_vars.iter().map(|v| Term::Var(*v)).collect();
-                        let skolem_term = Term::Func(*skolem_idx, free_vars);
-                        *skolem_idx += 1;
+                        let skolem_term = Term::Func(*new_id, free_vars);
+                        *new_id += 1;
                         p.subst(*v, &skolem_term);
                     }
                     self.suc.insert(p);
@@ -229,12 +229,12 @@ impl<'a> Sequent<'a> {
         unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-        skolem_idx: &mut usize,
+        new_id: &mut usize,
         free_vars: &mut Vec<usize>,
     ) -> (ProofTree<'a>, bool) {
         use ProofTree::*;
         if let Some((fml, fml_pos)) = self.get_fml() {
-            let len = self.apply_tactic(fml, fml_pos, seqs, fml_arena, skolem_idx, free_vars);
+            let len = self.apply_tactic(fml, fml_pos, seqs, fml_arena, new_id, free_vars);
             let mut subproofs = Vec::with_capacity(len);
             let mut is_proved = true;
             // TODO: 2023/11/30 for文で書くか，iterを使うか
@@ -244,9 +244,8 @@ impl<'a> Sequent<'a> {
                     subproofs.push(Proved);
                     continue;
                 }
-                let (tree, is_proved0) = seq.prove_rec(
-                    seqs, unresolved, fml_arena, tree_arena, skolem_idx, free_vars,
-                );
+                let (tree, is_proved0) =
+                    seq.prove_rec(seqs, unresolved, fml_arena, tree_arena, new_id, free_vars);
                 subproofs.push(tree);
                 if !is_proved0 {
                     // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
@@ -269,7 +268,7 @@ impl<'a> ProofTree<'a> {
         &self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
-        skolem_idx: &mut usize,
+        new_id: &mut usize,
         entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
@@ -309,16 +308,16 @@ impl<'a> ProofTree<'a> {
             },
             Node { tactic, subproofs } => {
                 let Tactic { fml, fml_pos } = tactic;
-                let len =
-                    seq.clone()
-                        .apply_tactic(fml, *fml_pos, seqs, fml_arena, skolem_idx, &vec![]);
+                let len = seq
+                    .clone()
+                    .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &vec![]);
                 assert_eq!(len, subproofs.len());
                 let label = get_label(fml, fml_pos, output);
                 if matches!(output, Console) {
                     writeln!(w, "{label}")?;
                 }
                 for proof in subproofs {
-                    proof.write_rec(seqs, fml_arena, skolem_idx, entities, output, w)?;
+                    proof.write_rec(seqs, fml_arena, new_id, entities, output, w)?;
                 }
                 if matches!(output, Latex) {
                     writeln!(
@@ -432,44 +431,28 @@ impl Formula {
         &'a self,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-        skolem_idx: usize,
+        new_id: usize,
     ) -> (ProofTree, bool) {
-        let mut skolem_idx = skolem_idx;
+        let mut new_id = new_id;
+        let mut unresolved = vec![];
         let (tree, is_proved) = self.to_seq().prove_rec(
             &mut vec![],
-            &mut vec![],
+            &mut unresolved,
             fml_arena,
             tree_arena,
-            &mut skolem_idx,
+            &mut new_id,
             &mut vec![],
         );
-        // println!("------");
-        // println!("{is_proved}");
-        // println!("{}", seqs.len());
-        // println!("{:#?}", tree);
-        // println!("------");
-        // for (cell, seq) in seqs_waiting {
-        //     println!("{:#?}", seq);
-        //     let tactic = Tactic {
-        //         fml: self,
-        //         fml_pos: FormulaPos::Ant,
-        //     };
-        //     let tree = ProofTree::Node {
-        //         tactic,
-        //         subproofs: vec![],
-        //     };
-        //     cell.set(tree).unwrap();
-        // }
-        // println!("------");
-        // println!("{:#?}", tree);
-        // println!("------");
+        if !unresolved.is_empty() {
+            todo!()
+        }
         (tree, is_proved)
     }
 
-    pub fn assert_provable(&self, skolem_idx: usize) {
+    pub fn assert_provable(&self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, skolem_idx);
+        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, new_id);
         assert!(is_proved);
     }
 }
