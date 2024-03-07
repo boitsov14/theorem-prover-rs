@@ -33,7 +33,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
     let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
     let exclude_list = s.lines().collect_vec();
 
-    let mut fmls = fs::read_dir("benches/iltp_prop")
+    let fmls = fs::read_dir("benches/iltp_prop")
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|file| {
