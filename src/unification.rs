@@ -86,6 +86,39 @@ mod tests {
         assert_eq!(result, Ok(expected));
     }
 
+    #[test]
+    fn test_unify4() {
+        // f(x, g(x)) = f(y, z)
+        let result = test_unify("f(x, g(x))", "f(y, z)");
+        // x ↦ y, z ↦ g(x)
+        let expected = hashmap!["x".into() => Some("y".into()), "z".into() => Some("g(x)".into()), "y".into() => None];
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unify5() {
+        // f(x) = g(x)
+        let result = test_unify("f(x)", "g(x)");
+        // Fail
+        assert_eq!(result, Err(UnificationFailure));
+    }
+
+    #[test]
+    fn test_unify6() {
+        // f(x) = f(g(x))
+        let result = test_unify("f(x)", "f(g(x))");
+        // Fail
+        assert_eq!(result, Err(UnificationFailure));
+    }
+
+    #[test]
+    fn test_unify7() {
+        // f(y, y) = f(g(x), x)
+        let result = test_unify("f(y, y)", "f(g(x), x)");
+        // Fail
+        assert_eq!(result, Err(UnificationFailure));
+    }
+
     fn test_unify(s: &str, t: &str) -> Result<HashMap<String, Option<String>>, UnificationFailure> {
         let fml_str = format!("P({s}, {t})");
         let (fml, entities) = parse(&fml_str).unwrap();
