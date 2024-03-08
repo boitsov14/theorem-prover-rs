@@ -20,12 +20,12 @@ impl Term {
                 u.insert(*v, t.clone());
                 Ok(())
             }
-            (Func(id1, args1), Func(id2, args2)) => {
-                if id1 != id2 || args1.len() != args2.len() {
+            (Func(id1, terms1), Func(id2, terms2)) => {
+                if id1 != id2 || terms1.len() != terms2.len() {
                     return Err(UnificationFailure);
                 }
-                for (arg1, arg2) in args1.iter().zip(args2.iter()) {
-                    arg1.unify(arg2, u)?;
+                for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                    t1.unify(t2, u)?;
                 }
                 Ok(())
             }
@@ -48,7 +48,7 @@ impl Term {
     fn has_fv(&self, v: usize, u: &Unifier) -> bool {
         match self.resolve(u) {
             Var(j) => v == *j,
-            Func(_, args) => args.iter().any(|t| t.has_fv(v, u)),
+            Func(_, terms) => terms.iter().any(|t| t.has_fv(v, u)),
         }
     }
 }
@@ -160,11 +160,11 @@ mod tests {
             free_var_info.insert(new_id, old_v);
             new_id += 1;
         }
-        let Formula::Predicate(_, args) = *p else {
+        let Formula::Predicate(_, terms) = *p else {
             unreachable!()
         };
-        let t1 = args[0].clone();
-        let t2 = args[1].clone();
+        let t1 = terms[0].clone();
+        let t2 = terms[1].clone();
         let mut u = hashmap!();
         t1.unify(&t2, &mut u)?;
         let mut result = hashmap!();
