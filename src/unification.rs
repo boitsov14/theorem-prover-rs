@@ -5,10 +5,10 @@ use Term::*;
 type Unifier = HashMap<usize, Term>;
 
 #[derive(Debug, PartialEq)]
-struct UnificationFailure;
+pub struct UnificationFailure;
 
 impl Term {
-    fn unify(&self, other: &Self, u: &mut Unifier) -> Result<(), UnificationFailure> {
+    pub fn unify(&self, other: &Self, u: &mut Unifier) -> Result<(), UnificationFailure> {
         let t1 = &self.resolve(u).clone();
         let t2 = &other.resolve(u).clone();
         match (t1, t2) {
