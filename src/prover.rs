@@ -3,6 +3,7 @@ use crate::naming::{EntitiesInfo, Latex};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::{repeat_n, Itertools};
+use maplit::hashmap;
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::fs::File;
@@ -435,17 +436,86 @@ impl Formula {
     ) -> (ProofTree, bool) {
         let mut new_id = new_id;
         let mut unresolved = vec![];
+        let mut free_vars = vec![];
         let (tree, is_proved) = self.to_seq().prove_rec(
             &mut vec![],
             &mut unresolved,
             fml_arena,
             tree_arena,
             &mut new_id,
-            &mut vec![],
+            &mut free_vars,
         );
-        if !unresolved.is_empty() {
-            todo!()
+        if is_proved {
+            return (tree, true);
         }
+
+        loop {
+            'outer: loop {
+                let Some((cell, seq)) = unresolved.pop() else {
+                    // this means that there are no ∀-left and ∃-right
+                    // TODO: 2024/03/08 implement
+                    break;
+                };
+
+                // try apply ∀-left and ∃-right from unresolved sequents
+                for fml in &seq.ant {
+                    if let Formula::All(vs, p) = fml {
+                        let p = fml_arena.alloc(*p.clone());
+                        for v in vs {
+                            p.subst(*v, &Term::Var(new_id));
+                            new_id += 1;
+                        }
+                        let mut seq = seq.clone();
+                        seq.ant.insert(p);
+                        let (sub_tree, is_proved) = seq.prove_rec(
+                            &mut vec![],
+                            &mut unresolved,
+                            fml_arena,
+                            tree_arena,
+                            &mut new_id,
+                            &mut free_vars,
+                        );
+                        cell.set(sub_tree).unwrap();
+                        if is_proved {
+                            return (tree, is_proved);
+                        }
+                        break 'outer;
+                    }
+                }
+
+                for fml in &seq.suc {
+                    if let Formula::Exists(vs, p) = fml {
+                        // TODO: 2024/03/08 implement
+                        break 'outer;
+                    }
+                }
+            }
+
+            // try unify unresolved sequents
+            let mut u = hashmap!();
+            for (_, seq) in &unresolved {
+                for p in &seq.ant {
+                    let Formula::Predicate(id1, terms1) = p else {
+                        continue;
+                    };
+                    for p in &seq.suc {
+                        let Formula::Predicate(id2, terms2) = p else {
+                            continue;
+                        };
+                        if !(id1 == id2 && terms1.len() == terms2.len()) {
+                            continue;
+                        }
+                        for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                            match t1.unify(t2, &mut u) {
+                                Ok(_) => {}
+                                Err(_) => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         (tree, is_proved)
     }
 
