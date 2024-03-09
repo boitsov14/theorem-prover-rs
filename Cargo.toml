@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indexmap = "2.2.3"
+indexmap = "2.2.5"
 itertools = "0.12.1"
 maplit = "1.0.2"
 mimalloc = { version = "0.1.39", default-features = false }
@@ -19,7 +19,7 @@ unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 criterion = "0.5.1"
-insta = "1.35.1"
+insta = "1.36.1"
 
 [[bench]]
 name = "benchmark"
