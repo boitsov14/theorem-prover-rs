@@ -1,5 +1,6 @@
 use crate::formula::{Formula, Term};
 use crate::naming::{EntitiesInfo, Latex};
+use crate::unification::{UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::{repeat_n, Itertools};
@@ -7,7 +8,7 @@ use maplit::hashmap;
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::fs::File;
-use std::io::{BufWriter, Result, Write};
+use std::io::{self, BufWriter, Write};
 use typed_arena::Arena;
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
@@ -273,7 +274,7 @@ impl<'a> ProofTree<'a> {
         entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
-    ) -> Result<()> {
+    ) -> io::Result<()> {
         use OutputType::*;
         use ProofTree::*;
         if matches!(output, Console) {
@@ -339,7 +340,7 @@ impl<'a> ProofTree<'a> {
         entities: &EntitiesInfo,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
-    ) -> Result<()> {
+    ) -> io::Result<()> {
         use OutputType::*;
         if matches!(output, Latex) {
             writeln!(
@@ -492,28 +493,49 @@ impl Formula {
             }
 
             // try unify unresolved sequents
-            let mut u = hashmap!();
+            let mut pair_matrix = Vec::with_capacity(unresolved.len());
             for (_, seq) in &unresolved {
+                let mut pairs = vec![];
                 for p in &seq.ant {
-                    let Formula::Predicate(id1, terms1) = p else {
-                        continue;
-                    };
-                    for p in &seq.suc {
-                        let Formula::Predicate(id2, terms2) = p else {
-                            continue;
-                        };
-                        if !(id1 == id2 && terms1.len() == terms2.len()) {
-                            continue;
+                    if let Formula::Predicate(id1, terms1) = p {
+                        for q in &seq.suc {
+                            if let Formula::Predicate(id2, terms2) = q {
+                                if id1 == id2 && terms1.len() == terms2.len() {
+                                    let pair = (terms1, terms2);
+                                    pairs.push(pair);
+                                }
+                            };
                         }
-                        for (t1, t2) in terms1.iter().zip(terms2.iter()) {
-                            match t1.unify(t2, &mut u) {
-                                Ok(_) => {}
+                    };
+                }
+                pair_matrix.push(pairs);
+            }
+
+            fn unify_pairs_matrix(
+                pair_matrix: &[Vec<(&Vec<Term>, &Vec<Term>)>],
+                u: &mut Unifier,
+            ) -> Result<(), UnificationFailure> {
+                if pair_matrix.is_empty() {
+                    return Ok(());
+                }
+                let pairs = &pair_matrix[0];
+                for pair in pairs {
+                    let (terms1, terms2) = pair;
+                    for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                        match t1.unify(t2, u) {
+                            Ok(_) => match unify_pairs_matrix(&pair_matrix[1..], u) {
+                                Ok(_) => return Ok(()),
                                 Err(_) => {}
-                            }
+                            },
+                            Err(_) => {}
                         }
                     }
                 }
+                Err(UnificationFailure)
             }
+
+            let mut u = hashmap!();
+            let _ = unify_pairs_matrix(&pair_matrix, &mut u);
         }
 
         (tree, is_proved)
@@ -527,7 +549,7 @@ impl Formula {
     }
 }
 
-pub fn example(s: &str) -> Result<()> {
+pub fn example(s: &str) -> io::Result<()> {
     use crate::parser::parse;
     use std::time::Instant;
 
