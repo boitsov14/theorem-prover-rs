@@ -2,7 +2,7 @@ use crate::formula::Term;
 use std::collections::HashMap;
 use Term::*;
 
-type Unifier = HashMap<usize, Term>;
+pub type Unifier = HashMap<usize, Term>;
 
 #[derive(Debug, PartialEq)]
 pub struct UnificationFailure;
