@@ -449,12 +449,13 @@ impl Formula {
             return (tree, true);
         }
 
+        let mut unification_cnt = 0;
+        const MAX_UNIFICATION_CNT: usize = 4;
+
         loop {
             'outer: loop {
                 let Some((cell, seq, mut applied_fmls)) = unresolved.pop() else {
-                    // this means that there are no ∀-left and ∃-right
-                    // TODO: 2024/03/08 implement
-                    break;
+                    unreachable!();
                 };
 
                 // try apply ∀-left and ∃-right from unresolved sequents
@@ -502,10 +503,18 @@ impl Formula {
 
                 // When there are no ∀-lefts nor ∃-rights
                 if applied_fmls.is_empty() {
-                    return (tree, true);
+                    return (tree, false);
                 }
 
                 // When there are ∀-lefts or ∃-rights, but all of them are already applied
+                // check unification count
+                if unification_cnt >= MAX_UNIFICATION_CNT {
+                    // TODO: 2024/03/10 falseではなくfailure
+                    return (tree, false);
+                }
+                applied_fmls.clear();
+                unification_cnt += 1;
+                unresolved.push((cell, seq, applied_fmls));
             }
 
             // try unify unresolved sequents
@@ -550,11 +559,17 @@ impl Formula {
                 Err(UnificationFailure)
             }
 
+            // TODO: 2024/03/10 uは引数にする
             let mut u = hashmap!();
-            let _ = unify_pairs_matrix(&pair_matrix, &mut u);
+            match unify_pairs_matrix(&pair_matrix, &mut u) {
+                Ok(_) => {
+                    return (tree, true);
+                }
+                Err(_) => {
+                    continue;
+                }
+            }
         }
-
-        (tree, is_proved)
     }
 
     pub fn assert_provable(&self, new_id: usize) {
