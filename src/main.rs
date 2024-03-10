@@ -1,10 +1,5 @@
-mod formula;
-mod naming;
-mod parser;
-mod prover;
-mod unification;
-
 use mimalloc::MiMalloc;
+use theorem_prover_rs::{example, example_iltp_prop};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -19,6 +14,6 @@ fn main() {
     // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
 
-    prover::example(s).unwrap();
-    // prover::example_iltp_prop();
+    example(s).unwrap();
+    example_iltp_prop();
 }

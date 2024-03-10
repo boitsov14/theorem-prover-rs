@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use itertools::Itertools;
 use mimalloc::MiMalloc;
 use std::fs;
-use theorem_prover_rs::parser::*;
+use theorem_prover_rs::{from_tptp, parse};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
