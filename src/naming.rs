@@ -31,7 +31,7 @@ impl EntitiesInfo {
     fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
-            .map(|name| name.clone())
+            .cloned()
             .unwrap_or_else(|| id.to_string())
     }
 }

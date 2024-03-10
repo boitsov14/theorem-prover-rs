@@ -86,13 +86,10 @@ impl<'a> Sequent<'a> {
             }
         }
         for fml in &self.suc {
-            match fml {
-                And(l) => {
-                    if l.iter().all(|p| !self.suc.contains(p)) {
-                        return Some((fml, Suc));
-                    }
+            if let And(l) = fml {
+                if l.iter().all(|p| !self.suc.contains(p)) {
+                    return Some((fml, Suc));
                 }
-                _ => {}
             }
         }
         None
@@ -105,7 +102,7 @@ impl<'a> Sequent<'a> {
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
         new_id: &mut usize,
-        free_vars: &Vec<usize>,
+        free_vars: &[usize],
     ) -> usize {
         use Formula::*;
         use FormulaPos::*;
@@ -311,7 +308,7 @@ impl<'a> ProofTree<'a> {
                 let Tactic { fml, fml_pos } = tactic;
                 let len = seq
                     .clone()
-                    .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &vec![]);
+                    .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &[]);
                 assert_eq!(len, subproofs.len());
                 let label = get_label(fml, fml_pos, output);
                 if matches!(output, Console) {
@@ -355,7 +352,7 @@ impl<'a> ProofTree<'a> {
             &mut seqs,
             fml_arena,
             &mut entities.len(),
-            &entities,
+            entities,
             output,
             w,
         )?;
@@ -547,12 +544,10 @@ impl Formula {
                 for pair in pairs {
                     let (terms1, terms2) = pair;
                     for (t1, t2) in terms1.iter().zip(terms2.iter()) {
-                        match t1.unify(t2, u) {
-                            Ok(_) => match unify_pairs_matrix(&pair_matrix[1..], u) {
-                                Ok(_) => return Ok(()),
-                                Err(_) => {}
-                            },
-                            Err(_) => {}
+                        if t1.unify(t2, u).is_ok()
+                            && unify_pairs_matrix(&pair_matrix[1..], u).is_ok()
+                        {
+                            return Ok(());
                         }
                     }
                 }

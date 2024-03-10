@@ -12,25 +12,25 @@ use unicode_normalization::UnicodeNormalization;
 #[derive(Error, Debug)]
 pub enum ParseError {
     #[error("Found {lp} left parentheses and {rp} right parentheses.")]
-    ParenthesesError { lp: usize, rp: usize },
+    Parentheses { lp: usize, rp: usize },
     #[error("
  | 
  | {s}
  | {}^___
  | 
  = expected {}", " ".repeat(e.location.column - 1), e.expected)]
-    CoreParseError {
+    Core {
         s: String,
         e: error::ParseError<LineCol>,
     },
     #[error("The same name of predicates must take the same number of arguments.")]
-    PredicateArityError,
+    PredicateArity,
     #[error("The same name of functions must take the same number of arguments.")]
-    FunctionArityError,
+    FunctionArity,
     #[error("Cannot quantify predicates.")]
-    PredicateBddError,
+    BddPredicate,
     #[error("Cannot quantify functions.")]
-    FunctionBddError,
+    BddFunction,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -54,19 +54,18 @@ pub static P_TRUE: PFormula = PFormula::And(vec![]);
 pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
 pub fn parse(s: &str) -> Result<(Formula, EntitiesInfo), ParseError> {
-    use ParseError::*;
     let s = s.nfkc().collect::<String>().trim().to_string();
     let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
     if lp != rp {
-        return Err(ParenthesesError { lp, rp });
+        return Err(ParseError::Parentheses { lp, rp });
     }
     let pfml = match parser::formula(&s) {
         Ok(pfml) => pfml,
         Err(e) => {
             let s = s.into();
-            return Err(CoreParseError { s, e });
+            return Err(ParseError::Core { s, e });
         }
     };
     let (fml, entities) = pfml.into_formula();
@@ -81,7 +80,6 @@ pub fn from_tptp(s: &str) -> String {
         .collect::<String>();
 
     let mut axioms = vec![];
-    let conjecture;
 
     let re_axiom = Regex::new(r#"fof\(([^,]+),axiom,(.+?)\)\."#).unwrap();
     for cap in re_axiom.captures_iter(&s) {
@@ -90,7 +88,7 @@ pub fn from_tptp(s: &str) -> String {
 
     let re_conjecture = Regex::new(r#"fof\(([^,]+),conjecture,(.+?)\)\."#).unwrap();
     let cap = re_conjecture.captures(&s).unwrap();
-    conjecture = cap[2].trim().to_string();
+    let conjecture = cap[2].trim().to_string();
 
     axioms
         .iter()
@@ -294,7 +292,6 @@ impl Term {
         bdd_vars: &HashSet<usize>,
         fns: &mut HashMap<usize, usize>,
     ) -> Result<(), ParseError> {
-        use ParseError::*;
         use Term::*;
         match self {
             Var(_) => {}
@@ -302,14 +299,14 @@ impl Term {
                 // check the arity of the function
                 if let Some(arity) = fns.get(id) {
                     if *arity != terms.len() {
-                        return Err(FunctionArityError);
+                        return Err(ParseError::FunctionArity);
                     }
                 } else {
                     fns.insert(*id, terms.len());
                 }
                 // check if the function is quantified
                 if bdd_vars.contains(id) {
-                    return Err(FunctionBddError);
+                    return Err(ParseError::BddFunction);
                 }
                 for term in terms {
                     term.check(bdd_vars, fns)?;
@@ -332,7 +329,6 @@ impl Formula {
         preds: &mut HashMap<usize, usize>,
     ) -> Result<(), ParseError> {
         use Formula::*;
-        use ParseError::*;
         match self {
             Predicate(id, terms) => {
                 for term in terms {
@@ -341,14 +337,14 @@ impl Formula {
                 // check the arity of the predicate
                 if let Some(arity) = preds.get(id) {
                     if *arity != terms.len() {
-                        return Err(PredicateArityError);
+                        return Err(ParseError::PredicateArity);
                     }
                 } else {
                     preds.insert(*id, terms.len());
                 }
                 // check if the predicate is quantified
                 if bdd_vars.contains(id) {
-                    return Err(PredicateBddError);
+                    return Err(ParseError::BddPredicate);
                 }
             }
             Not(p) => p.check_rec(bdd_vars, fns, preds)?,
@@ -625,17 +621,19 @@ mod tests {
 
     #[test]
     fn test_check() {
-        use ParseError::*;
         assert!(parse("P and P").is_ok());
-        assert!(parse("P and P(x)").is_err_and(|e| { matches!(e, PredicateArityError) }));
-        assert!(parse("P(x) and P(x,y)").is_err_and(|e| { matches!(e, PredicateArityError) }));
+        assert!(parse("P and P(x)").is_err_and(|e| { matches!(e, ParseError::PredicateArity) }));
+        assert!(
+            parse("P(x) and P(x,y)").is_err_and(|e| { matches!(e, ParseError::PredicateArity) })
+        );
         assert!(parse("P(f(x), f(x)) and P(f(x), f(x))").is_ok());
-        assert!(parse("P(f(x), f(x,y))").is_err_and(|e| { matches!(e, FunctionArityError) }));
-        assert!(parse("P(f(x)) and P(f(x,y))").is_err_and(|e| { matches!(e, FunctionArityError) }));
+        assert!(parse("P(f(x), f(x,y))").is_err_and(|e| { matches!(e, ParseError::FunctionArity) }));
+        assert!(parse("P(f(x)) and P(f(x,y))")
+            .is_err_and(|e| { matches!(e, ParseError::FunctionArity) }));
         assert!(parse("all x,y P(f(x,y))").is_ok());
         assert!(parse("(all Q,g P(f(Q,g))) and Q and P(g(x))").is_ok());
-        assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, FunctionBddError) }));
-        assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, PredicateBddError) }));
+        assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddFunction) }));
+        assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddPredicate) }));
         assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
     }
 
