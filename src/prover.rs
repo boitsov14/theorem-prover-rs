@@ -4,9 +4,10 @@ use crate::unification::{UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::{repeat_n, Itertools};
-use maplit::hashmap;
+use maplit::{hashmap, hashset};
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use typed_arena::Arena;
@@ -41,12 +42,6 @@ enum ProofTree<'a> {
 struct Tactic<'a> {
     fml: &'a Formula,
     fml_pos: FormulaPos,
-}
-
-#[derive(Debug)]
-enum ProofState {
-    Provable,
-    UnProvable,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -228,7 +223,11 @@ impl<'a> Sequent<'a> {
     fn prove_rec(
         self,
         seqs: &mut Vec<(Sequent<'a>, bool)>,
-        unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Sequent<'a>)>,
+        unresolved: &mut Vec<(
+            &'a OnceCell<ProofTree<'a>>,
+            Sequent<'a>,
+            HashSet<&'a Formula>,
+        )>,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: &mut usize,
@@ -259,7 +258,7 @@ impl<'a> Sequent<'a> {
         } else {
             let cell = tree_arena.alloc(OnceCell::new());
             let tree = Unresolved(cell);
-            unresolved.push((cell, self));
+            unresolved.push((cell, self, hashset!()));
             (tree, false)
         }
     }
@@ -452,7 +451,7 @@ impl Formula {
 
         loop {
             'outer: loop {
-                let Some((cell, seq)) = unresolved.pop() else {
+                let Some((cell, seq, mut applied_fmls)) = unresolved.pop() else {
                     // this means that there are no ∀-left and ∃-right
                     // TODO: 2024/03/08 implement
                     break;
@@ -461,21 +460,31 @@ impl Formula {
                 // try apply ∀-left and ∃-right from unresolved sequents
                 for fml in &seq.ant {
                     if let Formula::All(vs, p) = fml {
+                        if applied_fmls.contains(fml) {
+                            continue;
+                        }
+                        applied_fmls.insert(fml);
                         let p = fml_arena.alloc(*p.clone());
                         for v in vs {
                             p.subst(*v, &Term::Var(new_id));
+                            free_vars.push(new_id);
                             new_id += 1;
                         }
                         let mut seq = seq.clone();
                         seq.ant.insert(p);
+                        let mut new_unresolved = vec![];
                         let (sub_tree, is_proved) = seq.prove_rec(
                             &mut vec![],
-                            &mut unresolved,
+                            &mut new_unresolved,
                             fml_arena,
                             tree_arena,
                             &mut new_id,
                             &mut free_vars,
                         );
+                        for (_, _, new_applied_fmls) in new_unresolved.iter_mut() {
+                            new_applied_fmls.extend(&applied_fmls);
+                        }
+                        unresolved.extend(new_unresolved);
                         cell.set(sub_tree).unwrap();
                         if is_proved {
                             return (tree, is_proved);
@@ -490,11 +499,18 @@ impl Formula {
                         break 'outer;
                     }
                 }
+
+                // When there are no ∀-lefts nor ∃-rights
+                if applied_fmls.is_empty() {
+                    return (tree, true);
+                }
+
+                // When there are ∀-lefts or ∃-rights, but all of them are already applied
             }
 
             // try unify unresolved sequents
             let mut pair_matrix = Vec::with_capacity(unresolved.len());
-            for (_, seq) in &unresolved {
+            for (_, seq, _) in &unresolved {
                 let mut pairs = vec![];
                 for p in &seq.ant {
                     if let Formula::Predicate(id1, terms1) = p {
