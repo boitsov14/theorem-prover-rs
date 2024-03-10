@@ -81,19 +81,19 @@ pub fn from_tptp(s: &str) -> String {
 
     let mut axioms = vec![];
 
-    let re_axiom = Regex::new(r#"fof\(([^,]+),axiom,(.+?)\)\."#).unwrap();
+    let re_axiom = Regex::new(r"fof\(([^,]+),axiom,(.+?)\)\.").unwrap();
     for cap in re_axiom.captures_iter(&s) {
         axioms.push(cap[2].trim().to_string());
     }
 
-    let re_conjecture = Regex::new(r#"fof\(([^,]+),conjecture,(.+?)\)\."#).unwrap();
+    let re_conjecture = Regex::new(r"fof\(([^,]+),conjecture,(.+?)\)\.").unwrap();
     let cap = re_conjecture.captures(&s).unwrap();
     let conjecture = cap[2].trim().to_string();
 
     axioms
         .iter()
         .rev()
-        .fold(conjecture, |acc, axiom| format!("({}) -> ({})", axiom, acc))
+        .fold(conjecture, |acc, axiom| format!("({axiom}) -> ({acc})"))
         .replace('$', "")
 }
 
@@ -225,8 +225,8 @@ peg::parser!( grammar parser() for str {
 impl PTerm {
     fn into_term(self, entities: &mut EntitiesInfo) -> Term {
         match self {
-            PTerm::Var(name) => Term::Var(entities.get_id(name)),
-            PTerm::Function(name, pterms) => Term::Func(
+            Self::Var(name) => Term::Var(entities.get_id(name)),
+            Self::Function(name, pterms) => Term::Func(
                 entities.get_id(name),
                 pterms
                     .into_iter()
@@ -246,36 +246,36 @@ impl PFormula {
 
     fn into_formula_rec(self, entities: &mut EntitiesInfo) -> Formula {
         match self {
-            PFormula::Predicate(name, pterms) => Formula::Predicate(
+            Self::Predicate(name, pterms) => Formula::Predicate(
                 entities.get_id(name),
                 pterms
                     .into_iter()
                     .map(|pterm| pterm.into_term(entities))
                     .collect(),
             ),
-            PFormula::Not(p) => Formula::Not(Box::new(p.into_formula_rec(entities))),
-            PFormula::And(l) => Formula::And(
+            Self::Not(p) => Formula::Not(Box::new(p.into_formula_rec(entities))),
+            Self::And(l) => Formula::And(
                 l.into_iter()
                     .map(|p| p.into_formula_rec(entities))
                     .collect(),
             ),
-            PFormula::Or(l) => Formula::Or(
+            Self::Or(l) => Formula::Or(
                 l.into_iter()
                     .map(|p| p.into_formula_rec(entities))
                     .collect(),
             ),
-            PFormula::Implies(p, q) => Formula::Implies(
+            Self::Implies(p, q) => Formula::Implies(
                 Box::new(p.into_formula_rec(entities)),
                 Box::new(q.into_formula_rec(entities)),
             ),
-            PFormula::All(names, p) => Formula::All(
+            Self::All(names, p) => Formula::All(
                 names
                     .into_iter()
                     .map(|name| entities.get_id(name))
                     .collect(),
                 Box::new(p.into_formula_rec(entities)),
             ),
-            PFormula::Exists(names, p) => Formula::Exists(
+            Self::Exists(names, p) => Formula::Exists(
                 names
                     .into_iter()
                     .map(|name| entities.get_id(name))

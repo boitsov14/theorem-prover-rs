@@ -34,13 +34,7 @@ impl Term {
 
     fn resolve<'a>(&'a self, u: &'a Unifier) -> &'a Self {
         match self {
-            Var(v) => {
-                if let Some(t) = u.get(v) {
-                    t.resolve(u)
-                } else {
-                    self
-                }
-            }
+            Var(v) => u.get(v).map_or(self, |t| t.resolve(u)),
             _ => self,
         }
     }

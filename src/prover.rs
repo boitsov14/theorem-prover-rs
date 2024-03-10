@@ -310,7 +310,7 @@ impl<'a> ProofTree<'a> {
                     .clone()
                     .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &[]);
                 assert_eq!(len, subproofs.len());
-                let label = get_label(fml, fml_pos, output);
+                let label = get_label(fml, *fml_pos, output);
                 if matches!(output, Console) {
                     writeln!(w, "{label}")?;
                 }
@@ -365,7 +365,7 @@ impl<'a> ProofTree<'a> {
     }
 }
 
-fn get_label(fml: &Formula, fml_pos: &FormulaPos, output: OutputType) -> String {
+fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
     use Formula::*;
     use OutputType::*;
     let fml_type = match fml {
@@ -427,7 +427,7 @@ impl Formula {
 
     fn prove<'a>(
         &'a self,
-        fml_arena: &'a Arena<Formula>,
+        fml_arena: &'a Arena<Self>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: usize,
     ) -> (ProofTree, bool) {
@@ -457,7 +457,7 @@ impl Formula {
 
                 // try apply ∀-left and ∃-right from unresolved sequents
                 for fml in &seq.ant {
-                    if let Formula::All(vs, p) = fml {
+                    if let Self::All(vs, p) = fml {
                         if applied_fmls.contains(fml) {
                             continue;
                         }
@@ -479,7 +479,7 @@ impl Formula {
                             &mut new_id,
                             &mut free_vars,
                         );
-                        for (_, _, new_applied_fmls) in new_unresolved.iter_mut() {
+                        for (_, _, new_applied_fmls) in &mut new_unresolved {
                             new_applied_fmls.extend(&applied_fmls);
                         }
                         unresolved.extend(new_unresolved);
@@ -519,9 +519,9 @@ impl Formula {
             for (_, seq, _) in &unresolved {
                 let mut pairs = vec![];
                 for p in &seq.ant {
-                    if let Formula::Predicate(id1, terms1) = p {
+                    if let Self::Predicate(id1, terms1) = p {
                         for q in &seq.suc {
-                            if let Formula::Predicate(id2, terms2) = q {
+                            if let Self::Predicate(id2, terms2) = q {
                                 if id1 == id2 && terms1.len() == terms2.len() {
                                     let pair = (terms1, terms2);
                                     pairs.push(pair);
@@ -557,7 +557,7 @@ impl Formula {
             // TODO: 2024/03/10 uは引数にする
             let mut u = hashmap!();
             match unify_pairs_matrix(&pair_matrix, &mut u) {
-                Ok(_) => {
+                Ok(()) => {
                     return (tree, true);
                 }
                 Err(_) => {
