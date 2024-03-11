@@ -141,9 +141,10 @@ impl fmt::Display for FormulaDisplay<'_> {
                     }
                 }
             },
-            Or(l) => match l.as_slice() {
-                [] => write!(f, "false")?,
-                _ => {
+            Or(l) => {
+                if l.is_empty() {
+                    write!(f, "false")?;
+                } else {
                     if self.is_inner {
                         write!(f, "(")?;
                     }
@@ -159,7 +160,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         write!(f, ")")?;
                     }
                 }
-            },
+            }
             Implies(p, q) => {
                 if self.is_inner {
                     write!(f, "(")?;

@@ -176,7 +176,7 @@ peg::parser!( grammar parser() for str {
         --
         not() _ p:@ { Not(Box::new(p)) }
         all() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs = vs.iter().map(|s| s.to_string()).collect::<IndexSet<_>>();
+            let mut vs = vs.iter().map(|&s| s.to_string()).collect::<IndexSet<_>>();
             match p {
                 All(ws, q) => {
                     vs.extend(ws);
@@ -186,7 +186,7 @@ peg::parser!( grammar parser() for str {
             }
         }
         exists() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs = vs.iter().map(|s| s.to_string()).collect::<IndexSet<_>>();
+            let mut vs = vs.iter().map(|&s| s.to_string()).collect::<IndexSet<_>>();
             match p {
                 Exists(ws, q) => {
                     vs.extend(ws);

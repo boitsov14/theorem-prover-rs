@@ -12,6 +12,8 @@ use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use typed_arena::Arena;
 
+const MAX_UNIFICATION_CNT: usize = 4;
+
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Sequent of formulae
@@ -447,7 +449,6 @@ impl Formula {
         }
 
         let mut unification_cnt = 0;
-        const MAX_UNIFICATION_CNT: usize = 4;
 
         loop {
             'outer: loop {
@@ -537,10 +538,9 @@ impl Formula {
                 pair_matrix: &[Vec<(&Vec<Term>, &Vec<Term>)>],
                 u: &mut Unifier,
             ) -> Result<(), UnificationFailure> {
-                if pair_matrix.is_empty() {
+                let Some(pairs) = pair_matrix.first() else {
                     return Ok(());
-                }
-                let pairs = &pair_matrix[0];
+                };
                 for pair in pairs {
                     let (terms1, terms2) = pair;
                     for (t1, t2) in terms1.iter().zip(terms2.iter()) {
