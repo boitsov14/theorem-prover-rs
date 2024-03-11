@@ -493,7 +493,7 @@ impl Formula {
                 }
 
                 for fml in &seq.suc {
-                    if let Formula::Exists(vs, p) = fml {
+                    if let Self::Exists(vs, p) = fml {
                         // TODO: 2024/03/08 implement
                         break 'outer;
                     }
@@ -534,26 +534,6 @@ impl Formula {
                 pair_matrix.push(pairs);
             }
 
-            fn unify_pairs_matrix(
-                pair_matrix: &[Vec<(&Vec<Term>, &Vec<Term>)>],
-                u: &mut Unifier,
-            ) -> Result<(), UnificationFailure> {
-                let Some(pairs) = pair_matrix.first() else {
-                    return Ok(());
-                };
-                for pair in pairs {
-                    let (terms1, terms2) = pair;
-                    for (t1, t2) in terms1.iter().zip(terms2.iter()) {
-                        if t1.unify(t2, u).is_ok()
-                            && unify_pairs_matrix(&pair_matrix[1..], u).is_ok()
-                        {
-                            return Ok(());
-                        }
-                    }
-                }
-                Err(UnificationFailure)
-            }
-
             // TODO: 2024/03/10 uは引数にする
             let mut u = hashmap!();
             match unify_pairs_matrix(&pair_matrix, &mut u) {
@@ -573,6 +553,24 @@ impl Formula {
         let (_, is_proved) = self.prove(&fml_arena, &tree_arena, new_id);
         assert!(is_proved);
     }
+}
+
+fn unify_pairs_matrix(
+    pair_matrix: &[Vec<(&Vec<Term>, &Vec<Term>)>],
+    u: &mut Unifier,
+) -> Result<(), UnificationFailure> {
+    let Some(pairs) = pair_matrix.first() else {
+        return Ok(());
+    };
+    for pair in pairs {
+        let (terms1, terms2) = pair;
+        for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+            if t1.unify(t2, u).is_ok() && unify_pairs_matrix(&pair_matrix[1..], u).is_ok() {
+                return Ok(());
+            }
+        }
+    }
+    Err(UnificationFailure)
 }
 
 pub fn example(s: &str) -> io::Result<()> {

@@ -4,7 +4,7 @@ use Term::*;
 
 pub type Unifier = HashMap<usize, Term>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnificationFailure;
 
 impl Term {
