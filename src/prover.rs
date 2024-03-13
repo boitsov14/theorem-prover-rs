@@ -423,16 +423,17 @@ impl Formula {
         &'a self,
         fml_arena: &'a Arena<Self>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-        new_id: &mut usize,
+        new_id: usize,
     ) -> (ProofTree, ProofResult, HashMap<usize, Term>, Vec<usize>) {
         let mut unresolved = vec![];
         let mut free_vars = vec![];
+        let mut new_id = new_id;
         let tree = self.to_seq().prove_rec(
             &mut vec![],
             &mut unresolved,
             fml_arena,
             tree_arena,
-            new_id,
+            &mut new_id,
             &mut free_vars,
         );
         if unresolved.is_empty() {
@@ -462,9 +463,9 @@ impl Formula {
                         applied_fmls.insert(fml);
                         let p = fml_arena.alloc(*p.clone());
                         for v in vs {
-                            p.subst(*v, &Term::Var(*new_id));
-                            free_vars.push(*new_id);
-                            *new_id += 1;
+                            p.subst(*v, &Term::Var(new_id));
+                            free_vars.push(new_id);
+                            new_id += 1;
                         }
                         let mut seq = seq.clone();
                         seq.ant.insert(p);
@@ -474,14 +475,22 @@ impl Formula {
                             &mut new_unresolved,
                             fml_arena,
                             tree_arena,
-                            new_id,
+                            &mut new_id,
                             &mut free_vars,
                         );
                         for (_, _, new_applied_fmls) in &mut new_unresolved {
                             new_applied_fmls.extend(&applied_fmls);
                         }
                         unresolved.extend(new_unresolved);
-                        cell.set(sub_tree).unwrap();
+                        let tactic = Tactic {
+                            fml,
+                            fml_pos: FormulaPos::Ant,
+                        };
+                        cell.set(ProofTree::Node {
+                            tactic,
+                            subproofs: vec![sub_tree],
+                        })
+                        .unwrap();
                         break 'outer;
                     }
                 }
@@ -555,6 +564,9 @@ impl Formula {
             }
             match unify_pairs_matrix(&pair_matrix, &mut u) {
                 Ok(()) => {
+                    for (cell, _, _) in &mut unresolved {
+                        cell.set(ProofTree::Proved).unwrap();
+                    }
                     return (tree, ProofResult::Provable, resolve_unifier(&u), free_vars);
                 }
                 Err(_) => {
@@ -567,8 +579,7 @@ impl Formula {
     pub fn assert_provable(&self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let mut new_id = new_id;
-        let (_, result, _, _) = self.prove(&fml_arena, &tree_arena, &mut new_id);
+        let (_, result, _, _) = self.prove(&fml_arena, &tree_arena, new_id);
         assert!(matches!(result, ProofResult::Provable));
     }
 }
@@ -607,9 +618,8 @@ pub fn example(s: &str) -> io::Result<()> {
     // prove
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
-    let mut new_id = entities.len();
     let start_time = Instant::now();
-    let (proof, result, u, free_vars) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
+    let (proof, result, u, free_vars) = fml.prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
@@ -653,9 +663,8 @@ pub fn example_iltp_prop() {
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let mut new_id = entities.len();
         let start_time = Instant::now();
-        let (_, result, _, _) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
+        let (_, result, _, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -736,8 +745,7 @@ mod tests {
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let mut new_id = entities.len();
-        let (proof, _, u, free_vars) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
+        let (proof, _, u, free_vars) = fml.prove(&fml_arena, &tree_arena, entities.len());
         // latex
         let mut w = BufWriter::new(vec![]);
         proof
