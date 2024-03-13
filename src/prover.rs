@@ -109,7 +109,7 @@ impl<'a> Sequent<'a> {
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
         new_id: &mut usize,
-        free_vars: &[usize],
+        free_vars: &mut Vec<usize>,
     ) -> usize {
         match fml_pos {
             FormulaPos::Ant => match fml {
@@ -165,7 +165,17 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, false));
                     1
                 }
-                All(..) => unimplemented!(),
+                All(vs, p) => {
+                    let p = fml_arena.alloc(*p.clone());
+                    for v in vs {
+                        p.subst(*v, &Term::Var(*new_id));
+                        free_vars.push(*new_id);
+                        *new_id += 1;
+                    }
+                    self.ant.insert(p);
+                    seqs.push((self, false));
+                    1
+                }
                 Predicate(..) => unreachable!(),
             },
             FormulaPos::Suc => match fml {
@@ -216,7 +226,17 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, false));
                     1
                 }
-                Exists(..) => unimplemented!(),
+                Exists(vs, p) => {
+                    let p = fml_arena.alloc(*p.clone());
+                    for v in vs {
+                        p.subst(*v, &Term::Var(*new_id));
+                        free_vars.push(*new_id);
+                        *new_id += 1;
+                    }
+                    self.suc.insert(p);
+                    seqs.push((self, false));
+                    1
+                }
                 Predicate(..) => unreachable!(),
             },
         }
@@ -302,9 +322,9 @@ impl<'a> ProofTree<'a> {
             },
             ProofTree::Node { tactic, subproofs } => {
                 let Tactic { fml, fml_pos } = tactic;
-                let len = seq
-                    .clone()
-                    .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &[]);
+                let len =
+                    seq.clone()
+                        .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &mut vec![]);
                 assert_eq!(len, subproofs.len());
                 let label = get_label(fml, *fml_pos, output);
                 if matches!(output, OutputType::Console) {
@@ -454,52 +474,85 @@ impl Formula {
                     unreachable!();
                 };
 
-                // try apply ∀-left and ∃-right from unresolved sequents
+                // try to apply ∀-left
+                let mut fml_all = None;
                 for fml in &seq.ant {
-                    if let Self::All(vs, p) = fml {
-                        if applied_fmls.contains(fml) {
-                            continue;
-                        }
-                        applied_fmls.insert(fml);
-                        let p = fml_arena.alloc(*p.clone());
-                        for v in vs {
-                            p.subst(*v, &Term::Var(new_id));
-                            free_vars.push(new_id);
-                            new_id += 1;
-                        }
-                        let mut seq = seq.clone();
-                        seq.ant.insert(p);
-                        let mut new_unresolved = vec![];
-                        let sub_tree = seq.prove_rec(
-                            &mut vec![],
-                            &mut new_unresolved,
-                            fml_arena,
-                            tree_arena,
-                            &mut new_id,
-                            &mut free_vars,
-                        );
-                        for (_, _, new_applied_fmls) in &mut new_unresolved {
-                            new_applied_fmls.extend(&applied_fmls);
-                        }
-                        unresolved.extend(new_unresolved);
-                        let tactic = Tactic {
-                            fml,
-                            fml_pos: FormulaPos::Ant,
-                        };
-                        cell.set(ProofTree::Node {
-                            tactic,
-                            subproofs: vec![sub_tree],
-                        })
-                        .unwrap();
-                        break 'outer;
+                    if matches!(fml, All(..)) && !applied_fmls.contains(fml) {
+                        fml_all = Some(*fml);
                     }
                 }
-
-                for fml in &seq.suc {
-                    if let Self::Exists(vs, p) = fml {
-                        // TODO: 2024/03/08 implement
-                        break 'outer;
+                if let Some(fml) = fml_all {
+                    applied_fmls.insert(fml);
+                    let fml_pos = FormulaPos::Ant;
+                    let mut seqs = vec![];
+                    seq.apply_tactic(
+                        fml,
+                        fml_pos,
+                        &mut seqs,
+                        fml_arena,
+                        &mut new_id,
+                        &mut free_vars,
+                    );
+                    let (seq, _) = seqs.pop().unwrap();
+                    let mut new_unresolved = vec![];
+                    let sub_tree = seq.prove_rec(
+                        &mut vec![],
+                        &mut new_unresolved,
+                        fml_arena,
+                        tree_arena,
+                        &mut new_id,
+                        &mut free_vars,
+                    );
+                    for (_, _, new_applied_fmls) in &mut new_unresolved {
+                        new_applied_fmls.extend(&applied_fmls);
                     }
+                    unresolved.extend(new_unresolved);
+                    let tactic = Tactic { fml, fml_pos };
+                    cell.set(ProofTree::Node {
+                        tactic,
+                        subproofs: vec![sub_tree],
+                    })
+                    .unwrap();
+                    break 'outer;
+                }
+
+                // try to apply ∃-right
+                let mut fml_ex = None;
+                for fml in &seq.suc {
+                    if matches!(fml, Exists(..)) && !applied_fmls.contains(fml) {
+                        fml_ex = Some(*fml);
+                    }
+                }
+                if let Some(fml) = fml_ex {
+                    applied_fmls.insert(fml);
+                    let fml_pos = FormulaPos::Suc;
+                    let mut seqs = vec![];
+                    seq.apply_tactic(
+                        fml,
+                        fml_pos,
+                        &mut seqs,
+                        fml_arena,
+                        &mut new_id,
+                        &mut free_vars,
+                    );
+                    let (seq, _) = seqs.pop().unwrap();
+                    let mut new_unresolved = vec![];
+                    let sub_tree = seq.prove_rec(
+                        &mut vec![],
+                        &mut new_unresolved,
+                        fml_arena,
+                        tree_arena,
+                        &mut new_id,
+                        &mut free_vars,
+                    );
+                    for (_, _, new_applied_fmls) in &mut new_unresolved {
+                        new_applied_fmls.extend(&applied_fmls);
+                    }
+                    unresolved.extend(new_unresolved);
+                    let tactic = Tactic { fml, fml_pos };
+                    let subproofs = vec![sub_tree];
+                    cell.set(ProofTree::Node { tactic, subproofs }).unwrap();
+                    break 'outer;
                 }
 
                 // When there are no ∀-lefts nor ∃-rights
@@ -621,6 +674,7 @@ pub fn example(s: &str) -> io::Result<()> {
     let start_time = Instant::now();
     let (proof, result, u, free_vars) = fml.prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
+    println!("u: {:?}", u);
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
