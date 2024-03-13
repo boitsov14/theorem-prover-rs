@@ -1,18 +1,18 @@
-use crate::formula::{Formula, Term};
+use crate::formula::{Formula, Formula::*, Term};
 use crate::naming::{EntitiesInfo, Latex};
-use crate::unification::{UnificationFailure, Unifier};
+use crate::unification::{resolve_unifier, UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
 use itertools::{repeat_n, Itertools};
 use maplit::{hashmap, hashset};
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use typed_arena::Arena;
 
-const MAX_UNIFICATION_CNT: usize = 4;
+const MAX_UNIFICATION_CNT: usize = 100;
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
@@ -47,6 +47,13 @@ struct Tactic<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
+enum ProofResult {
+    Provable,
+    Unprovable,
+    Failure,
+}
+
+#[derive(Clone, Copy, Debug)]
 enum OutputType {
     Console,
     Latex,
@@ -54,12 +61,10 @@ enum OutputType {
 
 impl<'a> Sequent<'a> {
     fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
-        use Formula::*;
-        use FormulaPos::*;
         for fml in &self.ant {
             match fml {
                 Not(_) | And(_) | Exists(..) => {
-                    return Some((fml, Ant));
+                    return Some((fml, FormulaPos::Ant));
                 }
                 _ => {}
             }
@@ -67,7 +72,7 @@ impl<'a> Sequent<'a> {
         for fml in &self.suc {
             match fml {
                 Not(_) | Or(_) | Implies(..) | All(..) => {
-                    return Some((fml, Suc));
+                    return Some((fml, FormulaPos::Suc));
                 }
                 _ => {}
             }
@@ -76,12 +81,12 @@ impl<'a> Sequent<'a> {
             match fml {
                 Or(l) => {
                     if l.iter().all(|p| !self.ant.contains(p)) {
-                        return Some((fml, Ant));
+                        return Some((fml, FormulaPos::Ant));
                     }
                 }
                 Implies(p, q) => {
                     if !self.suc.contains(&**p) && !self.ant.contains(&**q) {
-                        return Some((fml, Ant));
+                        return Some((fml, FormulaPos::Ant));
                     }
                 }
                 _ => {}
@@ -90,7 +95,7 @@ impl<'a> Sequent<'a> {
         for fml in &self.suc {
             if let And(l) = fml {
                 if l.iter().all(|p| !self.suc.contains(p)) {
-                    return Some((fml, Suc));
+                    return Some((fml, FormulaPos::Suc));
                 }
             }
         }
@@ -106,10 +111,8 @@ impl<'a> Sequent<'a> {
         new_id: &mut usize,
         free_vars: &[usize],
     ) -> usize {
-        use Formula::*;
-        use FormulaPos::*;
         match fml_pos {
-            Ant => match fml {
+            FormulaPos::Ant => match fml {
                 Not(p) => {
                     self.ant.swap_remove(fml);
                     self.suc.insert(p);
@@ -165,7 +168,7 @@ impl<'a> Sequent<'a> {
                 All(..) => unimplemented!(),
                 Predicate(..) => unreachable!(),
             },
-            Suc => match fml {
+            FormulaPos::Suc => match fml {
                 Not(p) => {
                     self.suc.swap_remove(fml);
                     self.ant.insert(p);
@@ -231,34 +234,27 @@ impl<'a> Sequent<'a> {
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: &mut usize,
         free_vars: &mut Vec<usize>,
-    ) -> (ProofTree<'a>, bool) {
-        use ProofTree::*;
+    ) -> ProofTree<'a> {
         if let Some((fml, fml_pos)) = self.get_fml() {
             let len = self.apply_tactic(fml, fml_pos, seqs, fml_arena, new_id, free_vars);
             let mut subproofs = Vec::with_capacity(len);
-            let mut is_proved = true;
-            // TODO: 2023/11/30 for文で書くか，iterを使うか
             for _ in 0..len {
-                let (seq, is_proved0) = seqs.pop().unwrap();
-                if is_proved0 {
-                    subproofs.push(Proved);
+                let (seq, is_proved) = seqs.pop().unwrap();
+                if is_proved {
+                    subproofs.push(ProofTree::Proved);
                     continue;
                 }
-                let (tree, is_proved0) =
+                let tree =
                     seq.prove_rec(seqs, unresolved, fml_arena, tree_arena, new_id, free_vars);
                 subproofs.push(tree);
-                if !is_proved0 {
-                    // TODO: 2023/11/11 Unprovableとわかった時点で探索を終了すべきか
-                    is_proved = false;
-                }
             }
             let tactic = Tactic { fml, fml_pos };
-            (Node { tactic, subproofs }, is_proved)
+            ProofTree::Node { tactic, subproofs }
         } else {
             let cell = tree_arena.alloc(OnceCell::new());
-            let tree = Unresolved(cell);
+            let tree = ProofTree::Unresolved(cell);
             unresolved.push((cell, self, hashset!()));
-            (tree, false)
+            tree
         }
     }
 }
@@ -273,22 +269,20 @@ impl<'a> ProofTree<'a> {
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> io::Result<()> {
-        use OutputType::*;
-        use ProofTree::*;
-        if matches!(output, Console) {
+        if matches!(output, OutputType::Console) {
             for (seq, _) in seqs.iter().rev() {
                 writeln!(w, "{}", &seq.display(entities))?;
             }
         }
         let (seq, _) = seqs.pop().unwrap();
         match self {
-            Proved => {
+            ProofTree::Proved => {
                 assert!(!seq.ant.is_disjoint(&seq.suc));
                 match output {
-                    Console => {
+                    OutputType::Console => {
                         writeln!(w, "Axiom")?;
                     }
-                    Latex => {
+                    OutputType::Latex => {
                         writeln!(
                             w,
                             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
@@ -298,28 +292,28 @@ impl<'a> ProofTree<'a> {
                 }
             }
             // TODO: 2023/12/02 Unresolvedがあとから解決された場合の処理
-            Unresolved(_) => match output {
-                Console => {
+            ProofTree::Unresolved(_) => match output {
+                OutputType::Console => {
                     writeln!(w, "UnProvable")?;
                 }
-                Latex => {
+                OutputType::Latex => {
                     writeln!(w, r"\hypo{{{}}}", seq.display(entities).to_latex())?;
                 }
             },
-            Node { tactic, subproofs } => {
+            ProofTree::Node { tactic, subproofs } => {
                 let Tactic { fml, fml_pos } = tactic;
                 let len = seq
                     .clone()
                     .apply_tactic(fml, *fml_pos, seqs, fml_arena, new_id, &[]);
                 assert_eq!(len, subproofs.len());
                 let label = get_label(fml, *fml_pos, output);
-                if matches!(output, Console) {
+                if matches!(output, OutputType::Console) {
                     writeln!(w, "{label}")?;
                 }
                 for proof in subproofs {
                     proof.write_rec(seqs, fml_arena, new_id, entities, output, w)?;
                 }
-                if matches!(output, Latex) {
+                if matches!(output, OutputType::Latex) {
                     writeln!(
                         w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
@@ -339,8 +333,7 @@ impl<'a> ProofTree<'a> {
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> io::Result<()> {
-        use OutputType::*;
-        if matches!(output, Latex) {
+        if matches!(output, OutputType::Latex) {
             writeln!(
                 w,
                 r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}"
@@ -359,7 +352,7 @@ impl<'a> ProofTree<'a> {
             w,
         )?;
         assert!(seqs.is_empty());
-        if matches!(output, Latex) {
+        if matches!(output, OutputType::Latex) {
             writeln!(w, r"\end{{prooftree}}")?;
             writeln!(w, r"\end{{document}}")?;
         }
@@ -368,7 +361,6 @@ impl<'a> ProofTree<'a> {
 }
 
 fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
-    use Formula::*;
     use OutputType::*;
     let fml_type = match fml {
         Not(_) => match output {
@@ -431,27 +423,32 @@ impl Formula {
         &'a self,
         fml_arena: &'a Arena<Self>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
-        new_id: usize,
-    ) -> (ProofTree, bool) {
-        let mut new_id = new_id;
+        new_id: &mut usize,
+    ) -> (ProofTree, ProofResult, HashMap<usize, Term>, Vec<usize>) {
         let mut unresolved = vec![];
         let mut free_vars = vec![];
-        let (tree, is_proved) = self.to_seq().prove_rec(
+        let tree = self.to_seq().prove_rec(
             &mut vec![],
             &mut unresolved,
             fml_arena,
             tree_arena,
-            &mut new_id,
+            new_id,
             &mut free_vars,
         );
-        if is_proved {
-            return (tree, true);
+        if unresolved.is_empty() {
+            return (tree, ProofResult::Provable, hashmap!(), free_vars);
         }
 
         let mut unification_cnt = 0;
 
         loop {
             'outer: loop {
+                // TODO: 2024/03/14 後で消す
+                // println!("-----------------------------------------------");
+                // for (_, seq, _) in &unresolved {
+                //     println!("seq: {}", seq.display(&EntitiesInfo::default()));
+                // }
+
                 let Some((cell, seq, mut applied_fmls)) = unresolved.pop() else {
                     unreachable!();
                 };
@@ -465,19 +462,19 @@ impl Formula {
                         applied_fmls.insert(fml);
                         let p = fml_arena.alloc(*p.clone());
                         for v in vs {
-                            p.subst(*v, &Term::Var(new_id));
-                            free_vars.push(new_id);
-                            new_id += 1;
+                            p.subst(*v, &Term::Var(*new_id));
+                            free_vars.push(*new_id);
+                            *new_id += 1;
                         }
                         let mut seq = seq.clone();
                         seq.ant.insert(p);
                         let mut new_unresolved = vec![];
-                        let (sub_tree, is_proved) = seq.prove_rec(
+                        let sub_tree = seq.prove_rec(
                             &mut vec![],
                             &mut new_unresolved,
                             fml_arena,
                             tree_arena,
-                            &mut new_id,
+                            new_id,
                             &mut free_vars,
                         );
                         for (_, _, new_applied_fmls) in &mut new_unresolved {
@@ -485,9 +482,6 @@ impl Formula {
                         }
                         unresolved.extend(new_unresolved);
                         cell.set(sub_tree).unwrap();
-                        if is_proved {
-                            return (tree, is_proved);
-                        }
                         break 'outer;
                     }
                 }
@@ -501,18 +495,21 @@ impl Formula {
 
                 // When there are no ∀-lefts nor ∃-rights
                 if applied_fmls.is_empty() {
-                    return (tree, false);
+                    return (tree, ProofResult::Unprovable, hashmap!(), free_vars);
                 }
 
                 // When there are ∀-lefts or ∃-rights, but all of them are already applied
                 // check unification count
                 if unification_cnt >= MAX_UNIFICATION_CNT {
-                    // TODO: 2024/03/10 falseではなくfailure
-                    return (tree, false);
+                    // TODO: 2024/03/14 後で消す
+                    println!("unification_cnt >= MAX_UNIFICATION_CNT");
+                    return (tree, ProofResult::Failure, hashmap!(), free_vars);
                 }
                 applied_fmls.clear();
                 unification_cnt += 1;
                 unresolved.push((cell, seq, applied_fmls));
+                // TODO: 2024/03/12 Kotlin版とcntの方法が異なる
+                println!("unification_cnt: {}", unification_cnt);
             }
 
             // try unify unresolved sequents
@@ -521,11 +518,16 @@ impl Formula {
                 let mut pairs = vec![];
                 for p in &seq.ant {
                     if let Self::Predicate(id1, terms1) = p {
-                        for q in &seq.suc {
+                        'outer0: for q in &seq.suc {
                             if let Self::Predicate(id2, terms2) = q {
                                 if id1 == id2 && terms1.len() == terms2.len() {
-                                    let pair = (terms1, terms2);
-                                    pairs.push(pair);
+                                    let mut u = vec![];
+                                    for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                                        if t1.get_unifiable_pairs(t2, &mut u).is_err() {
+                                            continue 'outer0;
+                                        }
+                                    }
+                                    pairs.push(u);
                                 }
                             };
                         }
@@ -534,11 +536,26 @@ impl Formula {
                 pair_matrix.push(pairs);
             }
 
-            // TODO: 2024/03/10 uは引数にする
+            // TODO: 2024/03/14 どうするか
+            // pair_matrix.sort_by_key(|pairs| pairs.len());
+
+            // TODO: 2024/03/14 後で消す
+            // println!("pair_matrix");
+            // for pairs in &pair_matrix {
+            //     println!("pairs");
+            //     for u in pairs {
+            //         println!("  u: {:?}", u);
+            //     }
+            // }
+            // println!("pair_matrix_end");
+
             let mut u = hashmap!();
+            for v in &free_vars {
+                u.insert(*v, OnceCell::new());
+            }
             match unify_pairs_matrix(&pair_matrix, &mut u) {
                 Ok(()) => {
-                    return (tree, true);
+                    return (tree, ProofResult::Provable, resolve_unifier(&u), free_vars);
                 }
                 Err(_) => {
                     continue;
@@ -550,23 +567,28 @@ impl Formula {
     pub fn assert_provable(&self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, is_proved) = self.prove(&fml_arena, &tree_arena, new_id);
-        assert!(is_proved);
+        let mut new_id = new_id;
+        let (_, result, _, _) = self.prove(&fml_arena, &tree_arena, &mut new_id);
+        assert!(matches!(result, ProofResult::Provable));
     }
 }
 
 fn unify_pairs_matrix(
-    pair_matrix: &[Vec<(&Vec<Term>, &Vec<Term>)>],
+    pair_matrix: &[Vec<Vec<(&Term, &Term)>>],
     u: &mut Unifier,
 ) -> Result<(), UnificationFailure> {
     let Some(pairs) = pair_matrix.first() else {
         return Ok(());
     };
+    let old_u = u.clone();
     for pair in pairs {
-        let (terms1, terms2) = pair;
-        for (t1, t2) in terms1.iter().zip(terms2.iter()) {
-            if t1.unify(t2, u).is_ok() && unify_pairs_matrix(&pair_matrix[1..], u).is_ok() {
-                return Ok(());
+        for (t1, t2) in pair {
+            if t1.unify(t2, u).is_ok() {
+                if unify_pairs_matrix(&pair_matrix[1..], u).is_ok() {
+                    return Ok(());
+                }
+            } else {
+                *u = old_u.clone();
             }
         }
     }
@@ -585,13 +607,13 @@ pub fn example(s: &str) -> io::Result<()> {
     // prove
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
+    let mut new_id = entities.len();
     let start_time = Instant::now();
-    let (proof, is_proved) = fml.prove(&fml_arena, &tree_arena, entities.len());
+    let (proof, result, u, free_vars) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
     let end_time = Instant::now();
-    println!(">> {is_proved:?}");
+    println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-    // assert!(is_proved);
 
     // print console
     let mut w = BufWriter::new(vec![]);
@@ -631,12 +653,13 @@ pub fn example_iltp_prop() {
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
+        let mut new_id = entities.len();
         let start_time = Instant::now();
-        let (_, is_proved) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let (_, result, _, _) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-        assert!(is_proved);
+        assert!(matches!(result, ProofResult::Provable));
     }
 }
 
@@ -713,7 +736,8 @@ mod tests {
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (proof, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let mut new_id = entities.len();
+        let (proof, _, u, free_vars) = fml.prove(&fml_arena, &tree_arena, &mut new_id);
         // latex
         let mut w = BufWriter::new(vec![]);
         proof

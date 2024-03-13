@@ -1,23 +1,24 @@
 use crate::formula::Term;
-use std::collections::HashMap;
+use maplit::hashmap;
+use std::{cell::OnceCell, collections::HashMap};
 use Term::*;
 
-pub type Unifier = HashMap<usize, Term>;
+pub type Unifier = HashMap<usize, OnceCell<Term>>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnificationFailure;
 
 impl Term {
-    pub fn unify(&self, other: &Self, u: &mut Unifier) -> Result<(), UnificationFailure> {
-        let t1 = &self.resolve(u).clone();
-        let t2 = &other.resolve(u).clone();
+    pub fn unify(&self, other: &Self, u: &Unifier) -> Result<(), UnificationFailure> {
+        let t1 = self.resolve(u);
+        let t2 = other.resolve(u);
         match (t1, t2) {
             (Var(v1), Var(v2)) if v1 == v2 => Ok(()),
             (Var(v), t) | (t, Var(v)) => {
                 if t.has_fv(*v, u) {
                     return Err(UnificationFailure);
                 }
-                u.insert(*v, t.clone());
+                u.get(v).unwrap().set(t.clone()).unwrap();
                 Ok(())
             }
             (Func(id1, terms1), Func(id2, terms2)) => {
@@ -32,10 +33,43 @@ impl Term {
         }
     }
 
+    pub fn get_unifiable_pairs<'a>(
+        &'a self,
+        other: &'a Self,
+        pairs: &mut Vec<(&'a Term, &'a Term)>,
+    ) -> Result<(), UnificationFailure> {
+        match (self, other) {
+            (Func(id1, terms1), Func(id2, terms2)) => {
+                if id1 != id2 || terms1.len() != terms2.len() {
+                    return Err(UnificationFailure);
+                }
+                for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                    t1.get_unifiable_pairs(t2, pairs)?;
+                }
+                Ok(())
+            }
+            _ => {
+                pairs.push((self, other));
+                Ok(())
+            }
+        }
+    }
+
     fn resolve<'a>(&'a self, u: &'a Unifier) -> &'a Self {
         match self {
-            Var(v) => u.get(v).map_or(self, |t| t.resolve(u)),
+            Var(v) => u.get(v).unwrap().get().map_or(self, |t| t.resolve(u)),
             _ => self,
+        }
+    }
+
+    fn resolve_full(self, u: &Unifier) -> Self {
+        match self {
+            Var(v) => u
+                .get(&v)
+                .unwrap()
+                .get()
+                .map_or(self, |t| t.clone().resolve_full(u)),
+            Func(id, terms) => Func(id, terms.into_iter().map(|t| t.resolve_full(u)).collect()),
         }
     }
 
@@ -45,6 +79,16 @@ impl Term {
             Func(_, terms) => terms.iter().any(|t| t.has_fv(v, u)),
         }
     }
+}
+
+pub fn resolve_unifier(u: &Unifier) -> HashMap<usize, Term> {
+    let mut result = hashmap!();
+    for (v, t) in u {
+        if let Some(t) = t.get() {
+            result.insert(*v, t.clone().resolve_full(u));
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -154,15 +198,20 @@ mod tests {
             free_var_info.insert(new_id, old_v);
             new_id += 1;
         }
+        let free_vars = p.free_vars();
         let Formula::Predicate(_, terms) = *p else {
             unreachable!()
         };
         let t1 = terms[0].clone();
         let t2 = terms[1].clone();
         let mut u = hashmap!();
-        t1.unify(&t2, &mut u)?;
+        for v in free_vars {
+            u.insert(v, OnceCell::new());
+        }
+        t1.unify(&t2, &u)?;
         let mut result = hashmap!();
-        for (new_v, t) in u.iter_mut() {
+        for (new_v, t) in u {
+            let mut t = t.into_inner().unwrap();
             for (new_v, old_v) in &free_var_info {
                 t.subst(*new_v, &Var(*old_v));
             }
