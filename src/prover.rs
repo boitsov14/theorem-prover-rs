@@ -444,7 +444,13 @@ impl Formula {
         fml_arena: &'a Arena<Self>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: usize,
-    ) -> (ProofTree, ProofResult, HashMap<usize, Term>, Vec<usize>) {
+    ) -> (
+        ProofTree,
+        ProofResult,
+        HashMap<usize, Term>,
+        Vec<usize>,
+        usize,
+    ) {
         let mut unresolved = vec![];
         let mut free_vars = vec![];
         let mut new_id = new_id;
@@ -457,7 +463,7 @@ impl Formula {
             &mut free_vars,
         );
         if unresolved.is_empty() {
-            return (tree, ProofResult::Provable, hashmap!(), free_vars);
+            return (tree, ProofResult::Provable, hashmap!(), free_vars, new_id);
         }
 
         let mut unification_cnt = 0;
@@ -557,7 +563,7 @@ impl Formula {
 
                 // When there are no ∀-lefts nor ∃-rights
                 if applied_fmls.is_empty() {
-                    return (tree, ProofResult::Unprovable, hashmap!(), free_vars);
+                    return (tree, ProofResult::Unprovable, hashmap!(), free_vars, new_id);
                 }
 
                 // When there are ∀-lefts or ∃-rights, but all of them are already applied
@@ -565,7 +571,7 @@ impl Formula {
                 if unification_cnt >= MAX_UNIFICATION_CNT {
                     // TODO: 2024/03/14 後で消す
                     println!("unification_cnt >= MAX_UNIFICATION_CNT");
-                    return (tree, ProofResult::Failure, hashmap!(), free_vars);
+                    return (tree, ProofResult::Failure, hashmap!(), free_vars, new_id);
                 }
                 applied_fmls.clear();
                 unification_cnt += 1;
@@ -620,7 +626,13 @@ impl Formula {
                     for (cell, _, _) in &mut unresolved {
                         cell.set(ProofTree::Proved).unwrap();
                     }
-                    return (tree, ProofResult::Provable, resolve_unifier(&u), free_vars);
+                    return (
+                        tree,
+                        ProofResult::Provable,
+                        resolve_unifier(&u),
+                        free_vars,
+                        new_id,
+                    );
                 }
                 Err(_) => {
                     continue;
@@ -632,7 +644,7 @@ impl Formula {
     pub fn assert_provable(&self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (_, result, _, _) = self.prove(&fml_arena, &tree_arena, new_id);
+        let (_, result, _, _, _) = self.prove(&fml_arena, &tree_arena, new_id);
         assert!(matches!(result, ProofResult::Provable));
     }
 }
@@ -672,7 +684,7 @@ pub fn example(s: &str) -> io::Result<()> {
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, result, u, free_vars) = fml.prove(&fml_arena, &tree_arena, entities.len());
+    let (proof, result, u, free_vars, new_id) = fml.prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
     println!("u: {:?}", u);
     println!(">> {result:?}");
@@ -718,7 +730,7 @@ pub fn example_iltp_prop() {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let start_time = Instant::now();
-        let (_, result, _, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let (_, result, _, _, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -799,7 +811,7 @@ mod tests {
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (proof, _, u, free_vars) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let (proof, _, u, free_vars, new_id) = fml.prove(&fml_arena, &tree_arena, entities.len());
         // latex
         let mut w = BufWriter::new(vec![]);
         proof
