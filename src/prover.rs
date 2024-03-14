@@ -696,14 +696,12 @@ pub fn example(s: &str) -> io::Result<()> {
     let old_id = entities.len();
     let mut entities = entities;
     for i in old_id..new_id {
-        println!("{entities:?}");
         if free_vars.contains(&i) {
             entities.get_id(format!("v_{}", i));
         } else {
             entities.get_id(format!("f_{}", i));
         }
     }
-    println!("{entities:?}");
     let mut w = BufWriter::new(vec![]);
     proof.write(
         &fml,
