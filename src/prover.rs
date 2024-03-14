@@ -297,6 +297,7 @@ impl<'a> ProofTree<'a> {
         let (seq, _) = seqs.pop().unwrap();
         match self {
             ProofTree::Proved => {
+                // TODO: 2024/03/14 unificationを考慮する
                 // assert!(!seq.ant.is_disjoint(&seq.suc));
                 match output {
                     OutputType::Console => {
@@ -698,16 +699,35 @@ pub fn example(s: &str) -> io::Result<()> {
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
-    // print console
     let old_id = entities.len();
     let mut entities = entities;
-    for i in old_id..new_id {
-        if free_vars.contains(&i) {
-            entities.get_id(format!("v_{}", i));
-        } else {
-            entities.get_id(format!("f_{}", i));
+    if matches!(result, ProofResult::Failure) {
+        let mut variable_id = 0;
+        let mut function_id = 0;
+        for i in old_id..new_id {
+            if free_vars.contains(&i) {
+                entities.get_id(format!("v_{}", variable_id));
+                variable_id += 1;
+            } else {
+                entities.get_id(format!("t_{}", function_id));
+                function_id += 1;
+            }
+        }
+    } else {
+        let mut variable_id = 0;
+        let mut function_id = 0;
+        for i in old_id..new_id {
+            if free_vars.contains(&i) {
+                entities.get_id(format!("v_{}", variable_id));
+                variable_id += 1;
+            } else {
+                entities.get_id(format!("t_{}", function_id));
+                function_id += 1;
+            }
         }
     }
+
+    // print console
     let mut w = BufWriter::new(vec![]);
     proof.write(
         &fml,
