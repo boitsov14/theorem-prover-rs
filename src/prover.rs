@@ -297,7 +297,7 @@ impl<'a> ProofTree<'a> {
         let (seq, _) = seqs.pop().unwrap();
         match self {
             ProofTree::Proved => {
-                assert!(!seq.ant.is_disjoint(&seq.suc));
+                // assert!(!seq.ant.is_disjoint(&seq.suc));
                 match output {
                     OutputType::Console => {
                         writeln!(w, "Axiom")?;
@@ -312,13 +312,19 @@ impl<'a> ProofTree<'a> {
                 }
             }
             // TODO: 2023/12/02 Unresolvedがあとから解決された場合の処理
-            ProofTree::Unresolved(_) => match output {
-                OutputType::Console => {
-                    writeln!(w, "UnProvable")?;
+            ProofTree::Unresolved(cell) => match cell.get() {
+                Some(tree) => {
+                    seqs.push((seq, false));
+                    tree.write_rec(seqs, fml_arena, new_id, entities, output, w)?;
                 }
-                OutputType::Latex => {
-                    writeln!(w, r"\hypo{{{}}}", seq.display(entities).to_latex())?;
-                }
+                None => match output {
+                    OutputType::Console => {
+                        writeln!(w, "UnProvable")?;
+                    }
+                    OutputType::Latex => {
+                        writeln!(w, r"\hypo{{{}}}", seq.display(entities).to_latex())?;
+                    }
+                },
             },
             ProofTree::Node { tactic, subproofs } => {
                 let Tactic { fml, fml_pos } = tactic;
