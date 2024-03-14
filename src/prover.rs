@@ -350,6 +350,7 @@ impl<'a> ProofTree<'a> {
         fml: &'a Formula,
         fml_arena: &'a Arena<Formula>,
         entities: &EntitiesInfo,
+        new_id: usize,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> io::Result<()> {
@@ -366,7 +367,7 @@ impl<'a> ProofTree<'a> {
         self.write_rec(
             &mut seqs,
             fml_arena,
-            &mut entities.len(),
+            &mut new_id.clone(),
             entities,
             output,
             w,
@@ -692,14 +693,39 @@ pub fn example(s: &str) -> io::Result<()> {
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
     // print console
+    let old_id = entities.len();
+    let mut entities = entities;
+    for i in old_id..new_id {
+        println!("{entities:?}");
+        if free_vars.contains(&i) {
+            entities.get_id(format!("v_{}", i));
+        } else {
+            entities.get_id(format!("f_{}", i));
+        }
+    }
+    println!("{entities:?}");
     let mut w = BufWriter::new(vec![]);
-    proof.write(&fml, &fml_arena, &entities, OutputType::Console, &mut w)?;
+    proof.write(
+        &fml,
+        &fml_arena,
+        &entities,
+        old_id,
+        OutputType::Console,
+        &mut w,
+    )?;
     println!("{}", String::from_utf8_lossy(&w.into_inner()?));
 
     // write latex
     let f = File::create("proof.tex")?;
     let mut w = BufWriter::new(f);
-    proof.write(&fml, &fml_arena, &entities, OutputType::Latex, &mut w)?;
+    proof.write(
+        &fml,
+        &fml_arena,
+        &entities,
+        old_id,
+        OutputType::Latex,
+        &mut w,
+    )?;
 
     Ok(())
 }
@@ -815,7 +841,14 @@ mod tests {
         // latex
         let mut w = BufWriter::new(vec![]);
         proof
-            .write(&fml, &fml_arena, &entities, OutputType::Latex, &mut w)
+            .write(
+                &fml,
+                &fml_arena,
+                &entities,
+                entities.len(),
+                OutputType::Latex,
+                &mut w,
+            )
             .unwrap();
         String::from_utf8(w.into_inner().unwrap()).unwrap()
     }
