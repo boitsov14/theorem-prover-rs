@@ -1,6 +1,7 @@
 use crate::formula::{Formula, Term};
 use crate::prover::Sequent;
 use itertools::Itertools;
+use regex::Regex;
 use std::fmt;
 
 #[derive(Clone, Debug, Default)]
@@ -200,7 +201,8 @@ impl fmt::Display for FormulaDisplay<'_> {
 
 impl Latex for FormulaDisplay<'_> {
     fn to_latex(&self) -> String {
-        self.to_string()
+        let str = self
+            .to_string()
             .replace("true", r"\top")
             .replace("false", r"\bot")
             .replace('¬', r"\lnot ")
@@ -210,7 +212,12 @@ impl Latex for FormulaDisplay<'_> {
             .replace('↔', r"\leftrightarrow")
             .replace('∀', r"\forall ")
             .replace('∃', r"\exists ")
-            .replace('_', r"\_")
+            .replace('_', r"\_");
+
+        Regex::new(r"v\\_(\d+)")
+            .unwrap()
+            .replace_all(&str, "v_{$1}")
+            .to_string()
     }
 }
 
