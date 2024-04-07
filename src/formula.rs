@@ -1,5 +1,5 @@
 use maplit::hashset;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
@@ -48,18 +48,39 @@ impl Term {
             }
         }
     }
-}
 
-/*
-// TODO: 2023/08/21 型や所有権は要検討
-fn get_new_sig(sig: String, set: &HashSet<String>) -> String {
-    if set.contains(&sig) {
-        get_new_sig(sig + "'", set)
-    } else {
-        sig
+    fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
+        use Term::*;
+        match self {
+            Var(id) => {
+                if let Some(t) = u.get(id) {
+                    *self = t.clone();
+                }
+            }
+            Func(_, terms) => {
+                for term in terms {
+                    term.subst_unifier(u);
+                }
+            }
+        }
+    }
+
+    fn replace_func_to_var(&mut self, id: usize) {
+        use Term::*;
+        match self {
+            Var(_) => {}
+            Func(f_id, terms) => {
+                if *f_id == id {
+                    *self = Var(id);
+                } else {
+                    for term in terms {
+                        term.replace_func_to_var(id);
+                    }
+                }
+            }
+        }
     }
 }
-*/
 
 impl Formula {
     // TODO: 2023/09/06 parserでしか使用しないなら移動
@@ -119,6 +140,60 @@ impl Formula {
                 if !vs.contains(&var) {
                     p.subst(var, new_term);
                 }
+            }
+        }
+    }
+
+    pub fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
+        use Formula::*;
+        match self {
+            Predicate(_, terms) => {
+                for term in terms {
+                    term.subst_unifier(u);
+                }
+            }
+            Not(p) => p.subst_unifier(u),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.subst_unifier(u);
+                }
+            }
+            Implies(p, q) => {
+                p.subst_unifier(u);
+                q.subst_unifier(u);
+            }
+            All(vs, p) | Exists(vs, p) => {
+                // drop vs from u
+                let mut u = u.clone();
+                for v in vs {
+                    u.remove(v);
+                }
+                p.subst_unifier(&u);
+            }
+        }
+    }
+
+    // TODO: 2024/04/06 引数をskolem_idsにする
+    pub fn replace_func_to_var(&mut self, id: usize) {
+        use Formula::*;
+        match self {
+            Predicate(_, terms) => {
+                for term in terms {
+                    term.replace_func_to_var(id);
+                }
+            }
+            Not(p) => p.replace_func_to_var(id),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.replace_func_to_var(id);
+                }
+            }
+            Implies(p, q) => {
+                p.replace_func_to_var(id);
+                q.replace_func_to_var(id);
+            }
+            All(_, p) | Exists(_, p) => {
+                p.replace_func_to_var(id);
             }
         }
     }

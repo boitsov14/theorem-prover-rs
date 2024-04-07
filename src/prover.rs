@@ -21,7 +21,6 @@ type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 pub struct Sequent<'a> {
     pub ant: FxIndexSet<&'a Formula>,
     pub suc: FxIndexSet<&'a Formula>,
-    pub fv: Vec<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -277,6 +276,33 @@ impl<'a> Sequent<'a> {
             tree
         }
     }
+
+    fn format_for_print(
+        self,
+        u: &HashMap<usize, Term>,
+        skolem_ids: &HashSet<usize>,
+        fml_arena: &'a Arena<Formula>,
+    ) -> Sequent<'a> {
+        let mut ant: IndexSet<&Formula, _> = FxIndexSet::default();
+        let mut suc: IndexSet<&Formula, _> = FxIndexSet::default();
+        for fml in self.ant {
+            let mut fml = fml.clone();
+            fml.subst_unifier(u);
+            for id in skolem_ids {
+                fml.replace_func_to_var(*id);
+            }
+            ant.insert(fml_arena.alloc(fml));
+        }
+        for fml in self.suc {
+            let mut fml = fml.clone();
+            fml.subst_unifier(u);
+            for id in skolem_ids {
+                fml.replace_func_to_var(*id);
+            }
+            suc.insert(fml_arena.alloc(fml));
+        }
+        Sequent { ant, suc }
+    }
 }
 
 impl<'a> ProofTree<'a> {
@@ -286,12 +312,20 @@ impl<'a> ProofTree<'a> {
         fml_arena: &'a Arena<Formula>,
         new_id: &mut usize,
         entities: &EntitiesInfo,
+        skolem_ids: &HashSet<usize>,
+        u: &HashMap<usize, Term>,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> io::Result<()> {
         if matches!(output, OutputType::Console) {
             for (seq, _) in seqs.iter().rev() {
-                writeln!(w, "{}", &seq.display(entities))?;
+                writeln!(
+                    w,
+                    "{}",
+                    &seq.clone()
+                        .format_for_print(u, skolem_ids, fml_arena)
+                        .display(entities)
+                )?;
             }
         }
         let (seq, _) = seqs.pop().unwrap();
@@ -307,7 +341,9 @@ impl<'a> ProofTree<'a> {
                         writeln!(
                             w,
                             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                            seq.display(entities).to_latex()
+                            seq.format_for_print(u, skolem_ids, fml_arena)
+                                .display(entities)
+                                .to_latex()
                         )?;
                     }
                 }
@@ -316,14 +352,20 @@ impl<'a> ProofTree<'a> {
             ProofTree::Unresolved(cell) => match cell.get() {
                 Some(tree) => {
                     seqs.push((seq, false));
-                    tree.write_rec(seqs, fml_arena, new_id, entities, output, w)?;
+                    tree.write_rec(seqs, fml_arena, new_id, entities, skolem_ids, u, output, w)?;
                 }
                 None => match output {
                     OutputType::Console => {
                         writeln!(w, "UnProvable")?;
                     }
                     OutputType::Latex => {
-                        writeln!(w, r"\hypo{{{}}}", seq.display(entities).to_latex())?;
+                        writeln!(
+                            w,
+                            r"\hypo{{{}}}",
+                            seq.format_for_print(u, skolem_ids, fml_arena)
+                                .display(entities)
+                                .to_latex()
+                        )?;
                     }
                 },
             },
@@ -338,13 +380,15 @@ impl<'a> ProofTree<'a> {
                     writeln!(w, "{label}")?;
                 }
                 for proof in subproofs {
-                    proof.write_rec(seqs, fml_arena, new_id, entities, output, w)?;
+                    proof.write_rec(seqs, fml_arena, new_id, entities, skolem_ids, u, output, w)?;
                 }
                 if matches!(output, OutputType::Latex) {
                     writeln!(
                         w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
-                        seq.display(entities).to_latex()
+                        seq.format_for_print(u, skolem_ids, fml_arena)
+                            .display(entities)
+                            .to_latex()
                     )?;
                 }
             }
@@ -358,6 +402,8 @@ impl<'a> ProofTree<'a> {
         fml_arena: &'a Arena<Formula>,
         entities: &EntitiesInfo,
         new_id: usize,
+        skolem_ids: &HashSet<usize>,
+        u: &HashMap<usize, Term>,
         output: OutputType,
         w: &mut BufWriter<impl Write>,
     ) -> io::Result<()> {
@@ -376,6 +422,8 @@ impl<'a> ProofTree<'a> {
             fml_arena,
             &mut new_id.clone(),
             entities,
+            skolem_ids,
+            u,
             output,
             w,
         )?;
@@ -701,6 +749,7 @@ pub fn example(s: &str) -> io::Result<()> {
 
     let old_id = entities.len();
     let mut entities = entities;
+    let mut skolem_ids = hashset!();
     if matches!(result, ProofResult::Failure) {
         let mut variable_id = 0;
         let mut function_id = 0;
@@ -714,14 +763,11 @@ pub fn example(s: &str) -> io::Result<()> {
             }
         }
     } else {
-        let mut variable_id = 0;
         let mut function_id = 0;
         for i in old_id..new_id {
-            if free_vars.contains(&i) {
-                entities.get_id(format!("v_{}", variable_id));
-                variable_id += 1;
-            } else {
-                entities.get_id(format!("t_{}", function_id));
+            if !free_vars.contains(&i) {
+                entities.get_id(format!("v_{}", function_id));
+                skolem_ids.insert(i);
                 function_id += 1;
             }
         }
@@ -734,6 +780,8 @@ pub fn example(s: &str) -> io::Result<()> {
         &fml_arena,
         &entities,
         old_id,
+        &skolem_ids,
+        &u,
         OutputType::Console,
         &mut w,
     )?;
@@ -747,6 +795,8 @@ pub fn example(s: &str) -> io::Result<()> {
         &fml_arena,
         &entities,
         old_id,
+        &skolem_ids,
+        &u,
         OutputType::Latex,
         &mut w,
     )?;
@@ -870,6 +920,8 @@ mod tests {
                 &fml_arena,
                 &entities,
                 entities.len(),
+                &hashset!(), // TODO: 2024/03/14
+                &u,
                 OutputType::Latex,
                 &mut w,
             )
