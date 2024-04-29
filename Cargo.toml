@@ -6,20 +6,20 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indexmap = "2.2.5"
+indexmap = "2.2.6"
 itertools = "0.12.1"
 maplit = "1.0.2"
-mimalloc = { version = "0.1.39", default-features = false }
+mimalloc = { version = "0.1.41", default-features = false }
 peg = "0.8.2"
-regex = "1.10.3"
+regex = "1.10.4"
 rustc-hash = "1.1.0"
-thiserror = "1.0.57"
+thiserror = "1.0.59"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 criterion = "0.5.1"
-insta = "1.36.1"
+insta = "1.38.0"
 
 [[bench]]
 name = "benchmark"
