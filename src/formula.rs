@@ -18,38 +18,42 @@ pub enum Formula {
 }
 
 impl Term {
-    pub fn subst(&mut self, var: usize, new_term: &Self) {
-        use Term::*;
-        match self {
-            Var(id) => {
+    /// Recursively applies a function `f` to each `Term` in the `Term`.
+    pub fn apply<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut Self),
+    {
+        f(self);
+        if let Self::Func(_, terms) = self {
+            for term in terms {
+                term.apply(f);
+            }
+        }
+    }
+
+    /// Substitutes a variable with a new term.
+    fn subst(&mut self, var: usize, new_term: &Self) {
+        self.apply(&mut |t| {
+            if let Self::Var(id) = t {
                 if *id == var {
-                    *self = new_term.clone();
+                    *t = new_term.clone();
                 }
             }
-            Func(_, terms) => {
-                for term in terms {
-                    term.subst(var, new_term);
-                }
-            }
-        }
+        });
     }
 
+    /// Substitutes variables with terms based on a unifier.
     fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
-        use Term::*;
-        match self {
-            Var(id) => {
-                if let Some(t) = u.get(id) {
-                    *self = t.clone();
+        self.apply(&mut |t| {
+            if let Self::Var(id) = t {
+                if let Some(t0) = u.get(id) {
+                    *t = t0.clone();
                 }
             }
-            Func(_, terms) => {
-                for term in terms {
-                    term.subst_unifier(u);
-                }
-            }
-        }
+        });
     }
 
+    /// Replaces a function with a variable.
     fn replace_func_to_var(&mut self, id: usize) {
         use Term::*;
         match self {
