@@ -1,5 +1,5 @@
 use crate::formula::{Formula, Formula::*, Term};
-use crate::naming::{EntitiesInfo, Latex};
+use crate::naming::{Latex, Names};
 use crate::unification::{resolve_unifier, UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
@@ -311,7 +311,7 @@ impl<'a> ProofTree<'a> {
         seqs: &mut Vec<(Sequent<'a>, bool)>,
         fml_arena: &'a Arena<Formula>,
         new_id: &mut usize,
-        entities: &EntitiesInfo,
+        entities: &Names,
         skolem_ids: &HashSet<usize>,
         u: &HashMap<usize, Term>,
         output: OutputType,
@@ -400,7 +400,7 @@ impl<'a> ProofTree<'a> {
         &self,
         fml: &'a Formula,
         fml_arena: &'a Arena<Formula>,
-        entities: &EntitiesInfo,
+        entities: &Names,
         new_id: usize,
         skolem_ids: &HashSet<usize>,
         u: &HashMap<usize, Term>,
@@ -733,6 +733,8 @@ pub fn example(s: &str) -> io::Result<()> {
 
     // parse
     let (fml, entities) = parse(s).unwrap();
+    println!("{}", fml);
+    return Ok(());
     let fml = fml.universal_quantify();
     println!("{}", fml.display(&entities));
 
