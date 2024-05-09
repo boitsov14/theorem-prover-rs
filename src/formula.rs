@@ -44,7 +44,7 @@ impl Term {
         }
     }
 
-    /// Collects the IDs of all functions in the term.
+    /// Collects function IDs in the term.
     fn collect_func(&self, ids: &mut HashSet<usize>) {
         self.apply(&mut |t| {
             if let Self::Func(id, _) = t {
@@ -144,7 +144,7 @@ impl Formula {
         F: FnMut(&Term),
     {
         self.apply(&mut |p| {
-            if let Formula::Predicate(_, terms) = p {
+            if let Self::Predicate(_, terms) = p {
                 for term in terms {
                     f(term);
                 }
@@ -158,10 +158,24 @@ impl Formula {
         F: FnMut(&mut Term),
     {
         self.apply_mut(&mut |p| {
-            if let Formula::Predicate(_, terms) = p {
+            if let Self::Predicate(_, terms) = p {
                 for term in terms {
                     f(term);
                 }
+            }
+        });
+    }
+
+    /// Collects function IDs in the formula.
+    fn collect_func(&self, ids: &mut HashSet<usize>) {
+        self.apply_terms(&mut |t| t.collect_func(ids));
+    }
+
+    /// Collects predicate IDs in the formula.
+    fn collect_pred(&self, ids: &mut HashSet<usize>) {
+        self.apply(&mut |f| {
+            if let Self::Predicate(id, _) = f {
+                ids.insert(*id);
             }
         });
     }
