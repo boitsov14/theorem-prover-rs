@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
@@ -18,10 +18,10 @@ pub enum Formula {
 }
 
 impl Term {
-    /// Recursively applies a function `f` to each `Term` in the `Term`.
-    pub fn apply<F>(&mut self, f: &mut F)
+    /// Applies a function to the term and its subterms recursively.
+    fn apply<F>(&self, f: &mut F)
     where
-        F: FnMut(&mut Self),
+        F: FnMut(&Self),
     {
         f(self);
         if let Self::Func(_, terms) = self {
@@ -31,9 +31,31 @@ impl Term {
         }
     }
 
+    /// Applies a function to the term and its subterms recursively, allowing mutation of the term.
+    fn apply_mut<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut Self),
+    {
+        f(self);
+        if let Self::Func(_, terms) = self {
+            for term in terms {
+                term.apply_mut(f);
+            }
+        }
+    }
+
+    /// Collects the IDs of all functions in the term.
+    fn collect_func(&self, ids: &mut HashSet<usize>) {
+        self.apply(&mut |t| {
+            if let Self::Func(id, _) = t {
+                ids.insert(*id);
+            }
+        });
+    }
+
     /// Substitutes a variable with a new term.
     fn subst(&mut self, var: usize, new_term: &Self) {
-        self.apply(&mut |t| {
+        self.apply_mut(&mut |t| {
             if let Self::Var(id) = t {
                 if *id == var {
                     *t = new_term.clone();
@@ -44,7 +66,7 @@ impl Term {
 
     /// Substitutes variables with terms based on a unifier.
     fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
-        self.apply(&mut |t| {
+        self.apply_mut(&mut |t| {
             if let Self::Var(id) = t {
                 if let Some(t0) = u.get(id) {
                     *t = t0.clone();
