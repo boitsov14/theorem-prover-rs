@@ -432,7 +432,8 @@ impl Formula {
 
     pub fn universal_quantify(self) -> Self {
         use Formula::All;
-        let mut fv = self.free_vars().into_iter().collect_vec();
+        // TODO: 2024/05/09 あとで直す（この関数自体なくす）
+        let mut fv = vec![]; // self.free_vars().into_iter().collect_vec();
         if fv.is_empty() {
             return self;
         }

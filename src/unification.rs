@@ -95,7 +95,7 @@ pub fn resolve_unifier(u: &Unifier) -> HashMap<usize, Term> {
 mod tests {
     use super::*;
     use crate::{formula::Formula, parser::parse};
-    use maplit::hashmap;
+    use maplit::{hashmap, hashset};
     use std::collections::HashMap;
 
     #[test]
@@ -198,7 +198,8 @@ mod tests {
             free_var_info.insert(new_id, old_v);
             new_id += 1;
         }
-        let free_vars = p.free_vars();
+        // TODO: 2024/05/09 あとで直す（この関数自体なくす）
+        let free_vars = hashset!(); // p.free_vars();
         let Formula::Predicate(_, terms) = *p else {
             unreachable!()
         };

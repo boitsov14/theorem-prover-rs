@@ -1,5 +1,4 @@
-use maplit::hashset;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
@@ -19,20 +18,6 @@ pub enum Formula {
 }
 
 impl Term {
-    fn fv(&self, vars: &mut HashSet<usize>) {
-        use Term::*;
-        match self {
-            Var(id) => {
-                vars.insert(*id);
-            }
-            Func(_, terms) => {
-                for term in terms {
-                    term.fv(vars);
-                }
-            }
-        }
-    }
-
     pub fn subst(&mut self, var: usize, new_term: &Self) {
         use Term::*;
         match self {
@@ -83,41 +68,6 @@ impl Term {
 }
 
 impl Formula {
-    // TODO: 2023/09/06 parserでしか使用しないなら移動
-    /// Returns all the free variables of the formula.
-    pub fn free_vars(&self) -> HashSet<usize> {
-        let mut vars = hashset!();
-        self.fv(&mut vars);
-        vars
-    }
-
-    fn fv(&self, vars: &mut HashSet<usize>) {
-        use Formula::*;
-        match self {
-            Predicate(_, terms) => {
-                for term in terms {
-                    term.fv(vars);
-                }
-            }
-            Not(p) => p.fv(vars),
-            And(l) | Or(l) => {
-                for p in l {
-                    p.fv(vars);
-                }
-            }
-            Implies(p, q) => {
-                p.fv(vars);
-                q.fv(vars);
-            }
-            All(vs, p) | Exists(vs, p) => {
-                p.fv(vars);
-                for v in vs {
-                    vars.remove(v);
-                }
-            }
-        }
-    }
-
     pub fn subst(&mut self, var: usize, new_term: &Term) {
         use Formula::*;
         match self {
@@ -200,45 +150,4 @@ impl Formula {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::parser::parse;
-
-    #[test]
-    fn test_fv() {
-        let (fml, mut entities) = parse("P(x)").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["x"]
-                .map(|s| entities.get_id(s.into()))
-                .into_iter()
-                .collect()
-        );
-
-        let (fml, mut entities) = parse("P(x, f(y,z))").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["x", "y", "z"]
-                .map(|s| entities.get_id(s.into()))
-                .into_iter()
-                .collect()
-        );
-
-        let (fml, mut entities) = parse("all x,y P(x, f(y,z))").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["z"]
-                .map(|s| entities.get_id(s.into()))
-                .into_iter()
-                .collect()
-        );
-
-        let (fml, mut entities) = parse("P(x) and Q(y) iff not R(z)").unwrap();
-        assert_eq!(
-            fml.free_vars(),
-            ["x", "y", "z"]
-                .map(|s| entities.get_id(s.into()))
-                .into_iter()
-                .collect()
-        );
-    }
-}
+mod tests {}
