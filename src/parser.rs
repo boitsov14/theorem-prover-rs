@@ -1,5 +1,5 @@
 use crate::formula::{Formula, Term};
-use crate::naming::EntitiesInfo;
+use crate::naming::Names;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
@@ -53,7 +53,7 @@ pub enum PFormula {
 pub static P_TRUE: PFormula = PFormula::And(vec![]);
 pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
-pub fn parse(s: &str) -> Result<(Formula, EntitiesInfo), ParseError> {
+pub fn parse(s: &str) -> Result<(Formula, Names), ParseError> {
     let s = s.nfkc().collect::<String>().trim().to_string();
     let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
     let lp = s.chars().filter(|&c| c == '(').count();
@@ -236,7 +236,7 @@ impl PTerm {
         }
     }
 
-    fn into_term(self, entities: &mut EntitiesInfo) -> Term {
+    fn into_term(self, entities: &mut Names) -> Term {
         match self {
             Self::Var(name) => Term::Var(entities.get_id(name)),
             Self::Func(name, pterms) => Term::Func(
@@ -303,13 +303,13 @@ impl PFormula {
         });
     }
 
-    fn into_formula(self) -> (Formula, EntitiesInfo) {
-        let mut entities = EntitiesInfo::new();
+    fn into_formula(self) -> (Formula, Names) {
+        let mut entities = Names::new();
         let fml = self.into_formula_rec(&mut entities);
         (fml, entities)
     }
 
-    fn into_formula_rec(self, entities: &mut EntitiesInfo) -> Formula {
+    fn into_formula_rec(self, entities: &mut Names) -> Formula {
         match self {
             Self::Predicate(name, pterms) => Formula::Predicate(
                 entities.get_id(name),
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_universal_quantify() {
-        let mut entities = EntitiesInfo::new();
+        let mut entities = Names::new();
 
         let fml = formula("all x,y P(f(x,y))")
             .unwrap()

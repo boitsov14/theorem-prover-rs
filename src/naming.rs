@@ -5,23 +5,36 @@ use regex::Regex;
 use std::fmt;
 
 #[derive(Clone, Debug, Default)]
-pub struct EntitiesInfo {
+pub struct Names {
     names: Vec<String>,
 }
 
-impl EntitiesInfo {
+impl Names {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn get_id(&mut self, s: String) -> usize {
-        self.names
-            .iter()
-            .position(|name| name == &s)
-            .unwrap_or_else(|| {
-                self.names.push(s);
-                self.names.len() - 1
-            })
+        for (i, name) in self.names.iter().enumerate() {
+            if name == &s {
+                return i;
+            }
+        }
+        self.names.push(s);
+        self.names.len() - 1
+    }
+
+    fn get_fresh_name(&self, s: String) -> String {
+        let mut s = s;
+        while self.names.contains(&s) {
+            s.push('\'');
+        }
+        s
+    }
+
+    fn get_fresh_id(&mut self, s: String) -> usize {
+        let s = self.get_fresh_name(s);
+        self.get_id(s)
     }
 
     pub fn len(&self) -> usize {
@@ -43,7 +56,7 @@ pub trait Latex {
 
 pub struct TermDisplay<'a> {
     term: &'a Term,
-    entities: &'a EntitiesInfo,
+    entities: &'a Names,
 }
 
 impl fmt::Display for TermDisplay<'_> {
@@ -67,7 +80,7 @@ impl fmt::Display for TermDisplay<'_> {
 }
 
 impl Term {
-    pub fn display<'a>(&'a self, entities: &'a EntitiesInfo) -> TermDisplay<'a> {
+    pub fn display<'a>(&'a self, entities: &'a Names) -> TermDisplay<'a> {
         TermDisplay {
             term: self,
             entities,
@@ -78,13 +91,13 @@ impl Term {
 // TODO: 2023/12/07 不要なら消したい（Formulaも同様）
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.display(&EntitiesInfo::new()))
+        write!(f, "{}", self.display(&Names::new()))
     }
 }
 
 pub struct FormulaDisplay<'a> {
     formula: &'a Formula,
-    entities: &'a EntitiesInfo,
+    entities: &'a Names,
     is_inner: bool,
 }
 
@@ -222,14 +235,14 @@ impl Latex for FormulaDisplay<'_> {
 }
 
 impl Formula {
-    pub fn display<'a>(&'a self, entities: &'a EntitiesInfo) -> FormulaDisplay<'a> {
+    pub fn display<'a>(&'a self, entities: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
             entities,
             is_inner: false,
         }
     }
-    fn display_inner<'a>(&'a self, entities: &'a EntitiesInfo) -> FormulaDisplay<'a> {
+    fn display_inner<'a>(&'a self, entities: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
             entities,
@@ -240,13 +253,13 @@ impl Formula {
 
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.display(&EntitiesInfo::new()))
+        write!(f, "{}", self.display(&Names::new()))
     }
 }
 
 pub struct SequentDisplay<'a, 'b> {
     sequent: &'a Sequent<'b>,
-    entities: &'a EntitiesInfo,
+    entities: &'a Names,
 }
 
 impl fmt::Display for SequentDisplay<'_, '_> {
@@ -292,7 +305,7 @@ impl Latex for SequentDisplay<'_, '_> {
 }
 
 impl<'b> Sequent<'b> {
-    pub fn display<'a>(&'a self, entities: &'a EntitiesInfo) -> SequentDisplay<'a, 'b> {
+    pub fn display<'a>(&'a self, entities: &'a Names) -> SequentDisplay<'a, 'b> {
         SequentDisplay {
             sequent: self,
             entities,
@@ -302,7 +315,7 @@ impl<'b> Sequent<'b> {
 
 impl fmt::Display for Sequent<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.display(&EntitiesInfo::new()))
+        write!(f, "{}", self.display(&Names::new()))
     }
 }
 
