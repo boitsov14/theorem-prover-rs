@@ -55,10 +55,10 @@ impl Term {
 
     /// Substitutes a variable with a new term.
     fn subst(&mut self, var: usize, new_term: &Self) {
-        self.apply_mut(&mut |t| {
-            if let Self::Var(id) = t {
+        self.apply_mut(&mut |v| {
+            if let Self::Var(id) = v {
                 if *id == var {
-                    *t = new_term.clone();
+                    *v = new_term.clone();
                 }
             }
         });
@@ -66,10 +66,10 @@ impl Term {
 
     /// Substitutes variables with terms based on a unifier.
     fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
-        self.apply_mut(&mut |t| {
-            if let Self::Var(id) = t {
-                if let Some(t0) = u.get(id) {
-                    *t = t0.clone();
+        self.apply_mut(&mut |v| {
+            if let Self::Var(id) = v {
+                if let Some(t) = u.get(id) {
+                    *v = t.clone();
                 }
             }
         });
@@ -77,19 +77,13 @@ impl Term {
 
     /// Replaces a function with a variable.
     fn replace_func_to_var(&mut self, id: usize) {
-        use Term::*;
-        match self {
-            Var(_) => {}
-            Func(f_id, terms) => {
+        self.apply_mut(&mut |t| {
+            if let Self::Func(f_id, _) = t {
                 if *f_id == id {
-                    *self = Var(id);
-                } else {
-                    for term in terms {
-                        term.replace_func_to_var(id);
-                    }
+                    *t = Self::Var(id);
                 }
             }
-        }
+        });
     }
 }
 
