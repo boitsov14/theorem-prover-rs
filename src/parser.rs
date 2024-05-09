@@ -383,6 +383,15 @@ impl Term {
 }
 
 impl Formula {
+    /// Deletes duplicate bounded variables in the formula.
+    fn del_dup_bdd_vars(&mut self) {
+        self.apply_mut(&mut |p| {
+            if let Self::All(vs, _) | Self::Exists(vs, _) = p {
+                *vs = vs.iter().unique().cloned().collect();
+            }
+        });
+    }
+
     fn check(&self) -> Result<(), ParseError> {
         self.check_rec(hashset![], &mut hashmap![], &mut hashmap![])
     }

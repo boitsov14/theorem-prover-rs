@@ -114,7 +114,7 @@ impl Formula {
     }
 
     /// Applies a function to the formula and its subformulas recursively, allowing mutation of the formula.
-    fn apply_mut<F>(&mut self, f: &mut F)
+    pub fn apply_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {

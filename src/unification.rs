@@ -214,7 +214,7 @@ mod tests {
         for (new_v, t) in u {
             let mut t = t.into_inner().unwrap();
             for (new_v, old_v) in &free_var_info {
-                t.subst(*new_v, &Var(*old_v));
+                // t.subst(*new_v, &Var(*old_v));
             }
             let old_v = free_var_info[&new_v];
             result.insert(
