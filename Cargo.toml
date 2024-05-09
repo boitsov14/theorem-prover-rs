@@ -10,10 +10,10 @@ indexmap = "2.2.6"
 itertools = "0.12.1"
 maplit = "1.0.2"
 mimalloc = { version = "0.1.41", default-features = false }
-peg = "0.8.2"
+peg = "0.8.3"
 regex = "1.10.4"
 rustc-hash = "1.1.0"
-thiserror = "1.0.59"
+thiserror = "1.0.60"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.23"
 
