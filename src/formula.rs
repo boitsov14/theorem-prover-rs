@@ -88,6 +88,84 @@ impl Term {
 }
 
 impl Formula {
+    /// Applies a function to the formula and its subformulas recursively.
+    fn apply<F>(&self, f: &mut F)
+    where
+        F: FnMut(&Self),
+    {
+        f(self);
+        use Formula::*;
+        match self {
+            Predicate(..) => {}
+            Not(p) => p.apply(f),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.apply(f);
+                }
+            }
+            Implies(p, q) => {
+                p.apply(f);
+                q.apply(f);
+            }
+            All(_, p) | Exists(_, p) => {
+                p.apply(f);
+            }
+        }
+    }
+
+    /// Applies a function to the formula and its subformulas recursively, allowing mutation of the formula.
+    fn apply_mut<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut Self),
+    {
+        f(self);
+        use Formula::*;
+        match self {
+            Predicate(..) => {}
+            Not(p) => p.apply_mut(f),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.apply_mut(f);
+                }
+            }
+            Implies(p, q) => {
+                p.apply_mut(f);
+                q.apply_mut(f);
+            }
+            All(_, p) | Exists(_, p) => {
+                p.apply_mut(f);
+            }
+        }
+    }
+
+    /// Applies a function to the terms in the formula.
+    fn apply_terms<F>(&self, f: &mut F)
+    where
+        F: FnMut(&Term),
+    {
+        self.apply(&mut |p| {
+            if let Formula::Predicate(_, terms) = p {
+                for term in terms {
+                    f(term);
+                }
+            }
+        });
+    }
+
+    /// Applies a function to the terms in the formula, allowing mutation of the terms.
+    fn apply_terms_mut<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut Term),
+    {
+        self.apply_mut(&mut |p| {
+            if let Formula::Predicate(_, terms) = p {
+                for term in terms {
+                    f(term);
+                }
+            }
+        });
+    }
+
     pub fn subst(&mut self, var: usize, new_term: &Term) {
         use Formula::*;
         match self {
