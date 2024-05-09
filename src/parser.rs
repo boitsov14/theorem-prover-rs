@@ -36,7 +36,7 @@ pub enum ParseError {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PTerm {
     Var(String),
-    Function(String, Vec<PTerm>),
+    Func(String, Vec<PTerm>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -103,7 +103,7 @@ peg::parser!( grammar parser() for str {
 
     /// Parse a term.
     pub rule term() -> PTerm = quiet!{
-        f:$function_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Function(f.to_string(), ts) } /
+        f:$function_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
         v:$var() { Var(v.to_string()) } /
         "(" t:term() ")" { t }
     } / expected!("term")
@@ -115,7 +115,7 @@ peg::parser!( grammar parser() for str {
         p:$predicate_name() { Predicate(p.to_string(), vec![]) }
 
     /// Parse a formula.
-    /// Every infix operator is right-associative.
+    /// All infix operators are right-associative.
     /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
     pub rule formula() -> PFormula = precedence!{
         p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p.clone()), Box::new(q.clone())), Implies(Box::new(q), Box::new(p))]) }
@@ -223,10 +223,23 @@ peg::parser!( grammar parser() for str {
 });
 
 impl PTerm {
+    /// Collects function names.
+    fn collect_fnc(&self, fncs: &mut HashSet<String>) {
+        match self {
+            Self::Var(_) => {}
+            Self::Func(name, pterms) => {
+                fncs.insert(name.clone());
+                for pterm in pterms {
+                    pterm.collect_fnc(fncs);
+                }
+            }
+        }
+    }
+
     fn into_term(self, entities: &mut EntitiesInfo) -> Term {
         match self {
             Self::Var(name) => Term::Var(entities.get_id(name)),
-            Self::Function(name, pterms) => Term::Func(
+            Self::Func(name, pterms) => Term::Func(
                 entities.get_id(name),
                 pterms
                     .into_iter()
@@ -238,6 +251,58 @@ impl PTerm {
 }
 
 impl PFormula {
+    /// Recursively applies a function `f` to each `PFormula` in the `PFormula`.
+    fn map_pfml<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut PFormula),
+    {
+        use PFormula::*;
+        f(self);
+        match self {
+            Predicate(_, _) => {}
+            Not(p) => p.map_pfml(f),
+            And(ps) | Or(ps) => {
+                for p in ps {
+                    p.map_pfml(f);
+                }
+            }
+            Implies(p, q) => {
+                p.map_pfml(f);
+                q.map_pfml(f);
+            }
+            All(_, p) | Exists(_, p) => p.map_pfml(f),
+        }
+    }
+
+    /// Applies a function `f` to each `PTerm` in the `PFormula`.
+    fn map_pterm<F>(&mut self, f: &mut F)
+    where
+        F: FnMut(&mut PTerm),
+    {
+        self.map_pfml(&mut |p| {
+            if let Self::Predicate(_, pterms) = p {
+                for pterm in pterms {
+                    f(pterm);
+                }
+            }
+        });
+    }
+
+    // TODO: 2024/05/09 cloneコストに留意
+    /// Collects function names.
+    fn collect_fnc(&self, fncs: &mut HashSet<String>) {
+        self.clone().map_pterm(&mut |pterm| pterm.collect_fnc(fncs));
+    }
+
+    /// Collects predicate names.
+    fn collect_pred(&self, preds: &mut HashSet<String>) {
+        self.clone().map_pfml(&mut |p| {
+            if let Self::Predicate(name, _) = p {
+                preds.insert(name.clone());
+            }
+        });
+    }
+
     fn into_formula(self) -> (Formula, EntitiesInfo) {
         let mut entities = EntitiesInfo::new();
         let fml = self.into_formula_rec(&mut entities);
@@ -393,15 +458,15 @@ mod tests {
         assert_eq!(term("x").unwrap(), Var("x".into()));
         assert_eq!(
             term("f(x)").unwrap(),
-            Function("f".into(), vec![Var("x".into())])
+            Func("f".into(), vec![Var("x".into())])
         );
         assert_eq!(
             term("f(x, g(y), z)").unwrap(),
-            Function(
+            Func(
                 "f".into(),
                 vec![
                     Var("x".into()),
-                    Function("g".into(), vec![Var("y".into())]),
+                    Func("g".into(), vec![Var("y".into())]),
                     Var("z".into())
                 ]
             )
@@ -425,7 +490,7 @@ mod tests {
                 "P".into(),
                 vec![
                     Var("x".into()),
-                    Function("g".into(), vec![Var("y".into())]),
+                    Func("g".into(), vec![Var("y".into())]),
                     Var("z".into())
                 ]
             )
