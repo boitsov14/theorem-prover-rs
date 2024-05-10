@@ -190,7 +190,7 @@ impl Formula {
     }
 
     // TODO: 2024/04/06 引数をskolem_idsにする
-    pub fn replace_func_to_var(&mut self, id: usize) {
+    pub fn replace_func_with_var(&mut self, id: usize) {
         use Formula::*;
         match self {
             Pred(_, terms) => {
@@ -198,22 +198,24 @@ impl Formula {
                     term.replace_func_with_var(id);
                 }
             }
-            Not(p) => p.replace_func_to_var(id),
+            Not(p) => p.replace_func_with_var(id),
             And(l) | Or(l) => {
                 for p in l {
-                    p.replace_func_to_var(id);
+                    p.replace_func_with_var(id);
                 }
             }
             Implies(p, q) => {
-                p.replace_func_to_var(id);
-                q.replace_func_to_var(id);
+                p.replace_func_with_var(id);
+                q.replace_func_with_var(id);
             }
             All(_, p) | Exists(_, p) => {
-                p.replace_func_to_var(id);
+                p.replace_func_with_var(id);
             }
         }
     }
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    // TODO: 2024/05/10 subst, subst_map, replace_func_with_varのテストを書く
+}

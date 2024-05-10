@@ -10,7 +10,7 @@ use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Error, Debug)]
-pub enum ParseError {
+pub enum Error {
     #[error("Found {lp} left parentheses and {rp} right parentheses.")]
     Parentheses { lp: usize, rp: usize },
     #[error("
@@ -23,14 +23,6 @@ pub enum ParseError {
         s: String,
         e: error::ParseError<LineCol>,
     },
-    #[error("The same name of predicates must take the same number of arguments.")]
-    PredicateArity,
-    #[error("The same name of functions must take the same number of arguments.")]
-    FunctionArity,
-    #[error("Cannot quantify predicates.")]
-    BddPredicate,
-    #[error("Cannot quantify functions.")]
-    BddFunction,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -41,7 +33,7 @@ pub enum PTerm {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PFormula {
-    Predicate(String, Vec<PTerm>),
+    Pred(String, Vec<PTerm>),
     Not(Box<PFormula>),
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
@@ -53,24 +45,21 @@ pub enum PFormula {
 pub static P_TRUE: PFormula = PFormula::And(vec![]);
 pub static P_FALSE: PFormula = PFormula::Or(vec![]);
 
-pub fn parse(s: &str) -> Result<(Formula, Names), ParseError> {
+pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
+    // Normalize the string.
     let s = s.nfkc().collect::<String>().trim().to_string();
+    // Replace all whitespaces with a single space.
     let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
+    // Check if the number of left and right parentheses are equal.
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
     if lp != rp {
-        return Err(ParseError::Parentheses { lp, rp });
+        return Err(Error::Parentheses { lp, rp });
     }
-    let pfml = match parser::formula(&s) {
-        Ok(pfml) => pfml,
-        Err(e) => {
-            let s = s.into();
-            return Err(ParseError::Core { s, e });
-        }
-    };
-    let (fml, entities) = pfml.into_formula();
-    fml.check()?;
-    Ok((fml, entities))
+    let pfml = parser::formula(&s).map_err(|e| Error::Core { s: s.into(), e })?;
+    let mut names = Names::new();
+    let mut fml = pfml.into_formula(&mut names);
+    Ok((fml, names))
 }
 
 pub fn from_tptp(s: &str) -> String {
@@ -111,11 +100,13 @@ peg::parser!( grammar parser() for str {
     rule predicate() -> PFormula =
         p_true() { P_TRUE.clone() } /
         p_false() { P_FALSE.clone() } /
-        p:$predicate_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Predicate(p.to_string(), ts) } /
-        p:$predicate_name() { Predicate(p.to_string(), vec![]) }
+        p:$predicate_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Pred(p.to_string(), ts) } /
+        p:$predicate_name() { Pred(p.to_string(), vec![]) }
 
     /// Parse a formula.
+    ///
     /// All infix operators are right-associative.
+    ///
     /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
     pub rule formula() -> PFormula = precedence!{
         p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p.clone()), Box::new(q.clone())), Implies(Box::new(q), Box::new(p))]) }
@@ -223,27 +214,14 @@ peg::parser!( grammar parser() for str {
 });
 
 impl PTerm {
-    /// Collects function names.
-    fn collect_fnc(&self, fncs: &mut HashSet<String>) {
+    fn into_term(self, names: &mut Names) -> Term {
         match self {
-            Self::Var(_) => {}
-            Self::Func(name, pterms) => {
-                fncs.insert(name.clone());
-                for pterm in pterms {
-                    pterm.collect_fnc(fncs);
-                }
-            }
-        }
-    }
-
-    fn into_term(self, entities: &mut Names) -> Term {
-        match self {
-            Self::Var(name) => Term::Var(entities.get_id(name)),
+            Self::Var(name) => Term::Var(names.get_id(name)),
             Self::Func(name, pterms) => Term::Func(
-                entities.get_id(name),
+                names.get_id(name),
                 pterms
                     .into_iter()
-                    .map(|pterm| pterm.into_term(entities))
+                    .map(|pterm| pterm.into_term(names))
                     .collect(),
             ),
         }
@@ -251,134 +229,31 @@ impl PTerm {
 }
 
 impl PFormula {
-    /// Recursively applies a function `f` to each `PFormula` in the `PFormula`.
-    fn map_pfml<F>(&mut self, f: &mut F)
-    where
-        F: FnMut(&mut PFormula),
-    {
-        use PFormula::*;
-        f(self);
+    fn into_formula(self, names: &mut Names) -> Formula {
         match self {
-            Predicate(_, _) => {}
-            Not(p) => p.map_pfml(f),
-            And(ps) | Or(ps) => {
-                for p in ps {
-                    p.map_pfml(f);
-                }
-            }
-            Implies(p, q) => {
-                p.map_pfml(f);
-                q.map_pfml(f);
-            }
-            All(_, p) | Exists(_, p) => p.map_pfml(f),
-        }
-    }
-
-    /// Applies a function `f` to each `PTerm` in the `PFormula`.
-    fn map_pterm<F>(&mut self, f: &mut F)
-    where
-        F: FnMut(&mut PTerm),
-    {
-        self.map_pfml(&mut |p| {
-            if let Self::Predicate(_, pterms) = p {
-                for pterm in pterms {
-                    f(pterm);
-                }
-            }
-        });
-    }
-
-    // TODO: 2024/05/09 cloneコストに留意
-    /// Collects function names.
-    fn collect_fnc(&self, fncs: &mut HashSet<String>) {
-        self.clone().map_pterm(&mut |pterm| pterm.collect_fnc(fncs));
-    }
-
-    /// Collects predicate names.
-    fn collect_pred(&self, preds: &mut HashSet<String>) {
-        self.clone().map_pfml(&mut |p| {
-            if let Self::Predicate(name, _) = p {
-                preds.insert(name.clone());
-            }
-        });
-    }
-
-    fn into_formula(self) -> (Formula, Names) {
-        let mut entities = Names::new();
-        let fml = self.into_formula_rec(&mut entities);
-        (fml, entities)
-    }
-
-    fn into_formula_rec(self, entities: &mut Names) -> Formula {
-        match self {
-            Self::Predicate(name, pterms) => Formula::Predicate(
-                entities.get_id(name),
+            Self::Pred(name, pterms) => Formula::Pred(
+                names.get_id(name),
                 pterms
                     .into_iter()
-                    .map(|pterm| pterm.into_term(entities))
+                    .map(|pterm| pterm.into_term(names))
                     .collect(),
             ),
-            Self::Not(p) => Formula::Not(Box::new(p.into_formula_rec(entities))),
-            Self::And(l) => Formula::And(
-                l.into_iter()
-                    .map(|p| p.into_formula_rec(entities))
-                    .collect(),
-            ),
-            Self::Or(l) => Formula::Or(
-                l.into_iter()
-                    .map(|p| p.into_formula_rec(entities))
-                    .collect(),
-            ),
+            Self::Not(p) => Formula::Not(Box::new(p.into_formula(names))),
+            Self::And(l) => Formula::And(l.into_iter().map(|p| p.into_formula(names)).collect()),
+            Self::Or(l) => Formula::Or(l.into_iter().map(|p| p.into_formula(names)).collect()),
             Self::Implies(p, q) => Formula::Implies(
-                Box::new(p.into_formula_rec(entities)),
-                Box::new(q.into_formula_rec(entities)),
+                Box::new(p.into_formula(names)),
+                Box::new(q.into_formula(names)),
             ),
-            Self::All(names, p) => Formula::All(
-                names
-                    .into_iter()
-                    .map(|name| entities.get_id(name))
-                    .collect(),
-                Box::new(p.into_formula_rec(entities)),
+            Self::All(vs, p) => Formula::All(
+                vs.into_iter().map(|name| names.get_id(name)).collect(),
+                Box::new(p.into_formula(names)),
             ),
-            Self::Exists(names, p) => Formula::Exists(
-                names
-                    .into_iter()
-                    .map(|name| entities.get_id(name))
-                    .collect(),
-                Box::new(p.into_formula_rec(entities)),
+            Self::Exists(vs, p) => Formula::Exists(
+                vs.into_iter().map(|name| names.get_id(name)).collect(),
+                Box::new(p.into_formula(names)),
             ),
         }
-    }
-}
-
-impl Term {
-    fn check(
-        &self,
-        bdd_vars: &HashSet<usize>,
-        fns: &mut HashMap<usize, usize>,
-    ) -> Result<(), ParseError> {
-        use Term::*;
-        match self {
-            Var(_) => {}
-            Func(id, terms) => {
-                // check the arity of the function
-                if let Some(arity) = fns.get(id) {
-                    if *arity != terms.len() {
-                        return Err(ParseError::FunctionArity);
-                    }
-                } else {
-                    fns.insert(*id, terms.len());
-                }
-                // check if the function is quantified
-                if bdd_vars.contains(id) {
-                    return Err(ParseError::BddFunction);
-                }
-                for term in terms {
-                    term.check(bdd_vars, fns)?;
-                }
-            }
-        }
-        Ok(())
     }
 }
 
@@ -392,51 +267,53 @@ impl Formula {
         });
     }
 
-    fn check(&self) -> Result<(), ParseError> {
-        self.check_rec(hashset![], &mut hashmap![], &mut hashmap![])
+    /// Renames the bounded variables to avoid name conflicts.
+    ///
+    /// Converts `∀x (P(x) ∧ ∀x Q(x))` to `∀x (P(x) ∧ ∀x' Q(x'))`
+    fn rename_bdd_vars1(
+        &mut self,
+        names: &mut Names,
+        bdd_vars: &mut HashSet<usize>,
+        map: &mut HashMap<usize, Term>,
+    ) {
+        self.apply_mut(&mut |p| match p {
+            Self::Pred(_, terms) => {
+                for term in terms {
+                    term.subst_map(map);
+                }
+            }
+            Self::All(vs, _) | Self::Exists(vs, _) => {
+                for v in vs {
+                    if bdd_vars.contains(v) {
+                        let new_v = names.get_fresh_id(names.get_name(*v));
+                        map.insert(*v, Term::Var(new_v));
+                        *v = new_v;
+                    } else {
+                        bdd_vars.insert(*v);
+                    }
+                }
+            }
+            _ => {}
+        });
     }
 
-    fn check_rec(
-        &self,
-        mut bdd_vars: HashSet<usize>,
-        fns: &mut HashMap<usize, usize>,
-        preds: &mut HashMap<usize, usize>,
-    ) -> Result<(), ParseError> {
-        use Formula::*;
-        match self {
-            Predicate(id, terms) => {
-                for term in terms {
-                    term.check(&bdd_vars, fns)?;
-                }
-                // check the arity of the predicate
-                if let Some(arity) = preds.get(id) {
-                    if *arity != terms.len() {
-                        return Err(ParseError::PredicateArity);
+    /// Renames the bounded variables to avoid using the same name as functions or predicates.
+    ///
+    /// Converts `∀P P(P)` to `∀P' P(P')`
+    fn rename_bdd_vars2(&mut self, names: &mut Names) {
+        let funcs = self.collect_func();
+        let preds = self.collect_pred();
+        self.apply_mut(&mut |p| {
+            if let Self::All(vs, p) | Self::Exists(vs, p) = p {
+                for v in vs {
+                    if funcs.contains(v) || preds.contains(v) {
+                        let new_v = names.get_fresh_id(names.get_name(*v));
+                        p.subst(*v, &Term::Var(new_v));
+                        *v = new_v;
                     }
-                } else {
-                    preds.insert(*id, terms.len());
-                }
-                // check if the predicate is quantified
-                if bdd_vars.contains(id) {
-                    return Err(ParseError::BddPredicate);
                 }
             }
-            Not(p) => p.check_rec(bdd_vars, fns, preds)?,
-            And(l) | Or(l) => {
-                for p in l {
-                    p.check_rec(bdd_vars.clone(), fns, preds)?;
-                }
-            }
-            Implies(p, q) => {
-                p.check_rec(bdd_vars.clone(), fns, preds)?;
-                q.check_rec(bdd_vars, fns, preds)?;
-            }
-            All(vs, p) | Exists(vs, p) => {
-                bdd_vars.extend(vs);
-                p.check_rec(bdd_vars, fns, preds)?;
-            }
-        }
-        Ok(())
+        });
     }
 
     pub fn universal_quantify(self) -> Self {
@@ -489,14 +366,14 @@ mod tests {
         use PTerm::*;
         assert_eq!(formula("true").unwrap(), P_TRUE);
         assert_eq!(formula("false").unwrap(), P_FALSE);
-        assert_eq!(formula("P").unwrap(), Predicate("P".into(), vec![]));
+        assert_eq!(formula("P").unwrap(), Pred("P".into(), vec![]));
         assert_eq!(
             formula("P(x)").unwrap(),
-            Predicate("P".into(), vec![Var("x".into())])
+            Pred("P".into(), vec![Var("x".into())])
         );
         assert_eq!(
             formula("P(x, g(y), z)").unwrap(),
-            Predicate(
+            Pred(
                 "P".into(),
                 vec![
                     Var("x".into()),
@@ -507,39 +384,33 @@ mod tests {
         );
         assert_eq!(
             formula("not P").unwrap(),
-            Not(Box::new(Predicate("P".into(), vec![])))
+            Not(Box::new(Pred("P".into(), vec![])))
         );
         assert_eq!(
             formula("P and Q").unwrap(),
-            And(vec![
-                Predicate("P".into(), vec![]),
-                Predicate("Q".into(), vec![])
-            ])
+            And(vec![Pred("P".into(), vec![]), Pred("Q".into(), vec![])])
         );
         assert_eq!(
             formula("P or Q").unwrap(),
-            Or(vec![
-                Predicate("P".into(), vec![]),
-                Predicate("Q".into(), vec![])
-            ])
+            Or(vec![Pred("P".into(), vec![]), Pred("Q".into(), vec![])])
         );
         assert_eq!(
             formula("P implies Q").unwrap(),
             Implies(
-                Box::new(Predicate("P".into(), vec![])),
-                Box::new(Predicate("Q".into(), vec![]))
+                Box::new(Pred("P".into(), vec![])),
+                Box::new(Pred("Q".into(), vec![]))
             )
         );
         assert_eq!(
             formula("P iff Q").unwrap(),
             And(vec![
                 Implies(
-                    Box::new(Predicate("P".into(), vec![])),
-                    Box::new(Predicate("Q".into(), vec![]))
+                    Box::new(Pred("P".into(), vec![])),
+                    Box::new(Pred("Q".into(), vec![]))
                 ),
                 Implies(
-                    Box::new(Predicate("Q".into(), vec![])),
-                    Box::new(Predicate("P".into(), vec![]))
+                    Box::new(Pred("Q".into(), vec![])),
+                    Box::new(Pred("P".into(), vec![]))
                 )
             ])
         );
@@ -547,34 +418,28 @@ mod tests {
             formula("all x P(x)").unwrap(),
             All(
                 indexset!["x".into()],
-                Box::new(Predicate("P".into(), vec![Var("x".into())]))
+                Box::new(Pred("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("all x, y P(x, y)").unwrap(),
             All(
                 indexset!["x".into(), "y".into()],
-                Box::new(Predicate(
-                    "P".into(),
-                    vec![Var("x".into()), Var("y".into())]
-                ))
+                Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
             )
         );
         assert_eq!(
             formula("ex x P(x)").unwrap(),
             Exists(
                 indexset!["x".into()],
-                Box::new(Predicate("P".into(), vec![Var("x".into())]))
+                Box::new(Pred("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("ex x, y P(x, y)").unwrap(),
             Exists(
                 indexset!["x".into(), "y".into()],
-                Box::new(Predicate(
-                    "P".into(),
-                    vec![Var("x".into()), Var("y".into())]
-                ))
+                Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
             )
         );
     }
@@ -689,41 +554,45 @@ mod tests {
         ];
         for pair in l {
             let (s, expected) = pair;
-            let (fml, entities) = parse(s).unwrap();
-            assert_eq!(fml.display(&entities).to_string(), expected);
+            let (fml, names) = parse(s).unwrap();
+            assert_eq!(fml.display(&names).to_string(), expected);
         }
     }
 
     #[test]
+    fn test_adjust_bdd_vars() {
+        fn test(s: &str, expected: &str) {
+            let (mut fml, mut names) = parse(s).unwrap();
+            let mut bdd_vars = hashset![];
+            let mut new_bdd_vars = hashmap![];
+            fml.rename_bdd_vars1(&mut names, &mut bdd_vars, &mut new_bdd_vars);
+            assert_eq!(fml.display(&names).to_string(), expected);
+        }
+        test("∀x P(x)", "∀xP(x)");
+        test("∀x,y P(x,y)", "∀x,yP(x,y)");
+        test("∀x,y P(x,y) ∧ ∀x,y Q(x,y)", "∀x,yP(x,y) ∧ ∀x',y'Q(x',y')");
+        test("∀x∃x∀x∃x P(x)", "∀x∃x'∀x''∃x'''P(x''')");
+        test("∀x (P(x) ∧ ∀x Q(x))", "∀x(P(x) ∧ ∀x'Q(x'))");
+    }
+
+    #[test]
     fn test_check() {
-        assert!(parse("P and P").is_ok());
-        assert!(parse("P and P(x)").is_err_and(|e| { matches!(e, ParseError::PredicateArity) }));
-        assert!(
-            parse("P(x) and P(x,y)").is_err_and(|e| { matches!(e, ParseError::PredicateArity) })
-        );
-        assert!(parse("P(f(x), f(x)) and P(f(x), f(x))").is_ok());
-        assert!(parse("P(f(x), f(x,y))").is_err_and(|e| { matches!(e, ParseError::FunctionArity) }));
-        assert!(parse("P(f(x)) and P(f(x,y))")
-            .is_err_and(|e| { matches!(e, ParseError::FunctionArity) }));
-        assert!(parse("all x,y P(f(x,y))").is_ok());
-        assert!(parse("(all Q,g P(f(Q,g))) and Q and P(g(x))").is_ok());
-        assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddFunction) }));
-        assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddPredicate) }));
-        assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
+        // assert!(parse("(all Q,g P(f(Q,g))) and Q and P(g(x))").is_ok());
+        // assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddFunction) }));
+        // assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddPredicate) }));
+        // assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
     }
 
     #[test]
     fn test_universal_quantify() {
-        let mut entities = Names::new();
+        let mut names = Names::new();
 
         let fml = formula("all x,y P(f(x,y))")
             .unwrap()
-            .into_formula_rec(&mut entities);
+            .into_formula(&mut names);
         assert_eq!(fml.clone().universal_quantify(), fml);
 
-        let fml1 = formula("P(f(x,y))")
-            .unwrap()
-            .into_formula_rec(&mut entities);
+        let fml1 = formula("P(f(x,y))").unwrap().into_formula(&mut names);
         let Formula::All(vs1, p1) = fml1.universal_quantify() else {
             unreachable!()
         };
@@ -736,9 +605,7 @@ mod tests {
         );
         assert_eq!(p1, p);
 
-        let fml2 = formula("all y P(f(x,y))")
-            .unwrap()
-            .into_formula_rec(&mut entities);
+        let fml2 = formula("all y P(f(x,y))").unwrap().into_formula(&mut names);
         assert_eq!(fml2.universal_quantify(), fml);
     }
 

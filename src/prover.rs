@@ -289,7 +289,7 @@ impl<'a> Sequent<'a> {
             let mut fml = fml.clone();
             fml.subst_map(u);
             for id in skolem_ids {
-                fml.replace_func_to_var(*id);
+                fml.replace_func_with_var(*id);
             }
             ant.insert(fml_arena.alloc(fml));
         }
@@ -297,7 +297,7 @@ impl<'a> Sequent<'a> {
             let mut fml = fml.clone();
             fml.subst_map(u);
             for id in skolem_ids {
-                fml.replace_func_to_var(*id);
+                fml.replace_func_with_var(*id);
             }
             suc.insert(fml_arena.alloc(fml));
         }
