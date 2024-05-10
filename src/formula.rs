@@ -132,30 +132,28 @@ impl Formula {
         }
     }
 
-    /// Applies a function to the terms in the formula.
+    /// Applies a function to all terms in the formula.
     fn apply_terms<F>(&self, f: &mut F)
     where
         F: FnMut(&Term),
     {
         self.apply(&mut |p| {
-            if let Self::Pred(_, terms) = p {
-                for term in terms {
-                    f(term);
-                }
+            let Self::Pred(_, terms) = p else { return };
+            for term in terms {
+                f(term);
             }
         });
     }
 
-    /// Applies a function to the terms in the formula, allowing mutation of the terms.
+    /// Applies a function to all terms in the formula, allowing mutation of the terms.
     fn apply_terms_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Term),
     {
         self.apply_mut(&mut |p| {
-            if let Self::Pred(_, terms) = p {
-                for term in terms {
-                    f(term);
-                }
+            let Self::Pred(_, terms) = p else { return };
+            for term in terms {
+                f(term);
             }
         });
     }
@@ -170,10 +168,9 @@ impl Formula {
     /// Collects predicate IDs in the formula.
     pub fn collect_pred(&self) -> HashSet<usize> {
         let mut ids = hashset!();
-        self.apply(&mut |f| {
-            if let Self::Pred(id, _) = f {
-                ids.insert(*id);
-            }
+        self.apply(&mut |p| {
+            let Self::Pred(id, _) = p else { return };
+            ids.insert(*id);
         });
         ids
     }
