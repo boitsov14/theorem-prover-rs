@@ -175,7 +175,7 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, false));
                     1
                 }
-                Predicate(..) => unreachable!(),
+                Pred(..) => unreachable!(),
             },
             FormulaPos::Suc => match fml {
                 Not(p) => {
@@ -236,7 +236,7 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, false));
                     1
                 }
-                Predicate(..) => unreachable!(),
+                Pred(..) => unreachable!(),
             },
         }
     }
@@ -479,7 +479,7 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
             Console => "∃",
             Latex => r"$\exists$",
         },
-        Predicate(..) => unreachable!(),
+        Pred(..) => unreachable!(),
     };
     let fml_pos = match fml_pos {
         FormulaPos::Ant => ": Left",
@@ -641,9 +641,9 @@ impl Formula {
             for (_, seq, _) in &unresolved {
                 let mut pairs = vec![];
                 for p in &seq.ant {
-                    if let Self::Predicate(id1, terms1) = p {
+                    if let Self::Pred(id1, terms1) = p {
                         'outer0: for q in &seq.suc {
-                            if let Self::Predicate(id2, terms2) = q {
+                            if let Self::Pred(id2, terms2) = q {
                                 if id1 == id2 && terms1.len() == terms2.len() {
                                     let mut u = vec![];
                                     for (t1, t2) in terms1.iter().zip(terms2.iter()) {

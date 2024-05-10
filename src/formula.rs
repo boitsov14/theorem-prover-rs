@@ -9,7 +9,7 @@ pub enum Term {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Formula {
-    Predicate(usize, Vec<Term>),
+    Pred(usize, Vec<Term>),
     Not(Box<Formula>),
     And(Vec<Formula>),
     Or(Vec<Formula>),
@@ -97,7 +97,7 @@ impl Formula {
         f(self);
         use Formula::*;
         match self {
-            Predicate(..) => {}
+            Pred(..) => {}
             Not(p) => p.apply(f),
             And(l) | Or(l) => {
                 for p in l {
@@ -122,7 +122,7 @@ impl Formula {
         f(self);
         use Formula::*;
         match self {
-            Predicate(..) => {}
+            Pred(..) => {}
             Not(p) => p.apply_mut(f),
             And(l) | Or(l) => {
                 for p in l {
@@ -145,7 +145,7 @@ impl Formula {
         F: FnMut(&Term),
     {
         self.apply(&mut |p| {
-            if let Self::Predicate(_, terms) = p {
+            if let Self::Pred(_, terms) = p {
                 for term in terms {
                     f(term);
                 }
@@ -159,7 +159,7 @@ impl Formula {
         F: FnMut(&mut Term),
     {
         self.apply_mut(&mut |p| {
-            if let Self::Predicate(_, terms) = p {
+            if let Self::Pred(_, terms) = p {
                 for term in terms {
                     f(term);
                 }
@@ -178,7 +178,7 @@ impl Formula {
     pub fn collect_pred(&self) -> HashSet<usize> {
         let mut ids = hashset!();
         self.apply(&mut |f| {
-            if let Self::Predicate(id, _) = f {
+            if let Self::Pred(id, _) = f {
                 ids.insert(*id);
             }
         });
@@ -203,7 +203,7 @@ impl Formula {
     pub fn replace_func_to_var(&mut self, id: usize) {
         use Formula::*;
         match self {
-            Predicate(_, terms) => {
+            Pred(_, terms) => {
                 for term in terms {
                     term.replace_func_to_var(id);
                 }

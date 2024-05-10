@@ -104,7 +104,7 @@ impl fmt::Display for FormulaDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Formula::*;
         match self.formula {
-            Predicate(id, terms) => {
+            Pred(id, terms) => {
                 if terms.is_empty() {
                     write!(f, "{}", self.entities.get_name(*id))?;
                 } else {

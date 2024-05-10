@@ -200,7 +200,7 @@ mod tests {
         }
         // TODO: 2024/05/09 あとで直す（この関数自体なくす）
         let free_vars = hashset!(); // p.free_vars();
-        let Formula::Predicate(_, terms) = *p else {
+        let Formula::Pred(_, terms) = *p else {
             unreachable!()
         };
         let t1 = terms[0].clone();
