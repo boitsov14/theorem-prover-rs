@@ -25,10 +25,9 @@ impl Term {
         F: FnMut(&Self),
     {
         f(self);
-        if let Self::Func(_, terms) = self {
-            for term in terms {
-                term.apply(f);
-            }
+        let Self::Func(_, terms) = self else { return };
+        for term in terms {
+            term.apply(f);
         }
     }
 
@@ -38,51 +37,45 @@ impl Term {
         F: FnMut(&mut Self),
     {
         f(self);
-        if let Self::Func(_, terms) = self {
-            for term in terms {
-                term.apply_mut(f);
-            }
+        let Self::Func(_, terms) = self else { return };
+        for term in terms {
+            term.apply_mut(f);
         }
     }
 
     /// Collects function IDs in the term.
     fn collect_func(&self, ids: &mut HashSet<usize>) {
         self.apply(&mut |t| {
-            if let Self::Func(id, _) = t {
-                ids.insert(*id);
-            }
+            let Self::Func(id, _) = t else { return };
+            ids.insert(*id);
         });
     }
 
     /// Substitutes a variable with a new term.
     fn subst(&mut self, var: usize, new_term: &Self) {
         self.apply_mut(&mut |v| {
-            if let Self::Var(id) = v {
-                if *id == var {
-                    *v = new_term.clone();
-                }
+            let Self::Var(id) = v else { return };
+            if *id == var {
+                *v = new_term.clone();
             }
         });
     }
 
-    /// Substitutes variables with terms based on a unifier.
+    /// Substitutes variables with terms based on a map.
     pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
         self.apply_mut(&mut |v| {
-            if let Self::Var(id) = v {
-                if let Some(t) = map.get(id) {
-                    *v = t.clone();
-                }
-            }
+            let Self::Var(id) = v else { return };
+            let Some(t) = map.get(id) else { return };
+            *v = t.clone();
         });
     }
 
-    /// Replaces a function with a variable.
-    fn replace_func_to_var(&mut self, id: usize) {
-        self.apply_mut(&mut |t| {
-            if let Self::Func(f_id, _) = t {
-                if *f_id == id {
-                    *t = Self::Var(id);
-                }
+    /// Replaces a function with a variable with the same ID.
+    fn replace_func_with_var(&mut self, id: usize) {
+        self.apply_mut(&mut |f| {
+            let Self::Func(f_id, _) = f else { return };
+            if *f_id == id {
+                *f = Self::Var(id);
             }
         });
     }
@@ -205,7 +198,7 @@ impl Formula {
         match self {
             Pred(_, terms) => {
                 for term in terms {
-                    term.replace_func_to_var(id);
+                    term.replace_func_with_var(id);
                 }
             }
             Not(p) => p.replace_func_to_var(id),
