@@ -32,7 +32,7 @@ impl Names {
         s
     }
 
-    fn get_fresh_id(&mut self, s: String) -> usize {
+    pub fn get_fresh_id(&mut self, s: String) -> usize {
         let s = self.get_fresh_name(s);
         self.get_id(s)
     }
@@ -41,12 +41,11 @@ impl Names {
         self.names.len()
     }
 
-    // TODO: 2024/02/25 String or Option<String>?
-    fn get_name(&self, id: usize) -> String {
+    pub fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
             .cloned()
-            .unwrap_or_else(|| id.to_string())
+            .unwrap_or_else(|| format!("?_{}", id))
     }
 }
 

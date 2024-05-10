@@ -287,7 +287,7 @@ impl<'a> Sequent<'a> {
         let mut suc: IndexSet<&Formula, _> = FxIndexSet::default();
         for fml in self.ant {
             let mut fml = fml.clone();
-            fml.subst_unifier(u);
+            fml.subst_map(u);
             for id in skolem_ids {
                 fml.replace_func_to_var(*id);
             }
@@ -295,7 +295,7 @@ impl<'a> Sequent<'a> {
         }
         for fml in self.suc {
             let mut fml = fml.clone();
-            fml.subst_unifier(u);
+            fml.subst_map(u);
             for id in skolem_ids {
                 fml.replace_func_to_var(*id);
             }

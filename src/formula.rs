@@ -1,3 +1,4 @@
+use maplit::hashset;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -65,10 +66,10 @@ impl Term {
     }
 
     /// Substitutes variables with terms based on a unifier.
-    fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
+    pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
         self.apply_mut(&mut |v| {
             if let Self::Var(id) = v {
-                if let Some(t) = u.get(id) {
+                if let Some(t) = map.get(id) {
                     *v = t.clone();
                 }
             }
@@ -167,72 +168,35 @@ impl Formula {
     }
 
     /// Collects function IDs in the formula.
-    fn collect_func(&self, ids: &mut HashSet<usize>) {
-        self.apply_terms(&mut |t| t.collect_func(ids));
+    pub fn collect_func(&self) -> HashSet<usize> {
+        let mut ids = hashset!();
+        self.apply_terms(&mut |t| t.collect_func(&mut ids));
+        ids
     }
 
     /// Collects predicate IDs in the formula.
-    fn collect_pred(&self, ids: &mut HashSet<usize>) {
+    pub fn collect_pred(&self) -> HashSet<usize> {
+        let mut ids = hashset!();
         self.apply(&mut |f| {
             if let Self::Predicate(id, _) = f {
                 ids.insert(*id);
             }
         });
+        ids
     }
 
+    /// Substitutes a variable with a new term.
+    /// # Warning
+    /// This method is implemented naively and may cause variable capture.
     pub fn subst(&mut self, var: usize, new_term: &Term) {
-        use Formula::*;
-        match self {
-            Predicate(_, terms) => {
-                for term in terms {
-                    term.subst(var, new_term);
-                }
-            }
-            Not(p) => p.subst(var, new_term),
-            And(l) | Or(l) => {
-                for p in l {
-                    p.subst(var, new_term);
-                }
-            }
-            Implies(p, q) => {
-                p.subst(var, new_term);
-                q.subst(var, new_term);
-            }
-            All(vs, p) | Exists(vs, p) => {
-                if !vs.contains(&var) {
-                    p.subst(var, new_term);
-                }
-            }
-        }
+        self.apply_terms_mut(&mut |t| t.subst(var, new_term));
     }
 
-    pub fn subst_unifier(&mut self, u: &HashMap<usize, Term>) {
-        use Formula::*;
-        match self {
-            Predicate(_, terms) => {
-                for term in terms {
-                    term.subst_unifier(u);
-                }
-            }
-            Not(p) => p.subst_unifier(u),
-            And(l) | Or(l) => {
-                for p in l {
-                    p.subst_unifier(u);
-                }
-            }
-            Implies(p, q) => {
-                p.subst_unifier(u);
-                q.subst_unifier(u);
-            }
-            All(vs, p) | Exists(vs, p) => {
-                // drop vs from u
-                let mut u = u.clone();
-                for v in vs {
-                    u.remove(v);
-                }
-                p.subst_unifier(&u);
-            }
-        }
+    /// Substitutes variables with terms based on a unifier.
+    /// # Warning
+    /// This method is implemented naively and may cause variable capture.
+    pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
+        self.apply_terms_mut(&mut |t| t.subst_map(map));
     }
 
     // TODO: 2024/04/06 引数をskolem_idsにする
