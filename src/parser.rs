@@ -294,7 +294,7 @@ impl Formula {
 
     /// Makes ∧ and ∨ unique.
     fn make_unique1(&mut self) {
-        self.apply_mut(&mut |p| {
+        self.visit_mut(&mut |p| {
             if let Self::And(ps) | Self::Or(ps) = p {
                 *ps = ps.iter().unique().cloned().collect();
                 // if ps is a singleton, replace p with the element
@@ -307,7 +307,7 @@ impl Formula {
 
     /// Makes the bounded variables unique.
     fn make_unique2(&mut self) {
-        self.apply_mut(&mut |p| {
+        self.visit_mut(&mut |p| {
             if let Self::All(vs, _) | Self::Exists(vs, _) = p {
                 *vs = vs.iter().unique().cloned().collect();
             }
@@ -317,13 +317,14 @@ impl Formula {
     /// Renames the bounded variables to avoid name conflicts.
     ///
     /// Converts `∀x (P(x) ∧ ∀x Q(x))` to `∀x (P(x) ∧ ∀x' Q(x'))`
+    // TODO: 2024/05/12 apply_mutは使わない方がいいかも：all x P(x) ∧ all x Q(x) が all x P(x) ∧ all x' Q(x') になる
     fn rename_bdd_vars1(
         &mut self,
         names: &mut Names,
         bdd_vars: &mut HashSet<usize>,
         map: &mut HashMap<usize, Term>,
     ) {
-        self.apply_mut(&mut |p| match p {
+        self.visit_mut(&mut |p| match p {
             Self::Pred(_, terms) => {
                 for term in terms {
                     term.subst_map(map);
@@ -350,7 +351,7 @@ impl Formula {
     fn rename_bdd_vars2(&mut self, names: &mut Names) {
         let funcs = self.collect_func();
         let preds = self.collect_pred();
-        self.apply_mut(&mut |p| {
+        self.visit_mut(&mut |p| {
             if let Self::All(vs, p) | Self::Exists(vs, p) = p {
                 for v in vs {
                     if funcs.contains(v) || preds.contains(v) {
@@ -371,7 +372,7 @@ impl Formula {
         match self {
             Pred(_, terms) => {
                 for term in terms {
-                    term.apply_mut(&mut |v| {
+                    term.visit_mut(&mut |v| {
                         let Term::Var(id) = v else { return };
                         if bdd_vars.contains(id) {
                             return;
