@@ -735,7 +735,6 @@ pub fn example(s: &str) -> io::Result<()> {
     let (fml, entities) = parse(s).unwrap();
     println!("{}", fml);
     return Ok(());
-    let fml = fml.universal_quantify();
     println!("{}", fml.display(&entities));
 
     // prove
@@ -909,7 +908,6 @@ mod tests {
     fn prove(s: &str) -> String {
         // parse
         let (fml, entities) = parse(s).unwrap();
-        let fml = fml.universal_quantify();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();

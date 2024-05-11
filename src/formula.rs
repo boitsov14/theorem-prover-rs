@@ -32,7 +32,7 @@ impl Term {
     }
 
     /// Applies a function to the term and its subterms recursively, allowing mutation of the term.
-    fn apply_mut<F>(&mut self, f: &mut F)
+    pub fn apply_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {

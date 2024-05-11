@@ -187,7 +187,6 @@ mod tests {
     fn test_unify(s: &str, t: &str) -> Result<HashMap<String, String>, UnificationFailure> {
         let fml_str = format!("P({s}, {t})");
         let (fml, entities) = parse(&fml_str).unwrap();
-        let fml = fml.universal_quantify();
         let Formula::All(vs, mut p) = fml else {
             unreachable!()
         };

@@ -258,8 +258,55 @@ impl PFormula {
 }
 
 impl Formula {
-    /// Deletes duplicate bounded variables in the formula.
-    fn del_dup_bdd_vars(&mut self) {
+    /// Flattens the formula.
+    ///
+    /// Converts `(P ∧ Q) ∧ (R ∧ S)` to `P ∧ Q ∧ R ∧ S`.
+    pub fn flatten(&mut self) {
+        use Formula::*;
+        match self {
+            And(ps) => {
+                let mut new_ps = vec![];
+                while let Some(mut p) = ps.pop() {
+                    p.flatten();
+                    if let And(qs) = p {
+                        new_ps.extend(qs);
+                    } else {
+                        new_ps.push(p);
+                    }
+                }
+                *ps = new_ps
+            }
+            Or(ps) => {
+                let mut new_ps = vec![];
+                while let Some(mut p) = ps.pop() {
+                    p.flatten();
+                    if let Or(qs) = p {
+                        new_ps.extend(qs);
+                    } else {
+                        new_ps.push(p);
+                    }
+                }
+                *ps = new_ps
+            }
+            _ => {}
+        }
+    }
+
+    /// Makes ∧ and ∨ unique.
+    fn make_unique1(&mut self) {
+        self.apply_mut(&mut |p| {
+            if let Self::And(ps) | Self::Or(ps) = p {
+                *ps = ps.iter().unique().cloned().collect();
+                // if ps is a singleton, replace p with the element
+                if ps.len() == 1 {
+                    *p = ps.pop().unwrap();
+                }
+            }
+        });
+    }
+
+    /// Makes the bounded variables unique.
+    fn make_unique2(&mut self) {
         self.apply_mut(&mut |p| {
             if let Self::All(vs, _) | Self::Exists(vs, _) = p {
                 *vs = vs.iter().unique().cloned().collect();
@@ -316,19 +363,38 @@ impl Formula {
         });
     }
 
-    pub fn universal_quantify(self) -> Self {
-        use Formula::All;
-        // TODO: 2024/05/09 あとで直す（この関数自体なくす）
-        let mut fv = vec![]; // self.free_vars().into_iter().collect_vec();
-        if fv.is_empty() {
-            return self;
-        }
+    /// Substitutes free variables with functions with the same ID.
+    ///
+    /// Converts `P(x) ∧ ∀y Q(y)` to `P(x()) ∧ ∀y Q(y)`
+    fn replace_free_vars_with_funcs(&mut self, bdd_vars: &HashSet<usize>) {
+        use Formula::*;
         match self {
-            All(vs, p) => {
-                fv.extend(vs);
-                All(fv, p)
+            Pred(_, terms) => {
+                for term in terms {
+                    term.apply_mut(&mut |v| {
+                        let Term::Var(id) = v else { return };
+                        if bdd_vars.contains(id) {
+                            return;
+                        }
+                        *v = Term::Func(*id, vec![]);
+                    });
+                }
             }
-            p => All(fv, Box::new(p)),
+            Not(p) => p.replace_free_vars_with_funcs(bdd_vars),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.replace_free_vars_with_funcs(bdd_vars);
+                }
+            }
+            Implies(p, q) => {
+                p.replace_free_vars_with_funcs(bdd_vars);
+                q.replace_free_vars_with_funcs(bdd_vars);
+            }
+            All(vs, p) | Exists(vs, p) => {
+                let mut bdd_vars = bdd_vars.clone();
+                bdd_vars.extend(vs.iter().cloned());
+                p.replace_free_vars_with_funcs(&bdd_vars);
+            }
         }
     }
 }
@@ -583,32 +649,27 @@ mod tests {
         // assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
     }
 
-    #[test]
-    fn test_universal_quantify() {
-        let mut names = Names::new();
+    // fn test_universal_quantify() {
+    //     let fml = formula("all x,y P(f(x,y))")
+    //         .unwrap()
+    //         .into_formula(&mut names);
+    //     assert_eq!(fml.clone().universal_quantify(), fml);
 
-        let fml = formula("all x,y P(f(x,y))")
-            .unwrap()
-            .into_formula(&mut names);
-        assert_eq!(fml.clone().universal_quantify(), fml);
-
-        let fml1 = formula("P(f(x,y))").unwrap().into_formula(&mut names);
-        let Formula::All(vs1, p1) = fml1.universal_quantify() else {
-            unreachable!()
-        };
-        let Formula::All(vs, p) = fml.clone().universal_quantify() else {
-            unreachable!()
-        };
-        assert_eq!(
-            vs1.iter().collect::<HashSet<_>>(),
-            vs.iter().collect::<HashSet<_>>()
-        );
-        assert_eq!(p1, p);
-
-        let fml2 = formula("all y P(f(x,y))").unwrap().into_formula(&mut names);
-        assert_eq!(fml2.universal_quantify(), fml);
-    }
-
+    //     let fml1 = formula("P(f(x,y))").unwrap().into_formula(&mut names);
+    //     let Formula::All(vs1, p1) = fml1.universal_quantify() else {
+    //         unreachable!()
+    //     };
+    //     let Formula::All(vs, p) = fml.clone().universal_quantify() else {
+    //         unreachable!()
+    //     };
+    //     assert_eq!(
+    //         vs1.iter().collect::<HashSet<_>>(),
+    //         vs.iter().collect::<HashSet<_>>()
+    //     );
+    //     assert_eq!(p1, p);
+    //     let fml2 = formula("all y P(f(x,y))").unwrap().into_formula(&mut names);
+    //     assert_eq!(fml2.universal_quantify(), fml);
+    // }
     #[test]
     fn test_parse_tptp() {
         let s = "

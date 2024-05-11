@@ -14,7 +14,7 @@ fn from_example_prop(c: &mut Criterion) {
     let s = fs::read_to_string("benches/examples.txt").unwrap();
     let fmls = s.lines().filter(|s| !s.is_empty()).map(|s| {
         let (fml, entities) = parse(s).unwrap();
-        (fml.universal_quantify(), entities)
+        (fml, entities)
     });
 
     for (ref fml, entities) in fmls {
