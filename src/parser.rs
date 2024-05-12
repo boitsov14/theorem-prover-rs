@@ -2,10 +2,10 @@ use crate::formula::{Formula, Term};
 use crate::naming::Names;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use maplit::{hashmap, hashset};
 use peg::{error, str::LineCol};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::mem;
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
 
@@ -26,13 +26,13 @@ pub enum Error {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum PTerm {
+enum PTerm {
     Var(String),
     Func(String, Vec<PTerm>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum PFormula {
+enum PFormula {
     Pred(String, Vec<PTerm>),
     Not(Box<PFormula>),
     And(Vec<PFormula>),
@@ -42,8 +42,8 @@ pub enum PFormula {
     Exists(IndexSet<String>, Box<PFormula>),
 }
 
-pub static P_TRUE: PFormula = PFormula::And(vec![]);
-pub static P_FALSE: PFormula = PFormula::Or(vec![]);
+static P_TRUE: PFormula = PFormula::And(vec![]);
+static P_FALSE: PFormula = PFormula::Or(vec![]);
 
 pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     // Normalize the string.
@@ -91,7 +91,7 @@ peg::parser!( grammar parser() for str {
     use PTerm::*;
 
     /// Parse a term.
-    pub rule term() -> PTerm = quiet!{
+    pub(super) rule term() -> PTerm = quiet!{
         f:$function_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
         v:$var() { Var(v.to_string()) } /
         "(" t:term() ")" { t }
@@ -108,7 +108,7 @@ peg::parser!( grammar parser() for str {
     /// All infix operators are right-associative.
     ///
     /// The precedence of operators is as follows: not, all, exists > and > or > implies > iff.
-    pub rule formula() -> PFormula = precedence!{
+    pub(super) rule formula() -> PFormula = precedence!{
         p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p.clone()), Box::new(q.clone())), Implies(Box::new(q), Box::new(p))]) }
         --
         p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
@@ -261,7 +261,7 @@ impl Formula {
     /// Flattens the formula.
     ///
     /// Converts `(P ∧ Q) ∧ (R ∧ S)` to `P ∧ Q ∧ R ∧ S`.
-    pub fn flatten(&mut self) {
+    fn flatten(&mut self) {
         use Formula::*;
         match self {
             And(ps) => {
@@ -287,6 +287,26 @@ impl Formula {
                     }
                 }
                 *ps = new_ps
+            }
+            All(vs, p) => {
+                p.flatten();
+                match p.as_mut() {
+                    All(ws, q) => {
+                        vs.append(ws);
+                        *p = mem::take(q);
+                    }
+                    _ => {}
+                }
+            }
+            Exists(vs, p) => {
+                p.flatten();
+                match p.as_mut() {
+                    Exists(ws, q) => {
+                        vs.append(ws);
+                        *p = mem::take(q);
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         }

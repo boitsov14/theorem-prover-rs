@@ -18,6 +18,8 @@ pub enum Formula {
     Exists(Vec<usize>, Box<Formula>),
 }
 
+static TRUE: Formula = Formula::And(vec![]);
+
 impl Term {
     /// Visits and applies a function to the term and its subterms recursively.
     fn visit<F>(&self, f: &mut F)
@@ -231,6 +233,12 @@ impl Formula {
                 p.replace_func_with_var(id);
             }
         }
+    }
+}
+
+impl Default for Formula {
+    fn default() -> Self {
+        TRUE.clone()
     }
 }
 
