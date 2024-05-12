@@ -2,6 +2,7 @@ use crate::formula::{Formula, Term};
 use crate::naming::Names;
 use indexmap::IndexSet;
 use itertools::Itertools;
+use maplit::hashset;
 use peg::{error, str::LineCol};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -257,6 +258,16 @@ impl PFormula {
     }
 }
 
+impl Term {
+    /// Collects function IDs in the term.
+    fn collect_func(&self, ids: &mut HashSet<usize>) {
+        self.visit(&mut |t| {
+            let Self::Func(id, _) = t else { return };
+            ids.insert(*id);
+        });
+    }
+}
+
 impl Formula {
     /// Flattens the formula.
     ///
@@ -345,9 +356,9 @@ impl Formula {
         map: &mut HashMap<usize, Term>,
     ) {
         self.visit_mut(&mut |p| match p {
-            Self::Pred(_, terms) => {
-                for term in terms {
-                    term.subst_map(map);
+            Self::Pred(_, ts) => {
+                for t in ts {
+                    t.subst_map(map);
                 }
             }
             Self::All(vs, _) | Self::Exists(vs, _) => {
@@ -363,6 +374,23 @@ impl Formula {
             }
             _ => {}
         });
+    }
+
+    /// Collects function IDs in the formula.
+    fn collect_func(&self) -> HashSet<usize> {
+        let mut ids = hashset!();
+        self.visit_terms(&mut |t| t.collect_func(&mut ids));
+        ids
+    }
+
+    /// Collects predicate IDs in the formula.
+    fn collect_pred(&self) -> HashSet<usize> {
+        let mut ids = hashset!();
+        self.visit(&mut |p| {
+            let Self::Pred(id, _) = p else { return };
+            ids.insert(*id);
+        });
+        ids
     }
 
     /// Renames the bounded variables to avoid using the same name as functions or predicates.
@@ -390,9 +418,9 @@ impl Formula {
     fn replace_free_vars_with_funcs(&mut self, bdd_vars: &HashSet<usize>) {
         use Formula::*;
         match self {
-            Pred(_, terms) => {
-                for term in terms {
-                    term.visit_mut(&mut |v| {
+            Pred(_, ts) => {
+                for t in ts {
+                    t.visit_mut(&mut |v| {
                         let Term::Var(id) = v else { return };
                         if bdd_vars.contains(id) {
                             return;
@@ -424,6 +452,7 @@ impl Formula {
 mod tests {
     use super::*;
     use indexmap::indexset;
+    use maplit::hashmap;
     use parser::{formula, term};
 
     #[test]

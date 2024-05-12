@@ -1,5 +1,4 @@
-use maplit::hashset;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
@@ -22,7 +21,7 @@ static TRUE: Formula = Formula::And(vec![]);
 
 impl Term {
     /// Visits and applies a function to the term and its subterms recursively.
-    fn visit<F>(&self, f: &mut F)
+    pub(super) fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
@@ -43,15 +42,6 @@ impl Term {
         for t in ts {
             t.visit_mut(f);
         }
-    }
-
-    // TODO: 2024/05/12 移動
-    /// Collects function IDs in the term.
-    fn collect_func(&self, ids: &mut HashSet<usize>) {
-        self.visit(&mut |t| {
-            let Self::Func(id, _) = t else { return };
-            ids.insert(*id);
-        });
     }
 
     /// Substitutes a variable with a term.
@@ -135,7 +125,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to the formula and its subformulas recursively.
-    fn visit<F>(&self, f: &mut F)
+    pub(super) fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
@@ -152,71 +142,55 @@ impl Formula {
         self.visit_children_mut(&mut |p| p.visit_mut(f));
     }
 
-    // TODO: 2024/05/12 visitに変更
-    /// Applies a function to all terms in the formula.
-    fn apply_terms<F>(&self, f: &mut F)
+    /// Visits and applies a function to all terms in the formula.
+    pub(super) fn visit_terms<F>(&self, f: &mut F)
     where
         F: FnMut(&Term),
     {
         self.visit(&mut |p| {
-            let Self::Pred(_, terms) = p else { return };
-            for term in terms {
-                f(term);
+            let Self::Pred(_, ts) = p else { return };
+            for t in ts {
+                f(t);
             }
         });
     }
 
-    /// Applies a function to all terms in the formula, allowing mutation of the terms.
-    fn apply_terms_mut<F>(&mut self, f: &mut F)
+    /// Visits and applies a function to all terms in the formula, allowing mutation of the terms.
+    fn visit_terms_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Term),
     {
         self.visit_mut(&mut |p| {
-            let Self::Pred(_, terms) = p else { return };
-            for term in terms {
-                f(term);
+            let Self::Pred(_, ts) = p else { return };
+            for t in ts {
+                f(t);
             }
         });
-    }
-
-    /// Collects function IDs in the formula.
-    pub fn collect_func(&self) -> HashSet<usize> {
-        let mut ids = hashset!();
-        self.apply_terms(&mut |t| t.collect_func(&mut ids));
-        ids
-    }
-
-    /// Collects predicate IDs in the formula.
-    pub fn collect_pred(&self) -> HashSet<usize> {
-        let mut ids = hashset!();
-        self.visit(&mut |p| {
-            let Self::Pred(id, _) = p else { return };
-            ids.insert(*id);
-        });
-        ids
     }
 
     /// Substitutes a variable with a new term.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
-    pub fn subst(&mut self, var: usize, new_term: &Term) {
-        self.apply_terms_mut(&mut |t| t.subst(var, new_term));
+    pub(super) fn subst(&mut self, var: usize, new_term: &Term) {
+        self.visit_terms_mut(&mut |t| t.subst(var, new_term));
     }
 
     /// Substitutes variables with terms based on a unifier.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
-    pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
-        self.apply_terms_mut(&mut |t| t.subst_map(map));
+    pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {
+        self.visit_terms_mut(&mut |t| t.subst_map(map));
     }
 
+    // TODO: 2024/05/13 移動
+    // TODO: 2024/05/13 apply_mutを使う
     // TODO: 2024/04/06 引数をskolem_idsにする
-    pub fn replace_func_with_var(&mut self, id: usize) {
+    pub(super) fn replace_func_with_var(&mut self, id: usize) {
         use Formula::*;
         match self {
-            Pred(_, terms) => {
-                for term in terms {
-                    term.replace_func_with_var(id);
+            Pred(_, ts) => {
+                for t in ts {
+                    t.replace_func_with_var(id);
                 }
             }
             Not(p) => p.replace_func_with_var(id),
@@ -244,5 +218,5 @@ impl Default for Formula {
 
 #[cfg(test)]
 mod tests {
-    // TODO: 2024/05/10 subst, subst_map, replace_func_with_varのテストを書く
+    // TODO: 2024/05/10 subst, subst_mapのテストを書く
 }
