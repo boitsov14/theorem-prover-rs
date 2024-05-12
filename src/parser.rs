@@ -2,7 +2,7 @@ use crate::formula::{Formula, Term};
 use crate::naming::Names;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use maplit::hashset;
+use maplit::{hashmap, hashset};
 use peg::{error, str::LineCol};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -60,6 +60,12 @@ pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     let pfml = parser::formula(&s).map_err(|e| Error::Core { s: s.into(), e })?;
     let mut names = Names::new();
     let mut fml = pfml.into_formula(&mut names);
+    // Modify the formula.
+    fml.flatten();
+    fml.make_unique();
+    fml.rename_bdd_vars1(&mut names, &mut hashset!(), &mut hashmap!());
+    fml.rename_bdd_vars2(&mut names);
+    fml.replace_free_vars_with_funcs(&mut hashset!());
     Ok((fml, names))
 }
 
@@ -323,24 +329,22 @@ impl Formula {
         }
     }
 
-    /// Makes ∧ and ∨ unique.
-    fn make_unique1(&mut self) {
+    /// Makes ∧, ∨ and bounded variables unique.
+    fn make_unique(&mut self) {
+        use Formula::*;
         self.visit_mut(&mut |p| {
-            if let Self::And(ps) | Self::Or(ps) = p {
-                *ps = ps.iter().unique().cloned().collect();
-                // if ps is a singleton, replace p with the element
-                if ps.len() == 1 {
-                    *p = ps.pop().unwrap();
+            match p {
+                And(ps) | Or(ps) => {
+                    *ps = ps.iter().unique().cloned().collect();
+                    // if ps is a singleton, replace p with the element
+                    if ps.len() == 1 {
+                        *p = ps.pop().unwrap();
+                    }
                 }
-            }
-        });
-    }
-
-    /// Makes the bounded variables unique.
-    fn make_unique2(&mut self) {
-        self.visit_mut(&mut |p| {
-            if let Self::All(vs, _) | Self::Exists(vs, _) = p {
-                *vs = vs.iter().unique().cloned().collect();
+                All(vs, _) | Exists(vs, _) => {
+                    *vs = vs.iter().unique().cloned().collect();
+                }
+                _ => {}
             }
         });
     }
@@ -452,7 +456,6 @@ impl Formula {
 mod tests {
     use super::*;
     use indexmap::indexset;
-    use maplit::hashmap;
     use parser::{formula, term};
 
     #[test]
