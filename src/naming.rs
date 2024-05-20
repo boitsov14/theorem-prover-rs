@@ -121,23 +121,10 @@ impl fmt::Display for FormulaDisplay<'_> {
                 }
             }
             Not(p) => write!(f, "¬{}", p.display_inner(self.entities))?,
-            And(l) => match l.as_slice() {
-                [] => write!(f, "true")?,
-                [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r => {
-                    if self.is_inner {
-                        write!(f, "(")?;
-                    }
-                    write!(
-                        f,
-                        "{} ↔ {}",
-                        p_l.display_inner(self.entities),
-                        q_l.display_inner(self.entities)
-                    )?;
-                    if self.is_inner {
-                        write!(f, ")")?;
-                    }
-                }
-                _ => {
+            And(l) => {
+                if l.is_empty() {
+                    write!(f, "true")?;
+                } else {
                     if self.is_inner {
                         write!(f, "(")?;
                     }
@@ -153,7 +140,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         write!(f, ")")?;
                     }
                 }
-            },
+            }
             Or(l) => {
                 if l.is_empty() {
                     write!(f, "false")?;
@@ -181,6 +168,20 @@ impl fmt::Display for FormulaDisplay<'_> {
                 write!(
                     f,
                     "{} → {}",
+                    p.display_inner(self.entities),
+                    q.display_inner(self.entities)
+                )?;
+                if self.is_inner {
+                    write!(f, ")")?;
+                }
+            }
+            Iff(p, q) => {
+                if self.is_inner {
+                    write!(f, "(")?;
+                }
+                write!(
+                    f,
+                    "{} ↔ {}",
                     p.display_inner(self.entities),
                     q.display_inner(self.entities)
                 )?;

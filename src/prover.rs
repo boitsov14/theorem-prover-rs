@@ -150,6 +150,9 @@ impl<'a> Sequent<'a> {
                     seqs.push((seq_l, is_proved_l));
                     2
                 }
+                Iff(p, q) => {
+                    todo!()
+                }
                 Exists(vs, p) => {
                     self.ant.swap_remove(fml);
                     let p = fml_arena.alloc(*p.clone());
@@ -211,6 +214,9 @@ impl<'a> Sequent<'a> {
                     let is_proved = self.suc.contains(&**p) || self.ant.contains(&**q);
                     seqs.push((self, is_proved));
                     1
+                }
+                Iff(p, q) => {
+                    todo!()
                 }
                 All(vs, p) => {
                     self.suc.swap_remove(fml);
@@ -470,6 +476,10 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
         Implies(..) => match output {
             Console => "→",
             Latex => r"$\rightarrow$",
+        },
+        Iff(..) => match output {
+            Console => "↔",
+            Latex => r"$\leftrightarrow$",
         },
         All(..) => match output {
             Console => "∀",

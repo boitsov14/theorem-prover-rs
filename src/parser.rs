@@ -419,7 +419,7 @@ impl Formula {
                     p.replace_free_vars_with_funcs(bdd_vars);
                 }
             }
-            Implies(p, q) => {
+            Implies(p, q) | Iff(p, q) => {
                 p.replace_free_vars_with_funcs(bdd_vars);
                 q.replace_free_vars_with_funcs(bdd_vars);
             }

@@ -13,6 +13,7 @@ pub enum Formula {
     And(Vec<Formula>),
     Or(Vec<Formula>),
     Implies(Box<Formula>, Box<Formula>),
+    Iff(Box<Formula>, Box<Formula>),
     All(Vec<usize>, Box<Formula>),
     Exists(Vec<usize>, Box<Formula>),
 }
@@ -90,7 +91,7 @@ impl Formula {
                     f(p);
                 }
             }
-            Implies(p, q) => {
+            Implies(p, q) | Iff(p, q) => {
                 f(p);
                 f(q);
             }
@@ -114,7 +115,7 @@ impl Formula {
                     f(p);
                 }
             }
-            Implies(p, q) => {
+            Implies(p, q) | Iff(p, q) => {
                 f(p);
                 f(q);
             }
@@ -199,7 +200,7 @@ impl Formula {
                     p.replace_func_with_var(id);
                 }
             }
-            Implies(p, q) => {
+            Implies(p, q) | Iff(p, q) => {
                 p.replace_func_with_var(id);
                 q.replace_func_with_var(id);
             }
