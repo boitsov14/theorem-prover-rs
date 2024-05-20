@@ -37,6 +37,7 @@ enum PFormula {
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
     Implies(Box<PFormula>, Box<PFormula>),
+    Iff(Box<PFormula>, Box<PFormula>),
     All(Vec<String>, Box<PFormula>),
     Exists(Vec<String>, Box<PFormula>),
 }
@@ -114,61 +115,13 @@ peg::parser!( grammar parser() for str {
     ///
     /// The precedence of operators is as follows: ¬, ∀, ∃ > ∧ > ∨ > → > ↔.
     pub(super) rule formula() -> PFormula = precedence!{
-        p:@ _ iff() _ q:(@) { And(vec![Implies(Box::new(p.clone()), Box::new(q.clone())), Implies(Box::new(q), Box::new(p))]) }
+        p:@ _ iff() _ q:(@) { Iff(Box::new(p), Box::new(q)) }
         --
         p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
         --
-        p:@ _ or() _ q:(@) {
-            match (p, q) {
-                (Or(mut ps), Or(qs)) => {
-                    ps.extend(qs);
-                    Or(ps)
-                }
-                (Or(mut ps), q) => {
-                    if ps.is_empty() {
-                        q
-                    } else {
-                        ps.push(q);
-                        Or(ps)
-                    }
-                }
-                (p, Or(mut qs)) => {
-                    if qs.is_empty() {
-                        p
-                    } else {
-                        qs.insert(0, p);
-                        Or(qs)
-                    }
-                }
-                (p, q) => Or(vec![p, q]),
-            }
-        }
+        p:@ _ or() _ q:(@) { Or(vec![p, q]) }
         --
-        p:@ _ and() _ q:(@) {
-            match (p, q) {
-                (And(mut ps), And(qs)) => {
-                    ps.extend(qs);
-                    And(ps)
-                }
-                (And(mut ps), q) => {
-                    if ps.is_empty() {
-                        q
-                    } else {
-                        ps.push(q);
-                        And(ps)
-                    }
-                }
-                (p, And(mut qs)) => {
-                    if qs.is_empty() {
-                        p
-                    } else {
-                        qs.insert(0, p);
-                        And(qs)
-                    }
-                }
-                (p, q) => And(vec![p, q]),
-            }
-        }
+        p:@ _ and() _ q:(@) { And(vec![p, q]) }
         --
         not() _ p:@ { Not(Box::new(p)) }
         all() _ vs:($var() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
@@ -186,16 +139,16 @@ peg::parser!( grammar parser() for str {
     rule function_name() = ALPHA() ALPHANUMERIC()*
     rule predicate_name() = quiet!{ ALPHA() ALPHANUMERIC()* } / expected!("predicate")
 
-    rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" } / expected!("true")
-    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" } / expected!("false")
+    rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" }
+    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" }
 
-    rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("not")
-    rule and() = quiet!{ "∧" / r"/\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("and")
-    rule or() = quiet!{ "∨" / r"\/" / "||" / "|" / "or" / "lor" / "vee" } / expected!("or")
-    rule implies() = quiet!{ "→" / "->" / "=>" / "-->" / "==>" / "⇒" / "to" / "implies" / "imply" / "imp" / "rightarrow" } / expected!("implies")
-    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "<-->" / "<==>" / "⇔" / "≡" / "iff" / "equivalent" / "equiv" / "leftrightarrow" } / expected!("iff")
-    rule all() = quiet!{ "∀" / "!" / "forall" / "all" } / expected!("all")
-    rule exists() = quiet!{ "∃" / "?" / "exists" / "ex" } / expected!("exists")
+    rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("'¬'")
+    rule and() = quiet!{ "∧" / r"/\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("'∧'")
+    rule or() = quiet!{ "∨" / r"\/" / "||" / "|" / "or" / "lor" / "vee" } / expected!("'∨'")
+    rule implies() = quiet!{ "→" / "->" / "=>" / "-->" / "==>" / "⇒" / "to" / "implies" / "imply" / "imp" / "rightarrow" } / expected!("'→'")
+    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "<-->" / "<==>" / "⇔" / "≡" / "iff" / "equivalent" / "equiv" / "leftrightarrow" } / expected!("'↔'")
+    rule all() = quiet!{ "∀" / "!" / "forall" / "all" } / expected!("'∀'")
+    rule exists() = quiet!{ "∃" / "?" / "exists" / "ex" } / expected!("'∃'")
 
     rule _ = quiet!{ [' ']* }
 });
@@ -229,6 +182,10 @@ impl PFormula {
             Self::And(l) => Formula::And(l.into_iter().map(|p| p.into_formula(names)).collect()),
             Self::Or(l) => Formula::Or(l.into_iter().map(|p| p.into_formula(names)).collect()),
             Self::Implies(p, q) => Formula::Implies(
+                Box::new(p.into_formula(names)),
+                Box::new(q.into_formula(names)),
+            ),
+            Self::Iff(p, q) => Formula::Iff(
                 Box::new(p.into_formula(names)),
                 Box::new(q.into_formula(names)),
             ),
