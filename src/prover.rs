@@ -733,8 +733,6 @@ pub fn example(s: &str) -> io::Result<()> {
 
     // parse
     let (fml, entities) = parse(s).unwrap();
-    println!("{}", fml);
-    return Ok(());
     println!("{}", fml.display(&entities));
 
     // prove
@@ -747,6 +745,8 @@ pub fn example(s: &str) -> io::Result<()> {
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+
+    return Ok(());
 
     let old_id = entities.len();
     let mut entities = entities;

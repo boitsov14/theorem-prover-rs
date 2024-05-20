@@ -10,7 +10,7 @@ fn main() {
     // 825ms
     // let s = "(((((((((((a⇔b)⇔c)⇔d)⇔e)⇔f)⇔g)⇔h)⇔i)⇔j)⇔k)⇔(a⇔(b⇔(c⇔(d⇔(e⇔(f⇔(g⇔(h⇔(i⇔(j⇔k)))))))))))";
 
-    let s = "P and Q to Q and P";
+    // let s = "P and Q to Q and P";
     // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
 
@@ -27,6 +27,8 @@ fn main() {
     // let s = "P(a) to all x(P(x) → P(f(x))) to P(f(f(f(f(f(f(f(f(f(a))))))))))";
     // u: {7: Func(3, [Func(3, [Func(4, [])])]), 9: Func(3, [Func(3, [Func(3, [Func(3, [Func(4, [])])])])]), 13: Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(4, [])])])])])])])])]), 10: Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(4, [])])])])])]), 8: Func(3, [Func(3, [Func(3, [Func(4, [])])])]), 12: Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(4, [])])])])])])])]), 6: Func(3, [Func(4, [])]), 5: Func(4, []), 11: Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(3, [Func(4, [])])])])])])])}
 
+    let s = "all a (P(a) to ex a P(a))";
+
     example(s).unwrap();
-    example_iltp_prop();
+    // example_iltp_prop();
 }
