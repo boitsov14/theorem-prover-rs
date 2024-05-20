@@ -64,7 +64,7 @@ impl Term {
     }
 
     // TODO: 2024/05/12 移動
-    /// Replaces a function with a variable with the same ID.
+    /// Replaces a function with a variable of the same id.
     fn replace_func_with_var(&mut self, id: usize) {
         self.visit_mut(&mut |f| {
             let Self::Func(f_id, _) = f else { return };
@@ -175,7 +175,7 @@ impl Formula {
         self.visit_terms_mut(&mut |t| t.subst(var, new_term));
     }
 
-    /// Substitutes variables with terms based on a unifier.
+    /// Substitutes variables with terms.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
     pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {

@@ -1,9 +1,7 @@
 use crate::formula::{Formula, Term};
 use crate::naming::Names;
-use indexmap::IndexSet;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
-use peg::{error, str::LineCol};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::mem;
@@ -22,7 +20,7 @@ pub enum Error {
  = expected {}", " ".repeat(e.location.column - 1), e.expected)]
     Core {
         s: String,
-        e: error::ParseError<LineCol>,
+        e: peg::error::ParseError<peg::str::LineCol>,
     },
 }
 
@@ -39,8 +37,8 @@ enum PFormula {
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
     Implies(Box<PFormula>, Box<PFormula>),
-    All(IndexSet<String>, Box<PFormula>),
-    Exists(IndexSet<String>, Box<PFormula>),
+    All(Vec<String>, Box<PFormula>),
+    Exists(Vec<String>, Box<PFormula>),
 }
 
 static P_TRUE: PFormula = PFormula::And(vec![]);
@@ -173,26 +171,8 @@ peg::parser!( grammar parser() for str {
         }
         --
         not() _ p:@ { Not(Box::new(p)) }
-        all() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs = vs.iter().map(|&s| s.to_string()).collect::<IndexSet<_>>();
-            match p {
-                All(ws, q) => {
-                    vs.extend(ws);
-                    All(vs, q)
-                }
-                p => All(vs, Box::new(p)),
-            }
-        }
-        exists() _ vs:($var() ++ (_ "," _)) _ p:@ {
-            let mut vs = vs.iter().map(|&s| s.to_string()).collect::<IndexSet<_>>();
-            match p {
-                Exists(ws, q) => {
-                    vs.extend(ws);
-                    Exists(vs, q)
-                }
-                p => Exists(vs, Box::new(p)),
-            }
-        }
+        all() _ vs:($var() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
+        exists() _ vs:($var() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
         --
         p:predicate() { p }
         "(" _ p:formula() _ ")" { p }
@@ -416,7 +396,7 @@ impl Formula {
         });
     }
 
-    /// Substitutes free variables with functions with the same ID.
+    /// Substitutes free variables with functions of the same id.
     ///
     /// Converts `P(x) ∧ ∀y Q(y)` to `P(x()) ∧ ∀y Q(y)`
     fn replace_free_vars_with_funcs(&mut self, bdd_vars: &HashSet<usize>) {
@@ -455,7 +435,6 @@ impl Formula {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use indexmap::indexset;
     use parser::{formula, term};
 
     #[test]
@@ -536,28 +515,28 @@ mod tests {
         assert_eq!(
             formula("all x P(x)").unwrap(),
             All(
-                indexset!["x".into()],
+                vec!["x".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("all x, y P(x, y)").unwrap(),
             All(
-                indexset!["x".into(), "y".into()],
+                vec!["x".into(), "y".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
             )
         );
         assert_eq!(
             formula("ex x P(x)").unwrap(),
             Exists(
-                indexset!["x".into()],
+                vec!["x".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("ex x, y P(x, y)").unwrap(),
             Exists(
-                indexset!["x".into(), "y".into()],
+                vec!["x".into(), "y".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
             )
         );
@@ -637,10 +616,10 @@ mod tests {
         assert_eq!(
             fml,
             All(
-                indexset!["x".into(), "y".into(), "z".into(), "u".into()],
+                vec!["x".into(), "y".into(), "z".into(), "u".into()],
                 Box::new(Exists(
-                    indexset!["v".into(), "w".into()],
-                    Box::new(All(indexset!["h".into()], Box::new(formula("P").unwrap())))
+                    vec!["v".into(), "w".into()],
+                    Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
                 ))
             )
         );
