@@ -7,19 +7,19 @@ edition = "2021"
 
 [dependencies]
 indexmap = "2.2.6"
-itertools = "0.12.1"
+itertools = "0.13.0"
 maplit = "1.0.2"
-mimalloc = { version = "0.1.41", default-features = false }
+mimalloc = { version = "0.1.42", default-features = false }
 peg = "0.8.3"
 regex = "1.10.4"
 rustc-hash = "1.1.0"
-thiserror = "1.0.60"
+thiserror = "1.0.61"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 criterion = "0.5.1"
-insta = "1.38.0"
+insta = "1.39.0"
 
 [[bench]]
 name = "benchmark"
