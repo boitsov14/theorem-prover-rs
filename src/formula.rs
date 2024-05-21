@@ -28,32 +28,32 @@ static TRUE: Formula = Formula::And(vec![]);
 
 impl Term {
     /// Visits and applies a function to the term and its subterms recursively.
-    pub(super) fn visit<F>(&self, mut f: F)
+    pub(super) fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
         f(self);
         let Self::Func(_, ts) = self else { return };
         for t in ts {
-            t.visit(&mut f);
+            t.visit(f);
         }
     }
 
     /// Visits and applies a function to the term and its subterms recursively, allowing mutation of the term.
-    pub(super) fn visit_mut<F>(&mut self, mut f: F)
+    pub(super) fn visit_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {
         f(self);
         let Self::Func(_, ts) = self else { return };
         for t in ts {
-            t.visit_mut(&mut f);
+            t.visit_mut(f);
         }
     }
 
     /// Substitutes a variable with a term.
     fn subst(&mut self, var: usize, term: &Self) {
-        self.visit_mut(|v| {
+        self.visit_mut(&mut |v| {
             let Self::Var(id) = v else { return };
             if *id == var {
                 *v = term.clone();
@@ -63,7 +63,7 @@ impl Term {
 
     /// Substitutes variables with terms.
     pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {
-        self.visit_mut(|v| {
+        self.visit_mut(&mut |v| {
             let Self::Var(id) = v else { return };
             let Some(t) = map.get(id) else { return };
             *v = t.clone();
@@ -73,7 +73,7 @@ impl Term {
     // TODO: 2024/05/12 移動
     /// Replaces a function with a variable of the same id.
     fn replace_func_with_var(&mut self, id: usize) {
-        self.visit_mut(|f| {
+        self.visit_mut(&mut |f| {
             let Self::Func(f_id, _) = f else { return };
             if *f_id == id {
                 *f = Self::Var(id);
@@ -128,21 +128,21 @@ impl Formula {
     }
 
     /// Visits and applies a function to the formula and its subformulas recursively.
-    pub(super) fn visit<F>(&self, mut f: F)
+    pub(super) fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
         f(self);
-        self.visit_children(|p| p.visit(&mut f));
+        self.visit_children(|p| p.visit(f));
     }
 
     /// Visits and applies a function to the formula and its subformulas recursively, allowing mutation of the formula.
-    pub(super) fn visit_mut<F>(&mut self, mut f: F)
+    pub(super) fn visit_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {
         f(self);
-        self.visit_children_mut(|p| p.visit_mut(&mut f));
+        self.visit_children_mut(|p| p.visit_mut(f));
     }
 
     /// Visits and applies a function to all terms in the formula.
@@ -150,7 +150,7 @@ impl Formula {
     where
         F: FnMut(&Term),
     {
-        self.visit(|p| {
+        self.visit(&mut |p| {
             let Self::Pred(_, ts) = p else { return };
             ts.iter().for_each(&mut f);
         });
@@ -161,7 +161,7 @@ impl Formula {
     where
         F: FnMut(&mut Term),
     {
-        self.visit_mut(|p| {
+        self.visit_mut(&mut |p| {
             let Self::Pred(_, ts) = p else { return };
             ts.iter_mut().for_each(&mut f);
         });
