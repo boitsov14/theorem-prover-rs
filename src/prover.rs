@@ -738,11 +738,18 @@ fn unify_pairs_matrix(
 }
 
 pub fn example(s: &str) -> io::Result<()> {
-    use crate::parser::parse;
+    use crate::parser::parse_formula;
     use std::time::Instant;
 
     // parse
-    let (fml, entities) = parse(s).unwrap();
+    let mut entities = Names::default();
+    let fml = match parse_formula(s, &mut entities, true) {
+        Ok(fml) => fml,
+        Err(e) => {
+            println!("{}", e);
+            return Ok(());
+        }
+    };
     println!("{}", fml.display(&entities));
 
     // prove
@@ -816,7 +823,7 @@ pub fn example(s: &str) -> io::Result<()> {
 }
 
 pub fn example_iltp_prop() {
-    use crate::parser::from_tptp;
+    use crate::parser::modify_tptp;
     use crate::parser::parse;
     use std::fs;
     use std::time::Instant;
@@ -836,7 +843,7 @@ pub fn example_iltp_prop() {
         println!();
         println!("{file_name}");
         let s = fs::read_to_string(&file).unwrap();
-        let (fml, entities) = parse(&from_tptp(&s)).unwrap();
+        let (fml, entities) = parse(&modify_tptp(&s)).unwrap();
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();

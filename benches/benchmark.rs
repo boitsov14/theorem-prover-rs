@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use itertools::Itertools;
 use mimalloc::MiMalloc;
 use std::fs;
-use theorem_prover_rs::{from_tptp, parse};
+use theorem_prover_rs::{modify_tptp, parse};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -42,7 +42,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
         })
         .map(|file| {
             let s = fs::read_to_string(&file).unwrap();
-            parse(&from_tptp(&s)).unwrap()
+            parse(&modify_tptp(&s)).unwrap()
         })
         .collect_vec();
 
@@ -70,7 +70,7 @@ fn from_iltp_prop_1(c: &mut Criterion) {
         })
         .map(|file| {
             let s = fs::read_to_string(&file).unwrap();
-            parse(&from_tptp(&s)).unwrap()
+            parse(&modify_tptp(&s)).unwrap()
         });
 
     for (ref fml, entities) in fmls {
