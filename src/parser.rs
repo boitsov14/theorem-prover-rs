@@ -132,10 +132,10 @@ pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     let mut fml = pfml.into_formula(&mut names);
     // Modify the formula.
     fml.flatten();
-    fml.make_unique();
-    fml.rename_bdd_vars1(&mut names, &mut hashset!(), &mut hashmap!());
-    fml.rename_bdd_vars2(&mut names);
-    fml.replace_free_vars_with_funcs(&mut hashset!());
+    fml.unique();
+    fml.rename_nested_bdd_vars(&mut names, &hashmap!());
+    fml.rename_bdd_vars(&mut names);
+    fml.subst_free_vars_with_constants(&hashset!());
     Ok((fml, names))
 }
 
@@ -305,15 +305,21 @@ impl Formula {
     /// Modifies the formula.
     fn modify(&mut self, names: &mut Names) {
         self.flatten();
-        self.make_unique();
-        self.rename_bdd_vars1(names, &mut hashset!(), &mut hashmap!());
-        self.rename_bdd_vars2(names);
-        self.replace_free_vars_with_funcs(&mut hashset!());
+        self.unique();
+        self.rename_nested_bdd_vars(names, &hashmap!());
+        self.rename_bdd_vars(names);
+        self.subst_free_vars_with_constants(&hashset!());
     }
 
     /// Flattens the formula.
-    ///
+    /// # Examples
     /// Converts `(P ∧ Q) ∧ (R ∧ S)` to `P ∧ Q ∧ R ∧ S`.
+    ///
+    /// Converts `(P ∨ Q) ∨ (R ∨ S)` to `P ∨ Q ∨ R ∨ S`.
+    ///
+    /// Converts `∀x(∀y(∀zP(x,y,z)))` to `∀x,y,zP(x,y,z)`.
+    ///
+    /// Converts `∃x(∃y(∃zP(x,y,z)))` to `∃x,y,zP(x,y,z)`.
     fn flatten(&mut self) {
         use Formula::*;
         match self {
@@ -343,77 +349,88 @@ impl Formula {
             }
             All(vs, p) => {
                 p.flatten();
-                match p.as_mut() {
-                    All(ws, q) => {
-                        vs.append(ws);
-                        *p = mem::take(q);
-                    }
-                    _ => {}
-                }
+                let All(ws, q) = p.as_mut() else { return };
+                vs.append(ws);
+                *p = mem::take(q);
             }
             Ex(vs, p) => {
                 p.flatten();
-                match p.as_mut() {
-                    Ex(ws, q) => {
-                        vs.append(ws);
-                        *p = mem::take(q);
-                    }
-                    _ => {}
-                }
+                let Ex(ws, q) = p.as_mut() else { return };
+                vs.append(ws);
+                *p = mem::take(q);
             }
             _ => {}
         }
     }
 
     /// Makes ∧, ∨ and bounded variables unique.
-    fn make_unique(&mut self) {
+    /// # Examples
+    /// Converts `P ∧ P` to `P`.
+    ///
+    /// Converts `P ∨ P` to `P`.
+    ///
+    /// Converts `∀x,x P(x)` to `∀x P(x)`.
+    ///
+    /// Converts `∃x,x P(x)` to `∃x P(x)`.
+    fn unique(&mut self) {
         use Formula::*;
         self.visit_mut(&mut |p| {
             match p {
                 And(ps) | Or(ps) => {
-                    *ps = ps.iter().unique().cloned().collect();
-                    // if ps is a singleton, replace p with the element
-                    if ps.len() == 1 {
-                        *p = ps.pop().unwrap();
+                    let mut new_ps = vec![];
+                    while let Some(p) = ps.pop() {
+                        if !new_ps.contains(&p) {
+                            new_ps.push(p);
+                        }
+                    }
+                    // if new_ps is a singleton, replace p with the element
+                    if new_ps.len() == 1 {
+                        *p = new_ps.pop().unwrap();
+                    } else {
+                        *ps = new_ps;
                     }
                 }
                 All(vs, _) | Ex(vs, _) => {
-                    *vs = vs.iter().unique().cloned().collect();
+                    let mut new_vs = vec![];
+                    for v in vs {
+                        if !new_vs.contains(v) {
+                            new_vs.push(*v);
+                        }
+                    }
                 }
                 _ => {}
             }
         });
     }
 
-    /// Renames the bounded variables to avoid name conflicts.
-    ///
+    /// Renames the nested bounded variables to avoid id conflicts.
+    /// # Examples
     /// Converts `∀x (P(x) ∧ ∀x Q(x))` to `∀x (P(x) ∧ ∀x' Q(x'))`
-    // TODO: 2024/05/12 apply_mutは使わない方がいいかも：all x P(x) ∧ all x Q(x) が all x P(x) ∧ all x' Q(x') になる
-    fn rename_bdd_vars1(
-        &mut self,
-        names: &mut Names,
-        bdd_vars: &mut HashSet<usize>,
-        map: &mut HashMap<usize, Term>,
-    ) {
-        self.visit_mut(&mut |p| match p {
-            Self::Pred(_, ts) => {
+    fn rename_nested_bdd_vars(&mut self, names: &mut Names, map: &HashMap<usize, Term>) {
+        use Formula::*;
+        match self {
+            Pred(_, ts) => {
                 for t in ts {
                     t.subst_map(map);
                 }
             }
-            Self::All(vs, _) | Self::Ex(vs, _) => {
+            All(vs, p) | Ex(vs, p) => {
+                let mut map = map.clone();
                 for v in vs {
-                    if bdd_vars.contains(v) {
+                    if map.contains_key(v) {
                         let new_v = names.get_fresh_id(names.get_name(*v));
                         map.insert(*v, Term::Var(new_v));
                         *v = new_v;
                     } else {
-                        bdd_vars.insert(*v);
+                        map.insert(*v, Term::Var(*v));
                     }
                 }
+                p.rename_nested_bdd_vars(names, &map);
             }
-            _ => {}
-        });
+            _ => {
+                self.visit_children_mut(|p| p.rename_nested_bdd_vars(names, map));
+            }
+        }
     }
 
     /// Collects function ids in the formula.
@@ -433,10 +450,14 @@ impl Formula {
         ids
     }
 
-    /// Renames the bounded variables to avoid using the same name as functions or predicates.
+    /// Renames the bounded variables to avoid using the same id as functions or predicates.
     ///
+    /// This is optional to avoid misunderstandings.
+    /// # Examples
     /// Converts `∀P P(P)` to `∀P' P(P')`
-    fn rename_bdd_vars2(&mut self, names: &mut Names) {
+    ///
+    /// Converts `∀f P(f(f))` to `∀f' P(f(f'))`
+    fn rename_bdd_vars(&mut self, names: &mut Names) {
         let funcs = self.collect_func();
         let preds = self.collect_pred();
         self.visit_mut(&mut |p| {
@@ -452,10 +473,10 @@ impl Formula {
         });
     }
 
-    /// Substitutes free variables with functions of the same id.
-    ///
+    /// Substitutes free variables with constants(0-ary functions) of the same id.
+    /// # Examples
     /// Converts `P(x) ∧ ∀y Q(y)` to `P(x()) ∧ ∀y Q(y)`
-    fn replace_free_vars_with_funcs(&mut self, bdd_vars: &HashSet<usize>) {
+    fn subst_free_vars_with_constants(&mut self, bdd_vars: &HashSet<usize>) {
         use Formula::*;
         match self {
             Pred(_, ts) => {
@@ -469,20 +490,13 @@ impl Formula {
                     });
                 }
             }
-            Not(p) => p.replace_free_vars_with_funcs(bdd_vars),
-            And(l) | Or(l) => {
-                for p in l {
-                    p.replace_free_vars_with_funcs(bdd_vars);
-                }
-            }
-            To(p, q) | Iff(p, q) => {
-                p.replace_free_vars_with_funcs(bdd_vars);
-                q.replace_free_vars_with_funcs(bdd_vars);
-            }
             All(vs, p) | Ex(vs, p) => {
                 let mut bdd_vars = bdd_vars.clone();
                 bdd_vars.extend(vs.iter().cloned());
-                p.replace_free_vars_with_funcs(&bdd_vars);
+                p.subst_free_vars_with_constants(&bdd_vars);
+            }
+            _ => {
+                self.visit_children_mut(|p| p.subst_free_vars_with_constants(bdd_vars));
             }
         }
     }
@@ -717,9 +731,7 @@ mod tests {
     fn test_adjust_bdd_vars() {
         fn test(s: &str, expected: &str) {
             let (mut fml, mut names) = parse(s).unwrap();
-            let mut bdd_vars = hashset![];
-            let mut new_bdd_vars = hashmap![];
-            fml.rename_bdd_vars1(&mut names, &mut bdd_vars, &mut new_bdd_vars);
+            fml.rename_nested_bdd_vars(&mut names, &hashmap!());
             assert_eq!(fml.display(&names).to_string(), expected);
         }
         test("∀x P(x)", "∀xP(x)");

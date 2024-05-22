@@ -106,7 +106,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to the children of the formula, allowing mutation of the formula.
-    fn visit_children_mut<F>(&mut self, mut f: F)
+    pub(super) fn visit_children_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut Self),
     {
