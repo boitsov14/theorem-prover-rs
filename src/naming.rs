@@ -9,7 +9,7 @@ pub struct Names {
 }
 
 impl Names {
-    pub fn get_id(&mut self, s: String) -> usize {
+    pub(super) fn get_id(&mut self, s: String) -> usize {
         for (i, name) in self.names.iter().enumerate() {
             if name == &s {
                 return i;
@@ -27,7 +27,7 @@ impl Names {
         s
     }
 
-    pub fn get_fresh_id(&mut self, s: String) -> usize {
+    pub(super) fn get_fresh_id(&mut self, s: String) -> usize {
         let s = self.get_fresh_name(s);
         self.get_id(s)
     }
@@ -36,7 +36,7 @@ impl Names {
         self.names.len()
     }
 
-    pub fn get_name(&self, id: usize) -> String {
+    pub(super) fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
             .cloned()
@@ -44,11 +44,11 @@ impl Names {
     }
 }
 
-pub trait Latex {
+pub(super) trait Latex {
     fn to_latex(&self) -> String;
 }
 
-pub struct TermDisplay<'a> {
+pub(super) struct TermDisplay<'a> {
     term: &'a Term,
     names: &'a Names,
 }
@@ -74,7 +74,7 @@ impl fmt::Display for TermDisplay<'_> {
 }
 
 impl Term {
-    pub fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
+    pub(super) fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
         TermDisplay { term: self, names }
     }
 }
