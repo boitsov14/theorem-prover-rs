@@ -62,7 +62,7 @@ impl<'a> Sequent<'a> {
     fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
         for fml in &self.ant {
             match fml {
-                Not(_) | And(_) | Exists(..) => {
+                Not(_) | And(_) | Ex(..) => {
                     return Some((fml, FormulaPos::Ant));
                 }
                 _ => {}
@@ -70,7 +70,7 @@ impl<'a> Sequent<'a> {
         }
         for fml in &self.suc {
             match fml {
-                Not(_) | Or(_) | Implies(..) | All(..) => {
+                Not(_) | Or(_) | To(..) | All(..) => {
                     return Some((fml, FormulaPos::Suc));
                 }
                 _ => {}
@@ -83,7 +83,7 @@ impl<'a> Sequent<'a> {
                         return Some((fml, FormulaPos::Ant));
                     }
                 }
-                Implies(p, q) => {
+                To(p, q) => {
                     if !self.suc.contains(&**p) && !self.ant.contains(&**q) {
                         return Some((fml, FormulaPos::Ant));
                     }
@@ -138,7 +138,7 @@ impl<'a> Sequent<'a> {
                     }
                     l.len()
                 }
-                Implies(p, q) => {
+                To(p, q) => {
                     self.ant.swap_remove(fml);
                     let mut seq_l = self.clone();
                     let mut seq_r = self;
@@ -153,7 +153,7 @@ impl<'a> Sequent<'a> {
                 Iff(p, q) => {
                     todo!()
                 }
-                Exists(vs, p) => {
+                Ex(vs, p) => {
                     self.ant.swap_remove(fml);
                     let p = fml_arena.alloc(*p.clone());
                     for v in vs {
@@ -207,7 +207,7 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, is_proved));
                     1
                 }
-                Implies(p, q) => {
+                To(p, q) => {
                     self.suc.swap_remove(fml);
                     self.ant.insert(p);
                     self.suc.insert(q);
@@ -231,7 +231,7 @@ impl<'a> Sequent<'a> {
                     seqs.push((self, false));
                     1
                 }
-                Exists(vs, p) => {
+                Ex(vs, p) => {
                     let p = fml_arena.alloc(*p.clone());
                     for v in vs {
                         p.subst(*v, &Term::Var(*new_id));
@@ -454,7 +454,7 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
                 Console => "true",
                 Latex => r"$\top$",
             },
-            [Implies(p_l, q_l), Implies(p_r, q_r)] if p_l == q_r && q_l == p_r => match output {
+            [To(p_l, q_l), To(p_r, q_r)] if p_l == q_r && q_l == p_r => match output {
                 Console => "↔",
                 Latex => r"$\leftrightarrow$",
             },
@@ -473,7 +473,7 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
                 Latex => r"$\lor$",
             },
         },
-        Implies(..) => match output {
+        To(..) => match output {
             Console => "→",
             Latex => r"$\rightarrow$",
         },
@@ -485,7 +485,7 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
             Console => "∀",
             Latex => r"$\forall$",
         },
-        Exists(..) => match output {
+        Ex(..) => match output {
             Console => "∃",
             Latex => r"$\exists$",
         },
@@ -591,7 +591,7 @@ impl Formula {
                 // try to apply ∃-right
                 let mut fml_ex = None;
                 for fml in &seq.suc {
-                    if matches!(fml, Exists(..)) && !applied_fmls.contains(fml) {
+                    if matches!(fml, Ex(..)) && !applied_fmls.contains(fml) {
                         fml_ex = Some(*fml);
                     }
                 }
@@ -762,8 +762,6 @@ pub fn example(s: &str) -> io::Result<()> {
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-
-    return Ok(());
 
     let old_id = entities.len();
     let mut entities = entities;

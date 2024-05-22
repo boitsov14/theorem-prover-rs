@@ -161,7 +161,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                     }
                 }
             }
-            Implies(p, q) => {
+            To(p, q) => {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
@@ -198,7 +198,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                     .join(","),
                 p.display_inner(self.entities)
             )?,
-            Exists(vars, p) => write!(
+            Ex(vars, p) => write!(
                 f,
                 "∃{}{}",
                 vars.iter()

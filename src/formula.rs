@@ -12,10 +12,10 @@ pub enum Formula {
     Not(Box<Formula>),
     And(Vec<Formula>),
     Or(Vec<Formula>),
-    Implies(Box<Formula>, Box<Formula>),
+    To(Box<Formula>, Box<Formula>),
     Iff(Box<Formula>, Box<Formula>),
     All(Vec<usize>, Box<Formula>),
-    Exists(Vec<usize>, Box<Formula>),
+    Ex(Vec<usize>, Box<Formula>),
 }
 
 #[derive(Clone, Debug)]
@@ -95,11 +95,11 @@ impl Formula {
             And(l) | Or(l) => {
                 l.iter().for_each(&mut f);
             }
-            Implies(p, q) | Iff(p, q) => {
+            To(p, q) | Iff(p, q) => {
                 f(p);
                 f(q);
             }
-            All(_, p) | Exists(_, p) => {
+            All(_, p) | Ex(_, p) => {
                 f(p);
             }
         }
@@ -117,11 +117,11 @@ impl Formula {
             And(l) | Or(l) => {
                 l.iter_mut().for_each(&mut f);
             }
-            Implies(p, q) | Iff(p, q) => {
+            To(p, q) | Iff(p, q) => {
                 f(p);
                 f(q);
             }
-            All(_, p) | Exists(_, p) => {
+            All(_, p) | Ex(_, p) => {
                 f(p);
             }
         }
@@ -198,11 +198,11 @@ impl Formula {
                     p.replace_func_with_var(id);
                 }
             }
-            Implies(p, q) | Iff(p, q) => {
+            To(p, q) | Iff(p, q) => {
                 p.replace_func_with_var(id);
                 q.replace_func_with_var(id);
             }
-            All(_, p) | Exists(_, p) => {
+            All(_, p) | Ex(_, p) => {
                 p.replace_func_with_var(id);
             }
         }

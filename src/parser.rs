@@ -39,10 +39,10 @@ enum PFormula {
     Not(Box<PFormula>),
     And(Vec<PFormula>),
     Or(Vec<PFormula>),
-    Implies(Box<PFormula>, Box<PFormula>),
+    To(Box<PFormula>, Box<PFormula>),
     Iff(Box<PFormula>, Box<PFormula>),
     All(Vec<String>, Box<PFormula>),
-    Exists(Vec<String>, Box<PFormula>),
+    Ex(Vec<String>, Box<PFormula>),
 }
 
 #[derive(Clone, Debug)]
@@ -186,7 +186,7 @@ peg::parser!( grammar parser() for str {
     pub(super) rule formula() -> PFormula = precedence!{
         p:@ _ iff() _ q:(@) { Iff(Box::new(p), Box::new(q)) }
         --
-        p:@ _ implies() _ q:(@) { Implies(Box::new(p), Box::new(q)) }
+        p:@ _ to() _ q:(@) { To(Box::new(p), Box::new(q)) }
         --
         p:@ _ or() _ q:(@) { Or(vec![p, q]) }
         --
@@ -194,7 +194,7 @@ peg::parser!( grammar parser() for str {
         --
         not() _ p:@ { Not(Box::new(p)) }
         all() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
-        exists() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
+        ex() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { Ex(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
         --
         p:predicate() { p }
         "(" _ p:formula() _ ")" { p }
@@ -218,10 +218,10 @@ peg::parser!( grammar parser() for str {
     rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!("'¬'")
     rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!("'∧'")
     rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!("'∨'")
-    rule implies() = quiet!{ "→" / "->" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
+    rule to() = quiet!{ "→" / "->" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
     rule iff() = quiet!{ "↔" / "<->" / "iff" / r"\leftrightarrow" } / expected!("'↔'")
     rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!("'∀'")
-    rule exists() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!("'∃'")
+    rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!("'∃'")
     rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!("'⊢'")
     rule _ = quiet!{ [' ']* }
 });
@@ -254,7 +254,7 @@ impl PFormula {
             Self::Not(p) => Formula::Not(Box::new(p.into_formula(names))),
             Self::And(l) => Formula::And(l.into_iter().map(|p| p.into_formula(names)).collect()),
             Self::Or(l) => Formula::Or(l.into_iter().map(|p| p.into_formula(names)).collect()),
-            Self::Implies(p, q) => Formula::Implies(
+            Self::To(p, q) => Formula::To(
                 Box::new(p.into_formula(names)),
                 Box::new(q.into_formula(names)),
             ),
@@ -266,7 +266,7 @@ impl PFormula {
                 vs.into_iter().map(|name| names.get_id(name)).collect(),
                 Box::new(p.into_formula(names)),
             ),
-            Self::Exists(vs, p) => Formula::Exists(
+            Self::Ex(vs, p) => Formula::Ex(
                 vs.into_iter().map(|name| names.get_id(name)).collect(),
                 Box::new(p.into_formula(names)),
             ),
@@ -351,10 +351,10 @@ impl Formula {
                     _ => {}
                 }
             }
-            Exists(vs, p) => {
+            Ex(vs, p) => {
                 p.flatten();
                 match p.as_mut() {
-                    Exists(ws, q) => {
+                    Ex(ws, q) => {
                         vs.append(ws);
                         *p = mem::take(q);
                     }
@@ -377,7 +377,7 @@ impl Formula {
                         *p = ps.pop().unwrap();
                     }
                 }
-                All(vs, _) | Exists(vs, _) => {
+                All(vs, _) | Ex(vs, _) => {
                     *vs = vs.iter().unique().cloned().collect();
                 }
                 _ => {}
@@ -401,7 +401,7 @@ impl Formula {
                     t.subst_map(map);
                 }
             }
-            Self::All(vs, _) | Self::Exists(vs, _) => {
+            Self::All(vs, _) | Self::Ex(vs, _) => {
                 for v in vs {
                     if bdd_vars.contains(v) {
                         let new_v = names.get_fresh_id(names.get_name(*v));
@@ -440,7 +440,7 @@ impl Formula {
         let funcs = self.collect_func();
         let preds = self.collect_pred();
         self.visit_mut(&mut |p| {
-            if let Self::All(vs, p) | Self::Exists(vs, p) = p {
+            if let Self::All(vs, p) | Self::Ex(vs, p) = p {
                 for v in vs {
                     if funcs.contains(v) || preds.contains(v) {
                         let new_v = names.get_fresh_id(names.get_name(*v));
@@ -475,11 +475,11 @@ impl Formula {
                     p.replace_free_vars_with_funcs(bdd_vars);
                 }
             }
-            Implies(p, q) | Iff(p, q) => {
+            To(p, q) | Iff(p, q) => {
                 p.replace_free_vars_with_funcs(bdd_vars);
                 q.replace_free_vars_with_funcs(bdd_vars);
             }
-            All(vs, p) | Exists(vs, p) => {
+            All(vs, p) | Ex(vs, p) => {
                 let mut bdd_vars = bdd_vars.clone();
                 bdd_vars.extend(vs.iter().cloned());
                 p.replace_free_vars_with_funcs(&bdd_vars);
@@ -549,8 +549,8 @@ mod tests {
             Or(vec![Pred("P".into(), vec![]), Pred("Q".into(), vec![])])
         );
         assert_eq!(
-            formula("P implies Q").unwrap(),
-            Implies(
+            formula("P to Q").unwrap(),
+            To(
                 Box::new(Pred("P".into(), vec![])),
                 Box::new(Pred("Q".into(), vec![]))
             )
@@ -558,11 +558,11 @@ mod tests {
         assert_eq!(
             formula("P iff Q").unwrap(),
             And(vec![
-                Implies(
+                To(
                     Box::new(Pred("P".into(), vec![])),
                     Box::new(Pred("Q".into(), vec![]))
                 ),
-                Implies(
+                To(
                     Box::new(Pred("Q".into(), vec![])),
                     Box::new(Pred("P".into(), vec![]))
                 )
@@ -584,14 +584,14 @@ mod tests {
         );
         assert_eq!(
             formula("ex x P(x)").unwrap(),
-            Exists(
+            Ex(
                 vec!["x".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into())]))
             )
         );
         assert_eq!(
             formula("ex x, y P(x, y)").unwrap(),
-            Exists(
+            Ex(
                 vec!["x".into(), "y".into()],
                 Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
             )
@@ -602,10 +602,10 @@ mod tests {
     fn test_parse_pformula_assoc() {
         use PFormula::*;
         assert_eq!(
-            formula("P implies Q implies R").unwrap(),
-            Implies(
+            formula("P to Q to R").unwrap(),
+            To(
                 Box::new(formula("P").unwrap()),
-                Box::new(Implies(
+                Box::new(To(
                     Box::new(formula("Q").unwrap()),
                     Box::new(formula("R").unwrap())
                 ))
@@ -616,7 +616,7 @@ mod tests {
     #[test]
     fn test_parse_pformula_precedence() {
         use PFormula::*;
-        assert_eq!(formula("not P and Q or R implies S").unwrap(), {
+        assert_eq!(formula("not P and Q or R to S").unwrap(), {
             let p = formula("P").unwrap();
             let q = formula("Q").unwrap();
             let r = formula("R").unwrap();
@@ -624,7 +624,7 @@ mod tests {
             let np = Not(Box::new(p));
             let np_and_q = And(vec![np, q]);
             let npq_or_r = Or(vec![np_and_q, r]);
-            Implies(Box::new(npq_or_r), Box::new(s))
+            To(Box::new(npq_or_r), Box::new(s))
         });
     }
 
@@ -673,7 +673,7 @@ mod tests {
             fml,
             All(
                 vec!["x".into(), "y".into(), "z".into(), "u".into()],
-                Box::new(Exists(
+                Box::new(Ex(
                     vec!["v".into(), "w".into()],
                     Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
                 ))
