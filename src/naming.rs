@@ -55,21 +55,21 @@ pub trait Latex {
 
 pub struct TermDisplay<'a> {
     term: &'a Term,
-    entities: &'a Names,
+    names: &'a Names,
 }
 
 impl fmt::Display for TermDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Term::*;
         match self.term {
-            Var(id) => write!(f, "{}", self.entities.get_name(*id))?,
+            Var(id) => write!(f, "{}", self.names.get_name(*id))?,
             Func(id, terms) => write!(
                 f,
                 "{}({})",
-                self.entities.get_name(*id),
+                self.names.get_name(*id),
                 terms
                     .iter()
-                    .map(|term| term.display(self.entities).to_string())
+                    .map(|term| term.display(self.names).to_string())
                     .collect_vec()
                     .join(",")
             )?,
@@ -79,11 +79,8 @@ impl fmt::Display for TermDisplay<'_> {
 }
 
 impl Term {
-    pub fn display<'a>(&'a self, entities: &'a Names) -> TermDisplay<'a> {
-        TermDisplay {
-            term: self,
-            entities,
-        }
+    pub fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
+        TermDisplay { term: self, names }
     }
 }
 
@@ -96,7 +93,7 @@ impl fmt::Display for Term {
 
 pub struct FormulaDisplay<'a> {
     formula: &'a Formula,
-    entities: &'a Names,
+    names: &'a Names,
     is_inner: bool,
 }
 
@@ -106,21 +103,21 @@ impl fmt::Display for FormulaDisplay<'_> {
         match self.formula {
             Pred(id, terms) => {
                 if terms.is_empty() {
-                    write!(f, "{}", self.entities.get_name(*id))?;
+                    write!(f, "{}", self.names.get_name(*id))?;
                 } else {
                     write!(
                         f,
                         "{}({})",
-                        self.entities.get_name(*id),
+                        self.names.get_name(*id),
                         terms
                             .iter()
-                            .map(|term| term.display(self.entities).to_string())
+                            .map(|term| term.display(self.names).to_string())
                             .collect_vec()
                             .join(",")
                     )?;
                 }
             }
-            Not(p) => write!(f, "¬{}", p.display_inner(self.entities))?,
+            Not(p) => write!(f, "¬{}", p.display_inner(self.names))?,
             And(l) => {
                 if l.is_empty() {
                     write!(f, "true")?;
@@ -132,7 +129,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         f,
                         "{}",
                         l.iter()
-                            .map(|p| p.display_inner(self.entities).to_string())
+                            .map(|p| p.display_inner(self.names).to_string())
                             .collect_vec()
                             .join(" ∧ ")
                     )?;
@@ -152,7 +149,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                         f,
                         "{}",
                         l.iter()
-                            .map(|p| p.display_inner(self.entities).to_string())
+                            .map(|p| p.display_inner(self.names).to_string())
                             .collect_vec()
                             .join(" ∨ ")
                     )?;
@@ -168,8 +165,8 @@ impl fmt::Display for FormulaDisplay<'_> {
                 write!(
                     f,
                     "{} → {}",
-                    p.display_inner(self.entities),
-                    q.display_inner(self.entities)
+                    p.display_inner(self.names),
+                    q.display_inner(self.names)
                 )?;
                 if self.is_inner {
                     write!(f, ")")?;
@@ -182,8 +179,8 @@ impl fmt::Display for FormulaDisplay<'_> {
                 write!(
                     f,
                     "{} ↔ {}",
-                    p.display_inner(self.entities),
-                    q.display_inner(self.entities)
+                    p.display_inner(self.names),
+                    q.display_inner(self.names)
                 )?;
                 if self.is_inner {
                     write!(f, ")")?;
@@ -193,19 +190,19 @@ impl fmt::Display for FormulaDisplay<'_> {
                 f,
                 "∀{}{}",
                 vars.iter()
-                    .map(|id| self.entities.get_name(*id))
+                    .map(|id| self.names.get_name(*id))
                     .collect_vec()
                     .join(","),
-                p.display_inner(self.entities)
+                p.display_inner(self.names)
             )?,
             Ex(vars, p) => write!(
                 f,
                 "∃{}{}",
                 vars.iter()
-                    .map(|id| self.entities.get_name(*id))
+                    .map(|id| self.names.get_name(*id))
                     .collect_vec()
                     .join(","),
-                p.display_inner(self.entities)
+                p.display_inner(self.names)
             )?,
         }
         Ok(())
@@ -235,17 +232,17 @@ impl Latex for FormulaDisplay<'_> {
 }
 
 impl Formula {
-    pub fn display<'a>(&'a self, entities: &'a Names) -> FormulaDisplay<'a> {
+    pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
-            entities,
+            names,
             is_inner: false,
         }
     }
-    fn display_inner<'a>(&'a self, entities: &'a Names) -> FormulaDisplay<'a> {
+    fn display_inner<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
-            entities,
+            names,
             is_inner: true,
         }
     }
@@ -259,7 +256,7 @@ impl fmt::Display for Formula {
 
 pub struct SequentDisplay<'a, 'b> {
     sequent: &'a Sequent<'b>,
-    entities: &'a Names,
+    names: &'a Names,
 }
 
 impl fmt::Display for SequentDisplay<'_, '_> {
@@ -270,13 +267,13 @@ impl fmt::Display for SequentDisplay<'_, '_> {
             self.sequent
                 .ant
                 .iter()
-                .map(|fml| fml.display(self.entities).to_string())
+                .map(|fml| fml.display(self.names).to_string())
                 .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
-                .map(|fml| fml.display(self.entities).to_string())
+                .map(|fml| fml.display(self.names).to_string())
                 .collect_vec()
                 .join(", ")
         )?;
@@ -291,13 +288,13 @@ impl Latex for SequentDisplay<'_, '_> {
             self.sequent
                 .ant
                 .iter()
-                .map(|fml| fml.display(self.entities).to_latex())
+                .map(|fml| fml.display(self.names).to_latex())
                 .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
-                .map(|fml| fml.display(self.entities).to_latex())
+                .map(|fml| fml.display(self.names).to_latex())
                 .collect_vec()
                 .join(", ")
         )
@@ -305,10 +302,10 @@ impl Latex for SequentDisplay<'_, '_> {
 }
 
 impl<'b> Sequent<'b> {
-    pub fn display<'a>(&'a self, entities: &'a Names) -> SequentDisplay<'a, 'b> {
+    pub fn display<'a>(&'a self, names: &'a Names) -> SequentDisplay<'a, 'b> {
         SequentDisplay {
             sequent: self,
-            entities,
+            names,
         }
     }
 }
@@ -325,43 +322,43 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let (fml, entities) = parse("P(x)").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P(x)");
+        let (fml, names) = parse("P(x)").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P(x)");
 
-        let (fml, entities) = parse("P(x,f(y,g(z)))").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P(x,f(y,g(z)))");
+        let (fml, names) = parse("P(x,f(y,g(z)))").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P(x,f(y,g(z)))");
 
-        let (fml, entities) = parse("not P").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "¬P");
+        let (fml, names) = parse("not P").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "¬P");
 
-        let (fml, entities) = parse("P and Q and R and S").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P ∧ Q ∧ R ∧ S");
+        let (fml, names) = parse("P and Q and R and S").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P ∧ Q ∧ R ∧ S");
 
-        let (fml, entities) = parse("P or Q or R or S").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P ∨ Q ∨ R ∨ S");
+        let (fml, names) = parse("P or Q or R or S").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P ∨ Q ∨ R ∨ S");
 
-        let (fml, entities) = parse("P to Q to R to S").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P → (Q → (R → S))");
+        let (fml, names) = parse("P to Q to R to S").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P → (Q → (R → S))");
 
-        let (fml, entities) = parse("P iff Q iff R iff S").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P ↔ (Q ↔ (R ↔ S))");
+        let (fml, names) = parse("P iff Q iff R iff S").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P ↔ (Q ↔ (R ↔ S))");
 
-        let (fml, entities) = parse("all x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "∀x,y,zP(x,y,z)");
+        let (fml, names) = parse("all x,y,z P(x, y, z)").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "∀x,y,zP(x,y,z)");
 
-        let (fml, entities) = parse("ex x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "∃x,y,zP(x,y,z)");
+        let (fml, names) = parse("ex x,y,z P(x, y, z)").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "∃x,y,zP(x,y,z)");
 
-        let (fml, entities) = parse("P and Q and R to S or T iff U").unwrap();
+        let (fml, names) = parse("P and Q and R to S or T iff U").unwrap();
         assert_eq!(
-            fml.display(&entities).to_string(),
+            fml.display(&names).to_string(),
             "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U"
         );
 
-        let (fml, entities) = parse("(P to Q) and (Q to P)").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "P ↔ Q");
+        let (fml, names) = parse("(P to Q) and (Q to P)").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P ↔ Q");
 
-        let (fml, entities) = parse("(P to Q) and (Q to R)").unwrap();
-        assert_eq!(fml.display(&entities).to_string(), "(P → Q) ∧ (Q → R)");
+        let (fml, names) = parse("(P to Q) and (Q to R)").unwrap();
+        assert_eq!(fml.display(&names).to_string(), "(P → Q) ∧ (Q → R)");
     }
 }
