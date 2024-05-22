@@ -1,4 +1,4 @@
-use crate::formula::{Formula, Term};
+use crate::formula::{Formula, Sequent, Term};
 use crate::naming::Names;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
@@ -8,17 +8,20 @@ use std::mem;
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
 
+/// Parse error.
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Mismatched parentheses.
     #[error("Found {lp} left parentheses and {rp} right parentheses.")]
     Parentheses { lp: usize, rp: usize },
+    /// Peg parser error.
     #[error("
  | 
  | {s}
  | {}^___
  | 
  = expected {}", " ".repeat(e.location.column - 1), e.expected)]
-    Core {
+    Peg {
         s: String,
         e: peg::error::ParseError<peg::str::LineCol>,
     },
@@ -42,9 +45,77 @@ enum PFormula {
     Exists(Vec<String>, Box<PFormula>),
 }
 
+#[derive(Clone, Debug)]
+struct PSequent {
+    ant: Vec<PFormula>,
+    suc: Vec<PFormula>,
+}
+
 static P_TRUE: PFormula = PFormula::And(vec![]);
 static P_FALSE: PFormula = PFormula::Or(vec![]);
 
+/// Parses a term.
+fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
+    let s = modify_string(s);
+    check_parentheses(&s)?;
+    let pterm = parser::term(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    Ok(pterm.into_term(names))
+}
+
+/// Parses a formula.
+pub(super) fn parse_formula(
+    s: &str,
+    names: &mut Names,
+    modify_formula: bool,
+) -> Result<Formula, Error> {
+    let s = modify_string(s);
+    check_parentheses(&s)?;
+    let pfml = parser::formula(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    let mut fml = pfml.into_formula(names);
+    if modify_formula {
+        fml.modify(names);
+    }
+    Ok(fml)
+}
+
+/// Parses a sequent.
+fn parse_sequent(
+    s: &str,
+    names: &mut Names,
+    modify_formula: bool,
+    tptp: bool,
+) -> Result<Sequent, Error> {
+    let s = if tptp { modify_tptp(s) } else { s.to_string() };
+    let s = modify_string(&s);
+    check_parentheses(&s)?;
+    let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    let mut seq = pseq.into_sequent(names);
+    if modify_formula {
+        seq.visit_formulas_mut(|p| p.modify(names));
+    }
+    Ok(seq)
+}
+
+/// Modifies the string.
+fn modify_string(s: &str) -> String {
+    // Normalize the string.
+    let s = s.nfkc().collect::<String>().trim().to_string();
+    // Replace all whitespaces with a single space.
+    Regex::new(r"\s").unwrap().replace_all(&s, " ").to_string()
+}
+
+/// Checks if the number of left and right parentheses are equal.
+fn check_parentheses(s: &str) -> Result<(), Error> {
+    let lp = s.chars().filter(|&c| c == '(').count();
+    let rp = s.chars().filter(|&c| c == ')').count();
+    if lp == rp {
+        Ok(())
+    } else {
+        Err(Error::Parentheses { lp, rp })
+    }
+}
+
+// TODO: 2024/05/21 削除
 pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     // Normalize the string.
     let s = s.nfkc().collect::<String>().trim().to_string();
@@ -56,7 +127,7 @@ pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     if lp != rp {
         return Err(Error::Parentheses { lp, rp });
     }
-    let pfml = parser::formula(&s).map_err(|e| Error::Core { s: s.into(), e })?;
+    let pfml = parser::formula(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
     let mut names = Names::new();
     let mut fml = pfml.into_formula(&mut names);
     // Modify the formula.
@@ -68,48 +139,46 @@ pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
     Ok((fml, names))
 }
 
-pub fn from_tptp(s: &str) -> String {
+pub fn modify_tptp(s: &str) -> String {
     let s = s
         .lines()
         .filter(|line| !line.trim_start().starts_with('%'))
         .collect::<String>();
 
-    let mut axioms = vec![];
+    let axioms = Regex::new(r"fof\(([^,]+),axiom,(.+?)\)\.")
+        .unwrap()
+        .captures_iter(&s)
+        .map(|cap| cap[2].trim().to_string())
+        .join(", ");
 
-    let re_axiom = Regex::new(r"fof\(([^,]+),axiom,(.+?)\)\.").unwrap();
-    for cap in re_axiom.captures_iter(&s) {
-        axioms.push(cap[2].trim().to_string());
-    }
+    let conjecture = Regex::new(r"fof\(([^,]+),conjecture,(.+?)\)\.")
+        .unwrap()
+        .captures(&s)
+        .unwrap()[2]
+        .trim()
+        .to_string();
 
-    let re_conjecture = Regex::new(r"fof\(([^,]+),conjecture,(.+?)\)\.").unwrap();
-    let cap = re_conjecture.captures(&s).unwrap();
-    let conjecture = cap[2].trim().to_string();
-
-    axioms
-        .iter()
-        .rev()
-        .fold(conjecture, |acc, axiom| format!("({axiom}) -> ({acc})"))
-        .replace('$', "")
+    format!("{axioms} ⊢ {conjecture}").replace('$', "")
 }
 
 peg::parser!( grammar parser() for str {
     use PFormula::*;
     use PTerm::*;
 
-    /// Parse a term.
+    /// Parses a term.
     pub(super) rule term() -> PTerm = quiet!{
-        f:$function_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
-        v:$var() { Var(v.to_string()) } /
+        f:$func_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
+        v:$var_id() { Var(v.to_string()) } /
         "(" t:term() ")" { t }
     } / expected!("term")
 
     rule predicate() -> PFormula =
         p_true() { P_TRUE.clone() } /
         p_false() { P_FALSE.clone() } /
-        p:$predicate_name() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Pred(p.to_string(), ts) } /
-        p:$predicate_name() { Pred(p.to_string(), vec![]) }
+        p:$pred_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Pred(p.to_string(), ts) } /
+        p:$pred_id() { Pred(p.to_string(), vec![]) }
 
-    /// Parse a formula.
+    /// Parses a formula.
     ///
     /// All infix operators are right-associative.
     ///
@@ -124,32 +193,36 @@ peg::parser!( grammar parser() for str {
         p:@ _ and() _ q:(@) { And(vec![p, q]) }
         --
         not() _ p:@ { Not(Box::new(p)) }
-        all() _ vs:($var() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
-        exists() _ vs:($var() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
+        all() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { All(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
+        exists() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { Exists(vs.iter().map(|&s| s.to_string()).collect(), Box::new(p)) }
         --
         p:predicate() { p }
         "(" _ p:formula() _ ")" { p }
     } / expected!("formula")
 
-    rule ALPHA() = ['a'..='z' | 'A'..='Z' ]
-    rule DIGIT() = ['0'..='9' | '_' | '\'' ]
-    rule ALPHANUMERIC() = ALPHA() / DIGIT()
+    /// Parses a sequent.
+    pub(super) rule sequent() -> PSequent =
+        ant:(formula() ** (_ "," _)) _ turnstile() _ suc:(formula() ** (_ "," _)) { PSequent { ant, suc } } /
+        p:formula() { PSequent { ant: vec![], suc: vec![p] } } /
+        expected!("sequent")
 
-    rule var() = ALPHA() DIGIT()*
-    rule function_name() = ALPHA() ALPHANUMERIC()*
-    rule predicate_name() = quiet!{ ALPHA() ALPHANUMERIC()* } / expected!("predicate")
-
-    rule p_true() = quiet!{ "⊤" / "true" / "tautology" / "top" }
-    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / "contradiction" / "bottom" / "bot" }
-
-    rule not() = quiet!{ "¬" / "~" / "not" / "lnot" / "negation" / "neg" } / expected!("'¬'")
-    rule and() = quiet!{ "∧" / r"/\" / "&&" / "&" / "and" / "land" / "wedge" } / expected!("'∧'")
-    rule or() = quiet!{ "∨" / r"\/" / "||" / "|" / "or" / "lor" / "vee" } / expected!("'∨'")
-    rule implies() = quiet!{ "→" / "->" / "=>" / "-->" / "==>" / "⇒" / "to" / "implies" / "imply" / "imp" / "rightarrow" } / expected!("'→'")
-    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "<-->" / "<==>" / "⇔" / "≡" / "iff" / "equivalent" / "equiv" / "leftrightarrow" } / expected!("'↔'")
-    rule all() = quiet!{ "∀" / "!" / "forall" / "all" } / expected!("'∀'")
-    rule exists() = quiet!{ "∃" / "?" / "exists" / "ex" } / expected!("'∃'")
-
+    rule alpha() = [ 'a'..='z' | 'A'..='Z' ]
+    rule digit() = [ '0'..='9' | '_' | '\'' ]
+    rule id() = alpha() (alpha() / digit())*
+    rule var_id() = id()
+    rule bdd_var_id() = alpha() digit()*
+    rule func_id() = id()
+    rule pred_id() = quiet!{ id() } / expected!("predicate")
+    rule p_true() = quiet!{ "⊤" / "true" / r"\top" }
+    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / r"\bot" }
+    rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!("'¬'")
+    rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!("'∧'")
+    rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!("'∨'")
+    rule implies() = quiet!{ "→" / "->" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
+    rule iff() = quiet!{ "↔" / "<->" / "iff" / r"\leftrightarrow" } / expected!("'↔'")
+    rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!("'∀'")
+    rule exists() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!("'∃'")
+    rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!("'⊢'")
     rule _ = quiet!{ [' ']* }
 });
 
@@ -201,8 +274,25 @@ impl PFormula {
     }
 }
 
+impl PSequent {
+    fn into_sequent(self, names: &mut Names) -> Sequent {
+        Sequent {
+            ant: self
+                .ant
+                .into_iter()
+                .map(|p| p.into_formula(names))
+                .collect(),
+            suc: self
+                .suc
+                .into_iter()
+                .map(|p| p.into_formula(names))
+                .collect(),
+        }
+    }
+}
+
 impl Term {
-    /// Collects function IDs in the term.
+    /// Collects function ids in the term.
     fn collect_func(&self, ids: &mut HashSet<usize>) {
         self.visit(&mut |t| {
             let Self::Func(id, _) = t else { return };
@@ -212,6 +302,15 @@ impl Term {
 }
 
 impl Formula {
+    /// Modifies the formula.
+    fn modify(&mut self, names: &mut Names) {
+        self.flatten();
+        self.make_unique();
+        self.rename_bdd_vars1(names, &mut hashset!(), &mut hashmap!());
+        self.rename_bdd_vars2(names);
+        self.replace_free_vars_with_funcs(&mut hashset!());
+    }
+
     /// Flattens the formula.
     ///
     /// Converts `(P ∧ Q) ∧ (R ∧ S)` to `P ∧ Q ∧ R ∧ S`.
@@ -317,14 +416,14 @@ impl Formula {
         });
     }
 
-    /// Collects function IDs in the formula.
+    /// Collects function ids in the formula.
     fn collect_func(&self) -> HashSet<usize> {
         let mut ids = hashset!();
-        self.visit_terms(&mut |t| t.collect_func(&mut ids));
+        self.visit_terms(|t| t.collect_func(&mut ids));
         ids
     }
 
-    /// Collects predicate IDs in the formula.
+    /// Collects predicate ids in the formula.
     fn collect_pred(&self) -> HashSet<usize> {
         let mut ids = hashset!();
         self.visit(&mut |p| {
@@ -677,7 +776,7 @@ fof(con,conjecture,(
 %--------------------------------------------------------------------------
 ";
         assert_eq!(
-            from_tptp(s),
+            modify_tptp(s),
             "((s)) -> (((( ~(( t => r) ) => p) )) -> ((( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) )))"
         )
     }
