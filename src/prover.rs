@@ -1,4 +1,4 @@
-use crate::formula::{Formula, Formula::*, Term};
+use crate::formula::{Formula, Formula::*, Sequent as RawSequent, Term};
 use crate::naming::{Latex, Names};
 use crate::unification::{resolve_unifier, UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
@@ -59,6 +59,11 @@ enum OutputType {
 }
 
 impl<'a> Sequent<'a> {
+    fn to_raw(self) -> RawSequent {
+        let ant = self.ant.into_iter().map(|f| f.clone()).collect();
+        let suc = self.suc.into_iter().map(|f| f.clone()).collect();
+        RawSequent { ant, suc }
+    }
     fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
         for fml in &self.ant {
             match fml {
@@ -330,6 +335,7 @@ impl<'a> ProofTree<'a> {
                     "{}",
                     &seq.clone()
                         .format_for_print(u, skolem_ids, fml_arena)
+                        .to_raw()
                         .display(entities)
                 )?;
             }
@@ -348,6 +354,7 @@ impl<'a> ProofTree<'a> {
                             w,
                             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
                             seq.format_for_print(u, skolem_ids, fml_arena)
+                                .to_raw()
                                 .display(entities)
                                 .to_latex()
                         )?;
@@ -369,6 +376,7 @@ impl<'a> ProofTree<'a> {
                             w,
                             r"\hypo{{{}}}",
                             seq.format_for_print(u, skolem_ids, fml_arena)
+                                .to_raw()
                                 .display(entities)
                                 .to_latex()
                         )?;
@@ -393,6 +401,7 @@ impl<'a> ProofTree<'a> {
                         w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
                         seq.format_for_print(u, skolem_ids, fml_arena)
+                            .to_raw()
                             .display(entities)
                             .to_latex()
                     )?;

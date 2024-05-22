@@ -128,7 +128,7 @@ pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
         return Err(Error::Parentheses { lp, rp });
     }
     let pfml = parser::formula(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
-    let mut names = Names::new();
+    let mut names = Names::default();
     let mut fml = pfml.into_formula(&mut names);
     // Modify the formula.
     fml.flatten();

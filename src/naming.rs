@@ -1,5 +1,4 @@
-use crate::formula::{Formula, Term};
-use crate::prover::Sequent;
+use crate::formula::{Formula, Sequent, Term};
 use itertools::Itertools;
 use regex::Regex;
 use std::fmt;
@@ -10,10 +9,6 @@ pub struct Names {
 }
 
 impl Names {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn get_id(&mut self, s: String) -> usize {
         for (i, name) in self.names.iter().enumerate() {
             if name == &s {
@@ -81,13 +76,6 @@ impl fmt::Display for TermDisplay<'_> {
 impl Term {
     pub fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
         TermDisplay { term: self, names }
-    }
-}
-
-// TODO: 2023/12/07 不要なら消したい（Formulaも同様）
-impl fmt::Display for Term {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.display(&Names::new()))
     }
 }
 
@@ -248,18 +236,12 @@ impl Formula {
     }
 }
 
-impl fmt::Display for Formula {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.display(&Names::new()))
-    }
-}
-
-pub struct SequentDisplay<'a, 'b> {
-    sequent: &'a Sequent<'b>,
+pub struct SequentDisplay<'a> {
+    sequent: &'a Sequent,
     names: &'a Names,
 }
 
-impl fmt::Display for SequentDisplay<'_, '_> {
+impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -281,7 +263,7 @@ impl fmt::Display for SequentDisplay<'_, '_> {
     }
 }
 
-impl Latex for SequentDisplay<'_, '_> {
+impl Latex for SequentDisplay<'_> {
     fn to_latex(&self) -> String {
         format!(
             r"{} &\vdash {}",
@@ -301,18 +283,12 @@ impl Latex for SequentDisplay<'_, '_> {
     }
 }
 
-impl<'b> Sequent<'b> {
-    pub fn display<'a>(&'a self, names: &'a Names) -> SequentDisplay<'a, 'b> {
+impl Sequent {
+    pub fn display<'a>(&'a self, names: &'a Names) -> SequentDisplay<'a> {
         SequentDisplay {
             sequent: self,
             names,
         }
-    }
-}
-
-impl fmt::Display for Sequent<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.display(&Names::new()))
     }
 }
 
