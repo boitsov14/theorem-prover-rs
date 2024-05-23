@@ -292,7 +292,7 @@ impl PSequent {
 }
 
 impl Term {
-    /// Collects function ids in the term.
+    /// Collects function IDs in the term.
     fn collect_func(&self, ids: &mut HashSet<usize>) {
         self.visit(&mut |t| {
             let Self::Func(id, _) = t else { return };
@@ -403,7 +403,7 @@ impl Formula {
         });
     }
 
-    /// Renames the nested bounded variables to avoid id conflicts.
+    /// Renames the nested bounded variables to avoid ID conflicts.
     /// # Examples
     /// Converts `∀x (P(x) ∧ ∀x Q(x))` to `∀x (P(x) ∧ ∀x' Q(x'))`
     fn rename_nested_bdd_vars(&mut self, names: &mut Names, map: &HashMap<usize, Term>) {
@@ -433,14 +433,14 @@ impl Formula {
         }
     }
 
-    /// Collects function ids in the formula.
+    /// Collects function IDs in the formula.
     fn collect_func(&self) -> HashSet<usize> {
         let mut ids = hashset!();
         self.visit_terms(|t| t.collect_func(&mut ids));
         ids
     }
 
-    /// Collects predicate ids in the formula.
+    /// Collects predicate IDs in the formula.
     fn collect_pred(&self) -> HashSet<usize> {
         let mut ids = hashset!();
         self.visit(&mut |p| {
@@ -450,7 +450,7 @@ impl Formula {
         ids
     }
 
-    /// Renames the bounded variables to avoid using the same id as functions or predicates.
+    /// Renames the bounded variables to avoid using the same ID as functions or predicates.
     ///
     /// This is optional to avoid misunderstandings.
     /// # Examples
@@ -473,7 +473,7 @@ impl Formula {
         });
     }
 
-    /// Substitutes free variables with constants(0-ary functions) of the same id.
+    /// Substitutes free variables with constants(0-ary functions) of the same ID.
     /// # Examples
     /// Converts `P(x) ∧ ∀y Q(y)` to `P(x()) ∧ ∀y Q(y)`
     fn subst_free_vars_with_constants(&mut self, bdd_vars: &HashSet<usize>) {

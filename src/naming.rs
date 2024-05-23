@@ -9,6 +9,8 @@ pub struct Names {
 }
 
 impl Names {
+    /// Retrieves the ID associated with a given name.
+    /// If the name is not found, it is added to the names.
     pub(super) fn get_id(&mut self, s: String) -> usize {
         for (i, name) in self.names.iter().enumerate() {
             if name == &s {
@@ -16,10 +18,11 @@ impl Names {
             }
         }
         self.names.push(s);
-        self.names.len() - 1
+        self.len() - 1
     }
 
-    fn get_fresh_name(&self, s: String) -> String {
+    /// Generates a fresh name by appending a single quote (') to the given name.
+    fn gen_fresh_name(&self, s: String) -> String {
         let mut s = s;
         while self.names.contains(&s) {
             s.push('\'');
@@ -27,15 +30,19 @@ impl Names {
         s
     }
 
+    /// Generates a fresh name and retrieves the ID associated with it.
     pub(super) fn get_fresh_id(&mut self, s: String) -> usize {
-        let s = self.get_fresh_name(s);
+        let s = self.gen_fresh_name(s);
         self.get_id(s)
     }
 
+    /// The number of names.
     pub fn len(&self) -> usize {
         self.names.len()
     }
 
+    /// Retrieves the name associated with a given ID.
+    /// If the name is not found, a placeholder name is returned.
     pub(super) fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)

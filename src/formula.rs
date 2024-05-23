@@ -71,7 +71,7 @@ impl Term {
     }
 
     // TODO: 2024/05/12 移動
-    /// Replaces a function with a variable of the same id.
+    /// Replaces a function with a variable of the same ID.
     fn replace_func_with_var(&mut self, id: usize) {
         self.visit_mut(&mut |f| {
             let Self::Func(f_id, _) = f else { return };
