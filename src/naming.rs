@@ -9,6 +9,11 @@ pub struct Names {
 }
 
 impl Names {
+    /// The number of names.
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
     /// Retrieves the ID associated with a given name.
     /// If the name is not found, it is added to the names.
     pub(super) fn get_id(&mut self, name: String) -> usize {
@@ -29,16 +34,6 @@ impl Names {
         name
     }
 
-    /// Generates a fresh name and retrieves the ID associated with it.
-    pub(super) fn gen_fresh_id(&mut self, id: usize) -> usize {
-        self.get_id(self.gen_fresh_name(self.get_name(id)))
-    }
-
-    /// The number of names.
-    pub fn len(&self) -> usize {
-        self.names.len()
-    }
-
     /// Retrieves the name associated with a given ID.
     /// If the name is not found, a placeholder name is returned.
     pub(super) fn get_name(&self, id: usize) -> String {
@@ -46,6 +41,11 @@ impl Names {
             .get(id)
             .cloned()
             .unwrap_or_else(|| format!("?_{}", id))
+    }
+
+    /// Generates a fresh name and retrieves the ID associated with it.
+    pub(super) fn gen_fresh_id(&mut self, id: usize) -> usize {
+        self.get_id(self.gen_fresh_name(self.get_name(id)))
     }
 }
 
@@ -71,7 +71,7 @@ impl fmt::Display for TermDisplay<'_> {
                     "{}({})",
                     self.names.get_name(*id),
                     ts.iter()
-                        .map(|term| term.display(self.names).to_string())
+                        .map(|t| t.display(self.names).to_string())
                         .collect_vec()
                         .join(",")
                 ),
@@ -96,61 +96,49 @@ impl fmt::Display for FormulaDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Formula::*;
         match self.formula {
-            Pred(id, terms) => {
-                if terms.is_empty() {
-                    write!(f, "{}", self.names.get_name(*id))?;
-                } else {
-                    write!(
-                        f,
-                        "{}({})",
-                        self.names.get_name(*id),
-                        terms
-                            .iter()
-                            .map(|term| term.display(self.names).to_string())
-                            .collect_vec()
-                            .join(",")
-                    )?;
-                }
-            }
+            Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name(*id))?,
+            Pred(id, ts) => write!(
+                f,
+                "{}({})",
+                self.names.get_name(*id),
+                ts.iter()
+                    .map(|t| t.display(self.names).to_string())
+                    .collect_vec()
+                    .join(",")
+            )?,
             Not(p) => write!(f, "¬{}", p.display_inner(self.names))?,
+            And(l) if l.is_empty() => write!(f, "true")?,
             And(l) => {
-                if l.is_empty() {
-                    write!(f, "true")?;
-                } else {
-                    if self.is_inner {
-                        write!(f, "(")?;
-                    }
-                    write!(
-                        f,
-                        "{}",
-                        l.iter()
-                            .map(|p| p.display_inner(self.names).to_string())
-                            .collect_vec()
-                            .join(" ∧ ")
-                    )?;
-                    if self.is_inner {
-                        write!(f, ")")?;
-                    }
+                if self.is_inner {
+                    write!(f, "(")?;
+                }
+                write!(
+                    f,
+                    "{}",
+                    l.iter()
+                        .map(|p| p.display_inner(self.names).to_string())
+                        .collect_vec()
+                        .join(" ∧ ")
+                )?;
+                if self.is_inner {
+                    write!(f, ")")?;
                 }
             }
+            Or(l) if l.is_empty() => write!(f, "false")?,
             Or(l) => {
-                if l.is_empty() {
-                    write!(f, "false")?;
-                } else {
-                    if self.is_inner {
-                        write!(f, "(")?;
-                    }
-                    write!(
-                        f,
-                        "{}",
-                        l.iter()
-                            .map(|p| p.display_inner(self.names).to_string())
-                            .collect_vec()
-                            .join(" ∨ ")
-                    )?;
-                    if self.is_inner {
-                        write!(f, ")")?;
-                    }
+                if self.is_inner {
+                    write!(f, "(")?;
+                }
+                write!(
+                    f,
+                    "{}",
+                    l.iter()
+                        .map(|p| p.display_inner(self.names).to_string())
+                        .collect_vec()
+                        .join(" ∨ ")
+                )?;
+                if self.is_inner {
+                    write!(f, ")")?;
                 }
             }
             To(p, q) => {
@@ -181,22 +169,20 @@ impl fmt::Display for FormulaDisplay<'_> {
                     write!(f, ")")?;
                 }
             }
-            All(vars, p) => write!(
+            All(vs, p) => write!(
                 f,
-                "∀{}{}",
-                vars.iter()
-                    .map(|id| self.names.get_name(*id))
-                    .collect_vec()
-                    .join(","),
+                "{}{}",
+                vs.iter()
+                    .map(|v| format!("∀{}", self.names.get_name(*v)))
+                    .collect::<String>(),
                 p.display_inner(self.names)
             )?,
-            Ex(vars, p) => write!(
+            Ex(vs, p) => write!(
                 f,
                 "∃{}{}",
-                vars.iter()
-                    .map(|id| self.names.get_name(*id))
-                    .collect_vec()
-                    .join(","),
+                vs.iter()
+                    .map(|v| format!("∃{}", self.names.get_name(*v)))
+                    .collect::<String>(),
                 p.display_inner(self.names)
             )?,
         }
@@ -256,13 +242,13 @@ impl fmt::Display for SequentDisplay<'_> {
             self.sequent
                 .ant
                 .iter()
-                .map(|fml| fml.display(self.names).to_string())
+                .map(|p| p.display(self.names).to_string())
                 .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
-                .map(|fml| fml.display(self.names).to_string())
+                .map(|p| p.display(self.names).to_string())
                 .collect_vec()
                 .join(", ")
         )?;
@@ -277,13 +263,13 @@ impl Latex for SequentDisplay<'_> {
             self.sequent
                 .ant
                 .iter()
-                .map(|fml| fml.display(self.names).to_latex())
+                .map(|p| p.display(self.names).to_latex())
                 .collect_vec()
                 .join(", "),
             self.sequent
                 .suc
                 .iter()
-                .map(|fml| fml.display(self.names).to_latex())
+                .map(|p| p.display(self.names).to_latex())
                 .collect_vec()
                 .join(", ")
         )
