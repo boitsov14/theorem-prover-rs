@@ -55,7 +55,7 @@ static P_TRUE: PFormula = PFormula::And(vec![]);
 static P_FALSE: PFormula = PFormula::Or(vec![]);
 
 /// Parses a term.
-fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
+pub(super) fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
     let pterm = parser::term(&s).map_err(|e| Error::Peg { s: s.into(), e })?;

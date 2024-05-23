@@ -44,11 +44,12 @@ impl Term {
     where
         F: FnMut(&mut Self),
     {
-        f(self);
-        let Self::Func(_, ts) = self else { return };
-        for t in ts {
-            t.visit_mut(f);
+        if let Self::Func(_, ts) = self {
+            for t in ts {
+                t.visit_mut(f);
+            }
         }
+        f(self);
     }
 
     /// Substitutes a variable with a term.
@@ -141,8 +142,8 @@ impl Formula {
     where
         F: FnMut(&mut Self),
     {
-        f(self);
         self.visit_children_mut(|p| p.visit_mut(f));
+        f(self);
     }
 
     /// Visits and applies a function to all terms in the formula.
@@ -237,5 +238,94 @@ impl Sequent {
 
 #[cfg(test)]
 mod tests {
-    // TODO: 2024/05/10 subst, subst_mapのテストを書く
+    use crate::{
+        naming::Names,
+        parser::{parse_formula, parse_term},
+        paste, test,
+    };
+
+    /// Tests for `Term::subst`
+    fn term_subst(term: &str, var: &str, subterm: &str, expected: &str) {
+        let mut names = Names::default();
+        let mut term = parse_term(term, &mut names).unwrap();
+        let var = names.get_id(var.into());
+        let subterm = parse_term(subterm, &mut names).unwrap();
+        term.subst(var, &subterm);
+        let expected = parse_term(expected, &mut names).unwrap();
+        assert_eq!(term, expected);
+    }
+    /// Tests for `Term::subst_map`
+    fn term_subst_map(term: &str, map: &[(&str, &str)], expected: &str) {
+        let mut names = Names::default();
+        let mut term = parse_term(term, &mut names).unwrap();
+        let map = map
+            .iter()
+            .map(|(k, v)| {
+                (
+                    names.get_id(k.to_string()),
+                    parse_term(v, &mut names).unwrap(),
+                )
+            })
+            .collect();
+        term.subst_map(&map);
+        let expected = parse_term(expected, &mut names).unwrap();
+        assert_eq!(term, expected);
+    }
+    /// Tests for `Formula::subst`
+    fn fml_subst(fml: &str, var: &str, term: &str, expected: &str) {
+        let mut names = Names::default();
+        let mut fml = parse_formula(fml, &mut names, false).unwrap();
+        let term = parse_term(term, &mut names).unwrap();
+        let var = names.get_id(var.into());
+        fml.subst(var, &term);
+        let expected = parse_formula(expected, &mut names, false).unwrap();
+        assert_eq!(fml, expected);
+    }
+    /// Tests for `Formula::subst_map`
+    fn fml_subst_map(fml: &str, map: &[(&str, &str)], expected: &str) {
+        let mut names = Names::default();
+        let mut fml = parse_formula(fml, &mut names, false).unwrap();
+        let map = map
+            .iter()
+            .map(|(k, v)| {
+                (
+                    names.get_id(k.to_string()),
+                    parse_term(v, &mut names).unwrap(),
+                )
+            })
+            .collect();
+        fml.subst_map(&map);
+        let expected = parse_formula(expected, &mut names, false).unwrap();
+        assert_eq!(fml, expected);
+    }
+
+    // Tests for `Term::subst`
+    test!(term_subst, 1, "x", "x", "f(y)", "f(y)");
+    test!(term_subst, 2, "x", "x", "f(x)", "f(x)");
+    test!(term_subst, 3, "f(x,g(y))", "y", "h(x,y)", "f(x,g(h(x,y)))");
+    // Tests for `Term::subst_map`
+    test!(term_subst_map, 1, "x", &[("x", "f(y)")], "f(y)");
+    test!(term_subst_map, 2, "x", &[("x", "f(x)")], "f(x)");
+    test!(
+        term_subst_map,
+        3,
+        "h(z,f(x,g(y)))",
+        &[("y", "h(x,y)"), ("z", "i(a,b)")],
+        "h(i(a,b),f(x,g(h(x,y))))"
+    );
+    // Tests for `Formula::subst`
+    test!(fml_subst, 1, "P(x)", "x", "f(y)", "P(f(y))");
+    test!(fml_subst, 2, "P(x)", "x", "f(x)", "P(f(x))");
+    test!(fml_subst, 3, "P(x,g(y))", "y", "h(x,y)", "P(x,g(h(x,y)))");
+    test!(fml_subst, 4, "∀xP(x)", "x", "f(y)", "∀xP(f(y))");
+    test!(fml_subst, 5, "∀xP(x)", "x", "f(x)", "∀xP(f(x))");
+    test!(
+        fml_subst,
+        6,
+        "(((¬P(x) ∧ Q(x)) ∨ R(x)) → S(x)) → T(x)",
+        "x",
+        "f(y)",
+        "(((¬P(f(y)) ∧ Q(f(y))) ∨ R(f(y))) → S(f(y))) → T(f(y))"
+    );
+    // Tests for `Formula::subst_map`
 }
