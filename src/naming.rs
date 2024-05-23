@@ -77,6 +77,7 @@ impl fmt::Display for TermDisplay<'_> {
 }
 
 impl Term {
+    /// Returns a `TermDisplay` used to display the term with the given names.
     pub(super) fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
         TermDisplay { term: self, names }
     }
@@ -187,6 +188,7 @@ impl fmt::Display for FormulaDisplay<'_> {
 }
 
 impl Formula {
+    /// Returns a `FormulaDisplay` used to display the formula with the given names.
     pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
@@ -230,12 +232,14 @@ impl fmt::Display for SequentDisplay<'_> {
 }
 
 impl SequentDisplay<'_> {
+    /// Returns the LaTeX representation of the sequent.
     pub(super) fn to_latex(&self) -> String {
         to_latex(&self.to_string())
     }
 }
 
 impl Sequent {
+    /// Returns a `SequentDisplay` used to display the sequent with the given names.
     pub fn display<'a>(&'a self, names: &'a Names) -> SequentDisplay<'a> {
         SequentDisplay {
             sequent: self,
