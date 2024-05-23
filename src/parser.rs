@@ -418,7 +418,7 @@ impl Formula {
                 let mut map = map.clone();
                 for v in vs {
                     if map.contains_key(v) {
-                        let new_v = names.get_fresh_id(names.get_name(*v));
+                        let new_v = names.gen_fresh_id(*v);
                         map.insert(*v, Term::Var(new_v));
                         *v = new_v;
                     } else {
@@ -464,7 +464,7 @@ impl Formula {
             if let Self::All(vs, p) | Self::Ex(vs, p) = p {
                 for v in vs {
                     if funcs.contains(v) || preds.contains(v) {
-                        let new_v = names.get_fresh_id(names.get_name(*v));
+                        let new_v = names.gen_fresh_id(*v);
                         p.subst(*v, &Term::Var(new_v));
                         *v = new_v;
                     }

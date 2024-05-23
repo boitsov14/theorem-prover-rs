@@ -11,29 +11,27 @@ pub struct Names {
 impl Names {
     /// Retrieves the ID associated with a given name.
     /// If the name is not found, it is added to the names.
-    pub(super) fn get_id(&mut self, s: String) -> usize {
-        for (i, name) in self.names.iter().enumerate() {
-            if name == &s {
-                return i;
-            }
-        }
-        self.names.push(s);
-        self.len() - 1
+    pub(super) fn get_id(&mut self, name: String) -> usize {
+        self.names
+            .iter()
+            .position(|s| s == &name)
+            .unwrap_or_else(|| {
+                self.names.push(name);
+                self.names.len() - 1
+            })
     }
 
     /// Generates a fresh name by appending a single quote (') to the given name.
-    fn gen_fresh_name(&self, s: String) -> String {
-        let mut s = s;
-        while self.names.contains(&s) {
-            s.push('\'');
+    fn gen_fresh_name(&self, mut name: String) -> String {
+        while self.names.contains(&name) {
+            name.push('\'');
         }
-        s
+        name
     }
 
     /// Generates a fresh name and retrieves the ID associated with it.
-    pub(super) fn get_fresh_id(&mut self, s: String) -> usize {
-        let s = self.gen_fresh_name(s);
-        self.get_id(s)
+    pub(super) fn gen_fresh_id(&mut self, id: usize) -> usize {
+        self.get_id(self.gen_fresh_name(self.get_name(id)))
     }
 
     /// The number of names.
@@ -63,20 +61,22 @@ pub(super) struct TermDisplay<'a> {
 impl fmt::Display for TermDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Term::*;
-        match self.term {
-            Var(id) => write!(f, "{}", self.names.get_name(*id))?,
-            Func(id, terms) => write!(
-                f,
-                "{}({})",
-                self.names.get_name(*id),
-                terms
-                    .iter()
-                    .map(|term| term.display(self.names).to_string())
-                    .collect_vec()
-                    .join(",")
-            )?,
-        }
-        Ok(())
+        write!(
+            f,
+            "{}",
+            match self.term {
+                Var(id) => self.names.get_name(*id),
+                Func(id, ts) if ts.is_empty() => self.names.get_name(*id),
+                Func(id, ts) => format!(
+                    "{}({})",
+                    self.names.get_name(*id),
+                    ts.iter()
+                        .map(|term| term.display(self.names).to_string())
+                        .collect_vec()
+                        .join(",")
+                ),
+            }
+        )
     }
 }
 
