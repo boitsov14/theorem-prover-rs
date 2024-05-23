@@ -49,10 +49,6 @@ impl Names {
     }
 }
 
-pub(super) trait Latex {
-    fn to_latex(&self) -> String;
-}
-
 pub(super) struct TermDisplay<'a> {
     term: &'a Term,
     names: &'a Names,
@@ -190,28 +186,6 @@ impl fmt::Display for FormulaDisplay<'_> {
     }
 }
 
-impl Latex for FormulaDisplay<'_> {
-    fn to_latex(&self) -> String {
-        let str = self
-            .to_string()
-            .replace("true", r"\top")
-            .replace("false", r"\bot")
-            .replace('¬', r"\lnot ")
-            .replace('∧', r"\land")
-            .replace('∨', r"\lor")
-            .replace('→', r"\rightarrow")
-            .replace('↔', r"\leftrightarrow")
-            .replace('∀', r"\forall ")
-            .replace('∃', r"\exists ")
-            .replace('_', r"\_");
-
-        Regex::new(r"v\\_(\d+)")
-            .unwrap()
-            .replace_all(&str, "v_{$1}")
-            .to_string()
-    }
-}
-
 impl Formula {
     pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
@@ -256,23 +230,10 @@ impl fmt::Display for SequentDisplay<'_> {
     }
 }
 
-impl Latex for SequentDisplay<'_> {
-    fn to_latex(&self) -> String {
-        format!(
-            r"{} &\vdash {}",
-            self.sequent
-                .ant
-                .iter()
-                .map(|p| p.display(self.names).to_latex())
-                .collect_vec()
-                .join(", "),
-            self.sequent
-                .suc
-                .iter()
-                .map(|p| p.display(self.names).to_latex())
-                .collect_vec()
-                .join(", ")
-        )
+impl SequentDisplay<'_> {
+    pub(super) fn to_latex(&self) -> String {
+        let s = self.to_string();
+        to_latex(&s)
     }
 }
 
@@ -283,6 +244,26 @@ impl Sequent {
             names,
         }
     }
+}
+
+fn to_latex(s: &str) -> String {
+    let s = s
+        .replace("true", r"\top")
+        .replace("false", r"\bot")
+        .replace('¬', r"\lnot ")
+        .replace('∧', r"\land")
+        .replace('∨', r"\lor")
+        .replace('→', r"\rightarrow")
+        .replace('↔', r"\leftrightarrow")
+        .replace('∀', r"\forall ")
+        .replace('∃', r"\exists ")
+        .replace('⊢', r"&\vdash ")
+        .replace('_', r"\_");
+
+    Regex::new(r"v\\_(\d+)")
+        .unwrap()
+        .replace_all(&s, "v_{$1}")
+        .to_string()
 }
 
 #[cfg(test)]
