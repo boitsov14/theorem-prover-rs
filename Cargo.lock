@@ -399,6 +399,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "peg"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -618,6 +624,7 @@ dependencies = [
  "itertools 0.13.0",
  "maplit",
  "mimalloc",
+ "paste",
  "peg",
  "regex",
  "rustc-hash",
