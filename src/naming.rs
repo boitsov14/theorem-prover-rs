@@ -225,15 +225,13 @@ impl fmt::Display for SequentDisplay<'_> {
                 .map(|p| p.display(self.names).to_string())
                 .collect_vec()
                 .join(", ")
-        )?;
-        Ok(())
+        )
     }
 }
 
 impl SequentDisplay<'_> {
     pub(super) fn to_latex(&self) -> String {
-        let s = self.to_string();
-        to_latex(&s)
+        to_latex(&self.to_string())
     }
 }
 
