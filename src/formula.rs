@@ -280,6 +280,7 @@ mod tests {
     #[case("P(x,g(y))", "y", "h(x,y)" => "P(x,g(h(x,y)))")]
     #[case("∀xP(x)", "x", "f(y)" => "∀xP(f(y))")]
     #[case("∀xP(x)", "x", "f(x)" => "∀xP(f(x))")]
+    #[case("∀xP(y)", "y", "f(x)" => "∀xP(f(x))")]
     #[case("(((¬P(x) ∧ Q(x)) ∨ R(x)) → S(x)) → T(x)", "x", "f(y)" => "(((¬P(f(y)) ∧ Q(f(y))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
     fn fml_subst(fml: &str, var: &str, term: &str) -> String {
         let mut names = Names::default();
@@ -295,6 +296,7 @@ mod tests {
     #[case("P(x,g(y))", &[("y", "h(x,y)")] => "P(x,g(h(x,y)))")]
     #[case("∀xP(x)", &[("x", "f(y)")] => "∀xP(f(y))")]
     #[case("∀xP(x)", &[("x", "f(x)")] => "∀xP(f(x))")]
+    #[case("∀xP(y)", &[("y", "f(x)")] => "∀xP(f(x))")]
     #[case("(((¬P(x) ∧ Q(z)) ∨ R(x)) → S(x)) → T(x)", &[("x", "f(y)"), ("z", "i(a,b)")] => "(((¬P(f(y)) ∧ Q(i(a,b))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
     fn fml_subst_map(fml: &str, map: &[(&str, &str)]) -> String {
         let mut names = Names::default();

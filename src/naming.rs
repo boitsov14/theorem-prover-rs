@@ -176,7 +176,7 @@ impl fmt::Display for FormulaDisplay<'_> {
             )?,
             Ex(vs, p) => write!(
                 f,
-                "∃{}{}",
+                "{}{}",
                 vs.iter()
                     .map(|v| format!("∃{}", self.names.get_name(*v)))
                     .collect::<String>(),
@@ -270,47 +270,36 @@ fn to_latex(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse;
+    use super::*;
+    use crate::parser::{parse_formula, parse_term};
+    use test_case::case;
 
-    #[test]
-    fn test_display() {
-        let (fml, names) = parse("P(x)").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P(x)");
+    #[case("x")]
+    #[case("f(x)")]
+    #[case("f(x,y,z)")]
+    #[case("f(x,g(y,h(x,z)))")]
+    fn term_display(s: &str) {
+        let mut names = Names::default();
+        let term = parse_term(s, &mut names).unwrap();
+        assert_eq!(s, term.display(&names).to_string());
+    }
 
-        let (fml, names) = parse("P(x,f(y,g(z)))").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P(x,f(y,g(z)))");
-
-        let (fml, names) = parse("not P").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "¬P");
-
-        let (fml, names) = parse("P and Q and R and S").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P ∧ Q ∧ R ∧ S");
-
-        let (fml, names) = parse("P or Q or R or S").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P ∨ Q ∨ R ∨ S");
-
-        let (fml, names) = parse("P to Q to R to S").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P → (Q → (R → S))");
-
-        let (fml, names) = parse("P iff Q iff R iff S").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P ↔ (Q ↔ (R ↔ S))");
-
-        let (fml, names) = parse("all x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "∀x,y,zP(x,y,z)");
-
-        let (fml, names) = parse("ex x,y,z P(x, y, z)").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "∃x,y,zP(x,y,z)");
-
-        let (fml, names) = parse("P and Q and R to S or T iff U").unwrap();
-        assert_eq!(
-            fml.display(&names).to_string(),
-            "((P ∧ Q ∧ R) → (S ∨ T)) ↔ U"
-        );
-
-        let (fml, names) = parse("(P to Q) and (Q to P)").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "P ↔ Q");
-
-        let (fml, names) = parse("(P to Q) and (Q to R)").unwrap();
-        assert_eq!(fml.display(&names).to_string(), "(P → Q) ∧ (Q → R)");
+    #[case("P(x)")]
+    #[case("P(x,y,z)")]
+    #[case("P(x,f(y,g(z)))")]
+    #[case("¬P")]
+    #[case("P1 ∧ Q ∧ R ∧ S")]
+    #[case("P2 ∨ Q ∨ R ∨ S")]
+    #[case("P3 → (Q → (R → S))")]
+    #[case("P4 ↔ (Q ↔ (R ↔ S))")]
+    #[case("∀xP(x)")]
+    #[case("∀x∀y∀zP(x,y,z)")]
+    #[case("∃xQ(x)")]
+    #[case("∃x∃y∃zQ(x,y,z)")]
+    #[case("((P ∧ Q ∧ R) → ((S ∨ T ∨ U) → V)) ↔ W")]
+    fn fml_display(s: &str) {
+        let mut names = Names::default();
+        let fml = parse_formula(s, &mut names, true).unwrap();
+        assert_eq!(s, fml.display(&names).to_string());
     }
 }
