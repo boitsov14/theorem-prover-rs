@@ -241,21 +241,25 @@ mod tests {
     use crate::{
         naming::Names,
         parser::{parse_formula, parse_term},
-        paste, test,
     };
+    use test_case::case;
 
-    /// Tests for `Term::subst`
-    fn term_subst(term: &str, var: &str, subterm: &str, expected: &str) {
+    #[case("x", "x", "f(y)" => "f(y)")]
+    #[case("x", "x", "f(x)" => "f(x)")]
+    #[case("f(x,g(y))", "y", "h(x,y)" => "f(x,g(h(x,y)))")]
+    fn term_subst(term: &str, var: &str, subterm: &str) -> String {
         let mut names = Names::default();
         let mut term = parse_term(term, &mut names).unwrap();
         let var = names.get_id(var.into());
         let subterm = parse_term(subterm, &mut names).unwrap();
         term.subst(var, &subterm);
-        let expected = parse_term(expected, &mut names).unwrap();
-        assert_eq!(term, expected);
+        term.display(&names).to_string()
     }
-    /// Tests for `Term::subst_map`
-    fn term_subst_map(term: &str, map: &[(&str, &str)], expected: &str) {
+
+    #[case("x", &[("x", "f(y)")] => "f(y)")]
+    #[case("x", &[("x", "f(x)")] => "f(x)")]
+    #[case("h(z,f(x,g(y)))", &[("y", "h(x,y)"), ("z", "i(a,b)")] => "h(i(a,b),f(x,g(h(x,y))))")]
+    fn term_subst_map(term: &str, map: &[(&str, &str)]) -> String {
         let mut names = Names::default();
         let mut term = parse_term(term, &mut names).unwrap();
         let map = map
@@ -268,21 +272,31 @@ mod tests {
             })
             .collect();
         term.subst_map(&map);
-        let expected = parse_term(expected, &mut names).unwrap();
-        assert_eq!(term, expected);
+        term.display(&names).to_string()
     }
-    /// Tests for `Formula::subst`
-    fn fml_subst(fml: &str, var: &str, term: &str, expected: &str) {
+
+    #[case("P(x)", "x", "f(y)" => "P(f(y))")]
+    #[case("P(x)", "x", "f(x)" => "P(f(x))")]
+    #[case("P(x,g(y))", "y", "h(x,y)" => "P(x,g(h(x,y)))")]
+    #[case("∀xP(x)", "x", "f(y)" => "∀xP(f(y))")]
+    #[case("∀xP(x)", "x", "f(x)" => "∀xP(f(x))")]
+    #[case("(((¬P(x) ∧ Q(x)) ∨ R(x)) → S(x)) → T(x)", "x", "f(y)" => "(((¬P(f(y)) ∧ Q(f(y))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
+    fn fml_subst(fml: &str, var: &str, term: &str) -> String {
         let mut names = Names::default();
         let mut fml = parse_formula(fml, &mut names, false).unwrap();
-        let term = parse_term(term, &mut names).unwrap();
         let var = names.get_id(var.into());
+        let term = parse_term(term, &mut names).unwrap();
         fml.subst(var, &term);
-        let expected = parse_formula(expected, &mut names, false).unwrap();
-        assert_eq!(fml, expected);
+        fml.display(&names).to_string()
     }
-    /// Tests for `Formula::subst_map`
-    fn fml_subst_map(fml: &str, map: &[(&str, &str)], expected: &str) {
+
+    #[case("P(x)", &[("x", "f(y)")] => "P(f(y))")]
+    #[case("P(x)", &[("x", "f(x)")] => "P(f(x))")]
+    #[case("P(x,g(y))", &[("y", "h(x,y)")] => "P(x,g(h(x,y)))")]
+    #[case("∀xP(x)", &[("x", "f(y)")] => "∀xP(f(y))")]
+    #[case("∀xP(x)", &[("x", "f(x)")] => "∀xP(f(x))")]
+    #[case("(((¬P(x) ∧ Q(z)) ∨ R(x)) → S(x)) → T(x)", &[("x", "f(y)"), ("z", "i(a,b)")] => "(((¬P(f(y)) ∧ Q(i(a,b))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
+    fn fml_subst_map(fml: &str, map: &[(&str, &str)]) -> String {
         let mut names = Names::default();
         let mut fml = parse_formula(fml, &mut names, false).unwrap();
         let map = map
@@ -295,37 +309,6 @@ mod tests {
             })
             .collect();
         fml.subst_map(&map);
-        let expected = parse_formula(expected, &mut names, false).unwrap();
-        assert_eq!(fml, expected);
+        fml.display(&names).to_string()
     }
-
-    // Tests for `Term::subst`
-    test!(term_subst, 1, "x", "x", "f(y)", "f(y)");
-    test!(term_subst, 2, "x", "x", "f(x)", "f(x)");
-    test!(term_subst, 3, "f(x,g(y))", "y", "h(x,y)", "f(x,g(h(x,y)))");
-    // Tests for `Term::subst_map`
-    test!(term_subst_map, 1, "x", &[("x", "f(y)")], "f(y)");
-    test!(term_subst_map, 2, "x", &[("x", "f(x)")], "f(x)");
-    test!(
-        term_subst_map,
-        3,
-        "h(z,f(x,g(y)))",
-        &[("y", "h(x,y)"), ("z", "i(a,b)")],
-        "h(i(a,b),f(x,g(h(x,y))))"
-    );
-    // Tests for `Formula::subst`
-    test!(fml_subst, 1, "P(x)", "x", "f(y)", "P(f(y))");
-    test!(fml_subst, 2, "P(x)", "x", "f(x)", "P(f(x))");
-    test!(fml_subst, 3, "P(x,g(y))", "y", "h(x,y)", "P(x,g(h(x,y)))");
-    test!(fml_subst, 4, "∀xP(x)", "x", "f(y)", "∀xP(f(y))");
-    test!(fml_subst, 5, "∀xP(x)", "x", "f(x)", "∀xP(f(x))");
-    test!(
-        fml_subst,
-        6,
-        "(((¬P(x) ∧ Q(x)) ∨ R(x)) → S(x)) → T(x)",
-        "x",
-        "f(y)",
-        "(((¬P(f(y)) ∧ Q(f(y))) ∨ R(f(y))) → S(f(y))) → T(f(y))"
-    );
-    // Tests for `Formula::subst_map`
 }
