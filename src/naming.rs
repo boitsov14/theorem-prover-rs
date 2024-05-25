@@ -281,7 +281,7 @@ mod tests {
     fn term_display(s: &str) {
         let mut names = Names::default();
         let term = parse_term(s, &mut names).unwrap();
-        assert_eq!(s, term.display(&names).to_string());
+        assert_eq!(term.display(&names).to_string(), s);
     }
 
     #[case("P(x)")]
@@ -300,6 +300,6 @@ mod tests {
     fn fml_display(s: &str) {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, true).unwrap();
-        assert_eq!(s, fml.display(&names).to_string());
+        assert_eq!(fml.display(&names).to_string(), s);
     }
 }

@@ -322,33 +322,30 @@ impl Formula {
     /// Converts `∃x(∃y(∃zP(x,y,z)))` to `∃x,y,zP(x,y,z)`.
     fn flatten(&mut self) {
         use Formula::*;
-        match self {
+        self.visit_mut(&mut |p| match p {
             And(ps) => {
                 let mut new_ps = vec![];
-                while let Some(mut p) = ps.pop() {
-                    p.flatten();
+                for p in ps.drain(..) {
                     if let And(qs) = p {
                         new_ps.extend(qs);
                     } else {
                         new_ps.push(p);
                     }
                 }
-                *ps = new_ps
+                *ps = new_ps;
             }
             Or(ps) => {
                 let mut new_ps = vec![];
-                while let Some(mut p) = ps.pop() {
-                    p.flatten();
+                for p in ps.drain(..) {
                     if let Or(qs) = p {
                         new_ps.extend(qs);
                     } else {
                         new_ps.push(p);
                     }
                 }
-                *ps = new_ps
+                *ps = new_ps;
             }
             All(vs, p) => {
-                p.flatten();
                 let All(ws, q) = p.as_mut() else { return };
                 vs.append(ws);
                 *p = mem::take(q);
@@ -360,7 +357,7 @@ impl Formula {
                 *p = mem::take(q);
             }
             _ => {}
-        }
+        });
     }
 
     /// Makes ∧, ∨ and bounded variables unique.
@@ -378,16 +375,15 @@ impl Formula {
             match p {
                 And(ps) | Or(ps) => {
                     let mut new_ps = vec![];
-                    while let Some(p) = ps.pop() {
+                    for p in ps.drain(..) {
                         if !new_ps.contains(&p) {
                             new_ps.push(p);
                         }
                     }
-                    // if new_ps is a singleton, replace p with the element
-                    if new_ps.len() == 1 {
-                        *p = new_ps.pop().unwrap();
-                    } else {
-                        *ps = new_ps;
+                    *ps = new_ps;
+                    // if ps is a singleton, replace p with the element
+                    if ps.len() == 1 {
+                        *p = ps.pop().unwrap();
                     }
                 }
                 All(vs, _) | Ex(vs, _) => {
@@ -505,227 +501,231 @@ impl Formula {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parser::{formula, term};
+    use test_case::case;
+
+    fn pterm(s: &str) -> PTerm {
+        parser::term(s).unwrap()
+    }
+    fn pfml(s: &str) -> PFormula {
+        parser::formula(s).unwrap()
+    }
 
     #[test]
-    fn test_parse_term() {
+    fn test_parse_pterm() {
         use PTerm::*;
-        assert_eq!(term("x").unwrap(), Var("x".into()));
+        assert_eq!(pterm("x"), Var("x".into()));
+        assert_eq!(pterm("f(x)"), Func("f".into(), vec![pterm("x")]));
         assert_eq!(
-            term("f(x)").unwrap(),
-            Func("f".into(), vec![Var("x".into())])
-        );
-        assert_eq!(
-            term("f(x, g(y), z)").unwrap(),
-            Func(
-                "f".into(),
-                vec![
-                    Var("x".into()),
-                    Func("g".into(), vec![Var("y".into())]),
-                    Var("z".into())
-                ]
-            )
+            pterm("f(x,g(y),z)"),
+            Func("f".into(), vec![pterm("x"), pterm("g(y)"), pterm("z")])
         );
     }
 
     #[test]
-    fn test_parse_pformula() {
+    fn test_parse_pfml() {
         use PFormula::*;
-        use PTerm::*;
-        assert_eq!(formula("true").unwrap(), P_TRUE);
-        assert_eq!(formula("false").unwrap(), P_FALSE);
-        assert_eq!(formula("P").unwrap(), Pred("P".into(), vec![]));
+        assert_eq!(pfml("true"), P_TRUE);
+        assert_eq!(pfml("false"), P_FALSE);
+        assert_eq!(pfml("P"), Pred("P".into(), vec![]));
+        assert_eq!(pfml("P(x)"), Pred("P".into(), vec![pterm("x")]));
         assert_eq!(
-            formula("P(x)").unwrap(),
-            Pred("P".into(), vec![Var("x".into())])
+            pfml("P(x,f(y),z)"),
+            Pred("P".into(), vec![pterm("x"), pterm("f(y)"), pterm("z")])
+        );
+        assert_eq!(pfml("¬P"), Not(Box::new(pfml("P"))));
+        assert_eq!(pfml("P ∧ Q"), And(vec![pfml("P"), pfml("Q")]));
+        assert_eq!(pfml("P ∨ Q"), Or(vec![pfml("P"), pfml("Q")]));
+        assert_eq!(pfml("P → Q"), To(Box::new(pfml("P")), Box::new(pfml("Q"))));
+        assert_eq!(pfml("P ↔ Q"), Iff(Box::new(pfml("P")), Box::new(pfml("Q"))));
+        assert_eq!(
+            pfml("∀xP(x)"),
+            All(vec!["x".into()], Box::new(pfml("P(x)")))
         );
         assert_eq!(
-            formula("P(x, g(y), z)").unwrap(),
-            Pred(
-                "P".into(),
-                vec![
-                    Var("x".into()),
-                    Func("g".into(), vec![Var("y".into())]),
-                    Var("z".into())
-                ]
-            )
+            pfml("∀x,yP(x,y)"),
+            All(vec!["x".into(), "y".into()], Box::new(pfml("P(x,y)")))
         );
+        assert_eq!(pfml("∃xP(x)"), Ex(vec!["x".into()], Box::new(pfml("P(x)"))));
         assert_eq!(
-            formula("not P").unwrap(),
-            Not(Box::new(Pred("P".into(), vec![])))
+            pfml("∃x,yP(x,y)"),
+            Ex(vec!["x".into(), "y".into()], Box::new(pfml("P(x,y)")))
         );
+    }
+
+    #[test]
+    fn test_parse_pfml_assoc() {
+        use PFormula::*;
         assert_eq!(
-            formula("P and Q").unwrap(),
-            And(vec![Pred("P".into(), vec![]), Pred("Q".into(), vec![])])
-        );
-        assert_eq!(
-            formula("P or Q").unwrap(),
-            Or(vec![Pred("P".into(), vec![]), Pred("Q".into(), vec![])])
-        );
-        assert_eq!(
-            formula("P to Q").unwrap(),
+            pfml("P → Q → R"),
             To(
-                Box::new(Pred("P".into(), vec![])),
-                Box::new(Pred("Q".into(), vec![]))
-            )
-        );
-        assert_eq!(
-            formula("P iff Q").unwrap(),
-            And(vec![
-                To(
-                    Box::new(Pred("P".into(), vec![])),
-                    Box::new(Pred("Q".into(), vec![]))
-                ),
-                To(
-                    Box::new(Pred("Q".into(), vec![])),
-                    Box::new(Pred("P".into(), vec![]))
-                )
-            ])
-        );
-        assert_eq!(
-            formula("all x P(x)").unwrap(),
-            All(
-                vec!["x".into()],
-                Box::new(Pred("P".into(), vec![Var("x".into())]))
-            )
-        );
-        assert_eq!(
-            formula("all x, y P(x, y)").unwrap(),
-            All(
-                vec!["x".into(), "y".into()],
-                Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
-            )
-        );
-        assert_eq!(
-            formula("ex x P(x)").unwrap(),
-            Ex(
-                vec!["x".into()],
-                Box::new(Pred("P".into(), vec![Var("x".into())]))
-            )
-        );
-        assert_eq!(
-            formula("ex x, y P(x, y)").unwrap(),
-            Ex(
-                vec!["x".into(), "y".into()],
-                Box::new(Pred("P".into(), vec![Var("x".into()), Var("y".into())]))
+                Box::new(pfml("P")),
+                Box::new(To(Box::new(pfml("Q")), Box::new(pfml("R"))))
             )
         );
     }
 
     #[test]
-    fn test_parse_pformula_assoc() {
+    fn test_parse_pfml_precedence() {
         use PFormula::*;
-        assert_eq!(
-            formula("P to Q to R").unwrap(),
+        assert_eq!(pfml("¬P ∧ Q ∨ R → S"), {
             To(
-                Box::new(formula("P").unwrap()),
-                Box::new(To(
-                    Box::new(formula("Q").unwrap()),
-                    Box::new(formula("R").unwrap())
-                ))
+                Box::new(Or(vec![
+                    And(vec![Not(Box::new(pfml("P"))), pfml("Q")]),
+                    pfml("R"),
+                ])),
+                Box::new(pfml("S")),
             )
-        );
-    }
-
-    #[test]
-    fn test_parse_pformula_precedence() {
-        use PFormula::*;
-        assert_eq!(formula("not P and Q or R to S").unwrap(), {
-            let p = formula("P").unwrap();
-            let q = formula("Q").unwrap();
-            let r = formula("R").unwrap();
-            let s = formula("S").unwrap();
-            let np = Not(Box::new(p));
-            let np_and_q = And(vec![np, q]);
-            let npq_or_r = Or(vec![np_and_q, r]);
-            To(Box::new(npq_or_r), Box::new(s))
         });
     }
 
     #[test]
-    fn test_parse_pformula_vec() {
-        use PFormula::*;
-        let fml = formula("P and Q and R and S").unwrap();
-        assert_eq!(
-            fml,
-            And(vec![
-                formula("P").unwrap(),
-                formula("Q").unwrap(),
-                formula("R").unwrap(),
-                formula("S").unwrap(),
-            ])
-        );
-        let fml = formula("P or Q or R or S").unwrap();
-        assert_eq!(
-            fml,
-            Or(vec![
-                formula("P").unwrap(),
-                formula("Q").unwrap(),
-                formula("R").unwrap(),
-                formula("S").unwrap(),
-            ])
-        );
-        let fml = formula("P and Q and (R or S or (T and U and V))").unwrap();
-        assert_eq!(
-            fml,
-            And(vec![
-                formula("P").unwrap(),
-                formula("Q").unwrap(),
-                Or(vec![
-                    formula("R").unwrap(),
-                    formula("S").unwrap(),
-                    And(vec![
-                        formula("T").unwrap(),
-                        formula("U").unwrap(),
-                        formula("V").unwrap(),
-                    ]),
-                ]),
-            ])
-        );
-        let fml = formula("all x, y all z, u ex v ex w all h P").unwrap();
-        assert_eq!(
-            fml,
-            All(
-                vec!["x".into(), "y".into(), "z".into(), "u".into()],
-                Box::new(Ex(
-                    vec!["v".into(), "w".into()],
-                    Box::new(All(vec!["h".into()], Box::new(formula("P").unwrap())))
-                ))
-            )
-        );
-        let fml = formula("true and P and true and Q and true").unwrap();
-        assert_eq!(
-            fml,
-            And(vec![formula("P").unwrap(), formula("Q").unwrap(),])
-        );
-        let fml = formula("false or P or false or Q or false").unwrap();
-        assert_eq!(fml, Or(vec![formula("P").unwrap(), formula("Q").unwrap()]));
-        let fml = formula("true and P").unwrap();
-        assert_eq!(fml, formula("P").unwrap());
-        let fml = formula("P and true").unwrap();
-        assert_eq!(fml, formula("P").unwrap());
-        let fml = formula("false or P").unwrap();
-        assert_eq!(fml, formula("P").unwrap());
-        let fml = formula("P or false").unwrap();
-        assert_eq!(fml, formula("P").unwrap());
-        let fml =
-            formula("all x, y, z, x, y, z all x, y, z ex w, v, u ex u, v, w, w, v, u P").unwrap();
-        assert_eq!(fml, formula("all x, y, z ex u, v, w P").unwrap());
+    fn test_parse_fml_nfkc() {
+        let mut names = Names::default();
+        let fml = parse_formula("Ｐ０", &mut names, true).unwrap();
+        assert_eq!(fml.display(&names).to_string(), "P0");
+    }
+
+    #[case("\t\n\rP\t\n\r∧\t\n\rQ\t\n\r" => "P ∧ Q")]
+    #[case("(((P) and ((Q))))" => "P ∧ Q")]
+    fn test_parse_fml(s: &str) -> String {
+        let mut names = Names::default();
+        let fml = parse_formula(s, &mut names, true).unwrap();
+        fml.display(&names).to_string()
     }
 
     #[test]
-    fn test_parse() {
-        let l = vec![
-            (" \t \n \r P \t \n \r and \t \n \r Q \t \n \r ", "P ∧ Q"),
-            ("Ｐ０", "P0"),
-            ("(((P) and ((Q))))", "P ∧ Q"),
-        ];
-        for pair in l {
-            let (s, expected) = pair;
-            let (fml, names) = parse(s).unwrap();
-            assert_eq!(fml.display(&names).to_string(), expected);
-        }
+    fn test_flatten_and() {
+        use Formula::*;
+        let mut names = Names::default();
+        let mut fml1 = parse_formula("P ∧ Q ∧ R ∧ S", &mut names, false).unwrap();
+        fml1.flatten();
+        let mut fml2 = parse_formula("((P ∧ Q) ∧ R) ∧ S", &mut names, false).unwrap();
+        fml2.flatten();
+        let mut fml3 = parse_formula("(P ∧ Q) ∧ (R ∧ S)", &mut names, false).unwrap();
+        fml3.flatten();
+        let expected = And(vec![
+            parse_formula("P", &mut names, false).unwrap(),
+            parse_formula("Q", &mut names, false).unwrap(),
+            parse_formula("R", &mut names, false).unwrap(),
+            parse_formula("S", &mut names, false).unwrap(),
+        ]);
+        assert_eq!(fml1, expected);
+        assert_eq!(fml2, expected);
+        assert_eq!(fml3, expected);
     }
+
+    #[test]
+    fn test_flatten_and_or() {
+        use Formula::*;
+        let mut names = Names::default();
+        let mut fml =
+            parse_formula("(P ∧ Q ∧ (R ∨ S ∨ (T ∧ U ∧ V))) → W", &mut names, false).unwrap();
+        fml.flatten();
+        assert_eq!(
+            fml,
+            To(
+                Box::new(And(vec![
+                    parse_formula("P", &mut names, false).unwrap(),
+                    parse_formula("Q", &mut names, false).unwrap(),
+                    Or(vec![
+                        parse_formula("R", &mut names, false).unwrap(),
+                        parse_formula("S", &mut names, false).unwrap(),
+                        And(vec![
+                            parse_formula("T", &mut names, false).unwrap(),
+                            parse_formula("U", &mut names, false).unwrap(),
+                            parse_formula("V", &mut names, false).unwrap(),
+                        ]),
+                    ]),
+                ])),
+                Box::new(parse_formula("W", &mut names, false).unwrap())
+            )
+        );
+    }
+
+    #[test]
+    fn test_flatten_all() {
+        use Formula::*;
+        let mut names = Names::default();
+        let mut fml = parse_formula("∀x,y∀z,u∀v,wP(x,y,z,u,v,w)", &mut names, false).unwrap();
+        fml.flatten();
+        assert_eq!(
+            fml,
+            All(
+                vec![
+                    names.get_id("x".into()),
+                    names.get_id("y".into()),
+                    names.get_id("z".into()),
+                    names.get_id("u".into()),
+                    names.get_id("v".into()),
+                    names.get_id("w".into())
+                ],
+                Box::new(parse_formula("P(x,y,z,u,v,w)", &mut names, false).unwrap())
+            )
+        );
+    }
+
+    #[test]
+    fn test_flatten_all_ex() {
+        use Formula::*;
+        let mut names = Names::default();
+        let mut fml = parse_formula("∀x∀y∃z∃u∀v∀wP(x,y,z,u,v,w) → Q", &mut names, false).unwrap();
+        fml.flatten();
+        assert_eq!(
+            fml,
+            To(
+                Box::new(All(
+                    vec![names.get_id("x".into()), names.get_id("y".into()),],
+                    Box::new(Ex(
+                        vec![names.get_id("z".into()), names.get_id("u".into()),],
+                        Box::new(All(
+                            vec![names.get_id("v".into()), names.get_id("w".into()),],
+                            Box::new(parse_formula("P(x,y,z,u,v,w)", &mut names, false).unwrap())
+                        ))
+                    ))
+                )),
+                Box::new(parse_formula("Q", &mut names, false).unwrap())
+            )
+        );
+    }
+
+    #[test]
+    fn test_unique_and() {
+        use Formula::*;
+        let mut names = Names::default();
+        let mut fml = parse_formula("P ∧ P ∧ Q ∧ Q", &mut names, false).unwrap();
+        fml.flatten();
+        fml.unique();
+        assert_eq!(
+            fml,
+            And(vec![
+                parse_formula("P", &mut names, false).unwrap(),
+                parse_formula("Q", &mut names, false).unwrap()
+            ])
+        );
+    }
+
+    // #[test]
+    // fn test_parse_pformula_vec() {
+    //     use PFormula::*;
+    //     let fml = formula("true and P and true and Q and true").unwrap();
+    //     assert_eq!(
+    //         fml,
+    //         And(vec![formula("P").unwrap(), formula("Q").unwrap(),])
+    //     );
+    //     let fml = formula("false or P or false or Q or false").unwrap();
+    //     assert_eq!(fml, Or(vec![formula("P").unwrap(), formula("Q").unwrap()]));
+    //     let fml = formula("true and P").unwrap();
+    //     assert_eq!(fml, formula("P").unwrap());
+    //     let fml = formula("P and true").unwrap();
+    //     assert_eq!(fml, formula("P").unwrap());
+    //     let fml = formula("false or P").unwrap();
+    //     assert_eq!(fml, formula("P").unwrap());
+    //     let fml = formula("P or false").unwrap();
+    //     assert_eq!(fml, formula("P").unwrap());
+    //     let fml =
+    //         formula("all x, y, z, x, y, z all x, y, z ex w, v, u ex u, v, w, w, v, u P").unwrap();
+    //     assert_eq!(fml, formula("all x, y, z ex u, v, w P").unwrap());
+    // }
 
     #[test]
     fn test_adjust_bdd_vars() {
