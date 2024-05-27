@@ -347,7 +347,6 @@ impl Formula {
                 *p = mem::take(q);
             }
             Ex(vs, p) => {
-                p.flatten();
                 let Ex(ws, q) = p.as_mut() else { return };
                 vs.append(ws);
                 *p = mem::take(q);
