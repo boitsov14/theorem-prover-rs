@@ -92,6 +92,7 @@ fn parse_sequent(
     let mut seq = pseq.into_sequent(names);
     if modify_formula {
         seq.visit_formulas_mut(|p| p.modify(names));
+        seq.unique();
     }
     Ok(seq)
 }
@@ -388,11 +389,12 @@ impl Formula {
                 }
                 All(vs, _) | Ex(vs, _) => {
                     let mut new_vs = vec![];
-                    for v in vs {
-                        if !new_vs.contains(v) {
-                            new_vs.push(*v);
+                    for v in vs.drain(..) {
+                        if !new_vs.contains(&v) {
+                            new_vs.push(v);
                         }
                     }
+                    *vs = new_vs;
                 }
                 _ => {}
             }
@@ -498,6 +500,26 @@ impl Formula {
     }
 }
 
+impl Sequent {
+    /// Removes duplicate elements from `ant` and `suc`.
+    fn unique(&mut self) {
+        let mut new_ant = vec![];
+        for p in self.ant.drain(..) {
+            if !new_ant.contains(&p) {
+                new_ant.push(p);
+            }
+        }
+        self.ant = new_ant;
+        let mut new_suc = vec![];
+        for p in self.suc.drain(..) {
+            if !new_suc.contains(&p) {
+                new_suc.push(p);
+            }
+        }
+        self.suc = new_suc;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -581,15 +603,15 @@ mod tests {
     #[test]
     fn test_parse_fml_nfkc() {
         let mut names = Names::default();
-        let fml = parse_formula("Ｐ０", &mut names, true).unwrap();
+        let fml = parse_formula("Ｐ０", &mut names, false).unwrap();
         assert_eq!(fml.display(&names).to_string(), "P0");
     }
 
     #[case("\t\n\rP\t\n\r∧\t\n\rQ\t\n\r" => "P ∧ Q")]
-    #[case("(((P) and ((Q))))" => "P ∧ Q")]
+    #[case("(((P)∧((Q))))" => "P ∧ Q")]
     fn test_parse_fml(s: &str) -> String {
         let mut names = Names::default();
-        let fml = parse_formula(s, &mut names, true).unwrap();
+        let fml = parse_formula(s, &mut names, false).unwrap();
         fml.display(&names).to_string()
     }
 
@@ -598,10 +620,10 @@ mod tests {
         use Formula::*;
         let mut names = Names::default();
         let mut fml1 = parse_formula("P ∧ Q ∧ R ∧ S", &mut names, false).unwrap();
-        fml1.flatten();
         let mut fml2 = parse_formula("((P ∧ Q) ∧ R) ∧ S", &mut names, false).unwrap();
-        fml2.flatten();
         let mut fml3 = parse_formula("(P ∧ Q) ∧ (R ∧ S)", &mut names, false).unwrap();
+        fml1.flatten();
+        fml2.flatten();
         fml3.flatten();
         let expected = And(vec![
             parse_formula("P", &mut names, false).unwrap(),
@@ -688,57 +710,45 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_unique_and() {
-        use Formula::*;
+    #[case("P ∧ P ∧ Q ∧ Q ∧ R ∧ R ∧ P ∧ Q ∧ R" => "P ∧ Q ∧ R")]
+    #[case("true ∧ P ∧ true ∧ Q ∧ true" => "P ∧ Q")]
+    #[case("false ∨ P ∨ false ∨ Q ∨ false" => "P ∨ Q")]
+    #[case("(P ∧ true ∧ P ∧ false ∨ P ∧ P) → P" => "((P ∧ false) ∨ P) → P")]
+    #[case("∀x∀x∀y∀y∀z∀z∀x∀y∀zP(x,y,z)" => "∀x∀y∀zP(x,y,z)")]
+    #[case("∀x∀x∃x∃x∀x∀xP(x,y) → Q" => "∀x∃x∀xP(x,y) → Q")]
+    fn test_unique(s: &str) -> String {
         let mut names = Names::default();
-        let mut fml = parse_formula("P ∧ P ∧ Q ∧ Q", &mut names, false).unwrap();
+        let mut fml = parse_formula(s, &mut names, false).unwrap();
         fml.flatten();
         fml.unique();
-        assert_eq!(
-            fml,
-            And(vec![
-                parse_formula("P", &mut names, false).unwrap(),
-                parse_formula("Q", &mut names, false).unwrap()
-            ])
-        );
+        fml.display(&names).to_string()
     }
 
-    // #[test]
-    // fn test_parse_pformula_vec() {
-    //     use PFormula::*;
-    //     let fml = formula("true and P and true and Q and true").unwrap();
-    //     assert_eq!(
-    //         fml,
-    //         And(vec![formula("P").unwrap(), formula("Q").unwrap(),])
-    //     );
-    //     let fml = formula("false or P or false or Q or false").unwrap();
-    //     assert_eq!(fml, Or(vec![formula("P").unwrap(), formula("Q").unwrap()]));
-    //     let fml = formula("true and P").unwrap();
-    //     assert_eq!(fml, formula("P").unwrap());
-    //     let fml = formula("P and true").unwrap();
-    //     assert_eq!(fml, formula("P").unwrap());
-    //     let fml = formula("false or P").unwrap();
-    //     assert_eq!(fml, formula("P").unwrap());
-    //     let fml = formula("P or false").unwrap();
-    //     assert_eq!(fml, formula("P").unwrap());
-    //     let fml =
-    //         formula("all x, y, z, x, y, z all x, y, z ex w, v, u ex u, v, w, w, v, u P").unwrap();
-    //     assert_eq!(fml, formula("all x, y, z ex u, v, w P").unwrap());
-    // }
+    #[case("P ∧ P", "P")]
+    #[case("P ∧ true", "P")]
+    #[case("P ∨ false", "P")]
+    fn test_unique_singleton(s: &str, name: &str) {
+        let mut names = Names::default();
+        let mut fml = parse_formula(s, &mut names, false).unwrap();
+        fml.flatten();
+        fml.unique();
+        let pred = Formula::Pred(names.get_id(name.into()), vec![]);
+        assert_eq!(fml, pred);
+    }
 
-    #[test]
-    fn test_adjust_bdd_vars() {
-        fn test(s: &str, expected: &str) {
-            let (mut fml, mut names) = parse(s).unwrap();
-            fml.rename_nested_bdd_vars(&mut names, &hashmap!());
-            assert_eq!(fml.display(&names).to_string(), expected);
-        }
-        test("∀x P(x)", "∀xP(x)");
-        test("∀x,y P(x,y)", "∀x,yP(x,y)");
-        test("∀x,y P(x,y) ∧ ∀x,y Q(x,y)", "∀x,yP(x,y) ∧ ∀x',y'Q(x',y')");
-        test("∀x∃x∀x∃x P(x)", "∀x∃x'∀x''∃x'''P(x''')");
-        test("∀x (P(x) ∧ ∀x Q(x))", "∀x(P(x) ∧ ∀x'Q(x'))");
+    #[case("∀xP(x)" => "∀xP(x)")]
+    #[case("∀x∀yP(x,y)" => "∀x∀yP(x,y)")]
+    #[case("∀x∀yP(x,y) ∧ ∀x∀yQ(x,y)" => "∀x∀yP(x,y) ∧ ∀x∀yQ(x,y)")]
+    #[case("∀x(P(x) → ∀xQ(x))" => "∀x(P(x) → ∀x'Q(x'))")]
+    #[case("∀x(P(x) → ∀x(Q(x) → ∀xR(x)))" => "∀x(P(x) → ∀x'(Q(x') → ∀x''R(x'')))")]
+    #[case("∀x(P(x) → ∀x(Q(x) → ∀x(R(x) → ∀xS(x))))" => "∀x(P(x) → ∀x'(Q(x') → ∀x''(R(x'') → ∀x'''S(x'''))))")]
+    #[case("∀x∃x∀x∃xP(x)" => "∀x∃x'∀x''∃x'''P(x''')")]
+    fn test_rename_nested_bdd_vars(s: &str) -> String {
+        let mut names = Names::default();
+        let mut fml = parse_formula(s, &mut names, false).unwrap();
+        fml.flatten();
+        fml.rename_nested_bdd_vars(&mut names, &hashmap!());
+        fml.display(&names).to_string()
     }
 
     #[test]
