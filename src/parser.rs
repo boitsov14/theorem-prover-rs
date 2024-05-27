@@ -219,8 +219,8 @@ peg::parser!( grammar parser() for str {
     rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!("'¬'")
     rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!("'∧'")
     rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!("'∨'")
-    rule to() = quiet!{ "→" / "->" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
-    rule iff() = quiet!{ "↔" / "<->" / "iff" / r"\leftrightarrow" } / expected!("'↔'")
+    rule to() = quiet!{ "→" / "->" / "⇒" / "=>" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
+    rule iff() = quiet!{ "↔" / "<->" / "⇔" / "<=>" / "iff" / r"\leftrightarrow" } / expected!("'↔'")
     rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!("'∀'")
     rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!("'∃'")
     rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!("'⊢'")
@@ -367,9 +367,9 @@ impl Formula {
     ///
     /// Converts `P ∨ P` to `P`.
     ///
-    /// Converts `∀x,x P(x)` to `∀x P(x)`.
+    /// Converts `∀x,xP(x)` to `∀xP(x)`.
     ///
-    /// Converts `∃x,x P(x)` to `∃x P(x)`.
+    /// Converts `∃x,xP(x)` to `∃xP(x)`.
     fn unique(&mut self) {
         use Formula::*;
         self.visit_mut(&mut |p| {
@@ -403,7 +403,7 @@ impl Formula {
 
     /// Renames the nested bounded variables to avoid ID conflicts.
     /// # Examples
-    /// Converts `∀x (P(x) ∧ ∀x Q(x))` to `∀x (P(x) ∧ ∀x' Q(x'))`
+    /// Converts `∀x(P(x) ∧ ∀xQ(x))` to `∀x(P(x) ∧ ∀x'Q(x'))`
     fn rename_nested_bdd_vars(&mut self, names: &mut Names, map: &HashMap<usize, Term>) {
         use Formula::*;
         match self {
@@ -452,9 +452,9 @@ impl Formula {
     ///
     /// This is optional to avoid misunderstandings.
     /// # Examples
-    /// Converts `∀P P(P)` to `∀P' P(P')`
+    /// Converts `∀PP(P)` to `∀P'P(P')`
     ///
-    /// Converts `∀f P(f(f))` to `∀f' P(f(f'))`
+    /// Converts `∀fP(f(f))` to `∀f'P(f(f'))`
     fn rename_bdd_vars(&mut self, names: &mut Names) {
         let funcs = self.collect_func();
         let preds = self.collect_pred();
@@ -473,7 +473,7 @@ impl Formula {
 
     /// Substitutes free variables with constants(0-ary functions) of the same ID.
     /// # Examples
-    /// Converts `P(x) ∧ ∀y Q(y)` to `P(x()) ∧ ∀y Q(y)`
+    /// Converts `P(x) ∧ ∀yQ(y)` to `P(x()) ∧ ∀yQ(y)`
     fn subst_free_vars_with_constants(&mut self, bdd_vars: &HashSet<usize>) {
         use Formula::*;
         match self {
@@ -751,55 +751,73 @@ mod tests {
         fml.display(&names).to_string()
     }
 
-    #[test]
-    fn test_check() {
-        // assert!(parse("(all Q,g P(f(Q,g))) and Q and P(g(x))").is_ok());
-        // assert!(parse("all f P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddFunction) }));
-        // assert!(parse("all P P(f(x,y))").is_err_and(|e| { matches!(e, ParseError::BddPredicate) }));
-        // assert!(parse("all x ex z all x,y P(x,y,z)").is_ok());
+    #[case("∀xP(x)" => "∀xP(x)")]
+    #[case("∀PP(P)" => "∀P'P(P')")]
+    #[case("∀fP(f(f))" => "∀f'P(f(f'))")]
+    #[case("∀fP(f(f'(f''(f'''(f)))))" => "∀f''''P(f(f'(f''(f'''(f'''')))))")]
+    fn test_rename_bdd_vars(s: &str) -> String {
+        let mut names = Names::default();
+        let mut fml = parse_formula(s, &mut names, false).unwrap();
+        fml.rename_bdd_vars(&mut names);
+        fml.display(&names).to_string()
     }
 
-    // fn test_universal_quantify() {
-    //     let fml = formula("all x,y P(f(x,y))")
-    //         .unwrap()
-    //         .into_formula(&mut names);
-    //     assert_eq!(fml.clone().universal_quantify(), fml);
+    #[test]
+    fn test_subst_free_vars_with_constants() {
+        use Formula::*;
+        use Term::*;
+        let mut names = Names::default();
+        let mut fml = parse_formula("P(x) ∧ ∀yQ(y,f(z))", &mut names, false).unwrap();
+        fml.subst_free_vars_with_constants(&hashset!());
+        assert_eq!(
+            fml,
+            And(vec![
+                Pred(
+                    names.get_id("P".into()),
+                    vec![Func(names.get_id("x".into()), vec![])]
+                ),
+                All(
+                    vec![names.get_id("y".into())],
+                    Box::new(Pred(
+                        names.get_id("Q".into()),
+                        vec![
+                            Var(names.get_id("y".into())),
+                            Func(
+                                names.get_id("f".into()),
+                                vec![Func(names.get_id("z".into()), vec![])]
+                            )
+                        ]
+                    ))
+                )
+            ])
+        );
+    }
 
-    //     let fml1 = formula("P(f(x,y))").unwrap().into_formula(&mut names);
-    //     let Formula::All(vs1, p1) = fml1.universal_quantify() else {
-    //         unreachable!()
-    //     };
-    //     let Formula::All(vs, p) = fml.clone().universal_quantify() else {
-    //         unreachable!()
-    //     };
-    //     assert_eq!(
-    //         vs1.iter().collect::<HashSet<_>>(),
-    //         vs.iter().collect::<HashSet<_>>()
-    //     );
-    //     assert_eq!(p1, p);
-    //     let fml2 = formula("all y P(f(x,y))").unwrap().into_formula(&mut names);
-    //     assert_eq!(fml2.universal_quantify(), fml);
-    // }
     #[test]
     fn test_parse_tptp() {
         let s = "
 % Comments : 
 %--------------------------------------------------------------------------
 fof(axiom1,axiom,(
-s)).
+( ( p1 <=> p2)  => ( p1 & ( p2 & p3 ) )) )).
 
 fof(axiom2,axiom,(
-( ~(( t => r) ) => p) )).
+( ( p2 <=> p3)  => ( p1 & ( p2 & p3 ) )) )).
+
+fof(axiom3,axiom,(
+( ( p3 <=> p1)  => ( p1 & ( p2 & p3 ) )) )).
 
 fof(con,conjecture,(
-( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) 
+( p1 & ( p2 & p3 ) )
 )).
 
 %--------------------------------------------------------------------------
 ";
+        let mut names = Names::default();
+        let seq = parse_sequent(s, &mut names, true, true).unwrap();
         assert_eq!(
-            modify_tptp(s),
-            "((s)) -> (((( ~(( t => r) ) => p) )) -> ((( ~(( ( p => q)  & ( t => r)  )) => ( ~(~(p)) & ( s & s ) )) )))"
-        )
+            seq.display(&names).to_string(),
+            "(p1 ↔ p2) → (p1 ∧ p2 ∧ p3), (p2 ↔ p3) → (p1 ∧ p2 ∧ p3), (p3 ↔ p1) → (p1 ∧ p2 ∧ p3) ⊢ p1 ∧ p2 ∧ p3"
+        );
     }
 }
