@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use itertools::Itertools;
 use mimalloc::MiMalloc;
 use std::fs;
-use theorem_prover_rs::{modify_tptp, parse};
+use theorem_prover_rs::{parse_sequent, Names};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -12,17 +12,18 @@ fn from_example_prop(c: &mut Criterion) {
     group.sample_size(10);
 
     let s = fs::read_to_string("benches/examples.txt").unwrap();
-    let fmls = s.lines().filter(|s| !s.is_empty()).map(|s| {
-        let (fml, entities) = parse(s).unwrap();
-        (fml, entities)
+    let seqs = s.lines().filter(|s| !s.is_empty()).map(|s| {
+        let mut names = Names::default();
+        let seq = parse_sequent(s, &mut names, true, false).unwrap();
+        (seq, names)
     });
 
-    for (ref fml, entities) in fmls {
+    for (ref seq, entities) in seqs {
         group.bench_with_input(
-            BenchmarkId::from_parameter(fml.display(&entities)),
-            fml,
-            |b, fml| {
-                b.iter(|| fml.assert_provable(entities.len()));
+            BenchmarkId::from_parameter(seq.display(&entities)),
+            seq,
+            |b, seq| {
+                b.iter(|| seq.to_seq().assert_provable(entities.len()));
             },
         );
     }
@@ -33,7 +34,7 @@ fn from_iltp_prop_0(c: &mut Criterion) {
     let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
     let exclude_list = s.lines().collect_vec();
 
-    let fmls = fs::read_dir("benches/iltp_prop")
+    let seqs = fs::read_dir("benches/iltp_prop")
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|file| {
@@ -42,14 +43,16 @@ fn from_iltp_prop_0(c: &mut Criterion) {
         })
         .map(|file| {
             let s = fs::read_to_string(&file).unwrap();
-            parse(&modify_tptp(&s)).unwrap()
+            let mut names = Names::default();
+            let seq = parse_sequent(&s, &mut names, true, true).unwrap();
+            (seq, names)
         })
         .collect_vec();
 
     c.bench_function("iltp_prop_0", |b| {
         b.iter(|| {
-            for (fml, entities) in &fmls {
-                fml.assert_provable(entities.len());
+            for (seqs, entities) in &seqs {
+                seqs.to_seq().assert_provable(entities.len());
             }
         });
     });
@@ -61,7 +64,7 @@ fn from_iltp_prop_1(c: &mut Criterion) {
 
     let list = vec!["SYJ202+1.004.p", "SYJ206+1.010.p"];
 
-    let fmls = fs::read_dir("benches/iltp_prop")
+    let seqs = fs::read_dir("benches/iltp_prop")
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|file| {
@@ -70,15 +73,17 @@ fn from_iltp_prop_1(c: &mut Criterion) {
         })
         .map(|file| {
             let s = fs::read_to_string(&file).unwrap();
-            parse(&modify_tptp(&s)).unwrap()
+            let mut names = Names::default();
+            let seq = parse_sequent(&s, &mut names, true, true).unwrap();
+            (seq, names)
         });
 
-    for (ref fml, entities) in fmls {
+    for (ref seq, entities) in seqs {
         group.bench_with_input(
-            BenchmarkId::from_parameter(fml.display(&entities)),
-            fml,
-            |b, fml| {
-                b.iter(|| fml.assert_provable(entities.len()));
+            BenchmarkId::from_parameter(seq.display(&entities)),
+            seq,
+            |b, seq| {
+                b.iter(|| seq.to_seq().assert_provable(entities.len()));
             },
         );
     }

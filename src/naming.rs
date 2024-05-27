@@ -259,7 +259,7 @@ fn to_latex(s: &str) -> String {
         .replace('↔', r"\leftrightarrow")
         .replace('∀', r"\forall ")
         .replace('∃', r"\exists ")
-        .replace('⊢', r"&\vdash ")
+        .replace('⊢', r"&\vdash")
         .replace('_', r"\_");
 
     Regex::new(r"v\\_(\d+)")

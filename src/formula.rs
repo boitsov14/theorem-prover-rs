@@ -19,9 +19,9 @@ pub enum Formula {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct Sequent {
-    pub(super) ant: Vec<Formula>,
-    pub(super) suc: Vec<Formula>,
+pub struct Sequent {
+    pub ant: Vec<Formula>,
+    pub suc: Vec<Formula>,
 }
 
 static TRUE: Formula = Formula::And(vec![]);
@@ -68,17 +68,6 @@ impl Term {
             let Self::Var(id) = v else { return };
             let Some(t) = map.get(id) else { return };
             *v = t.clone();
-        });
-    }
-
-    // TODO: 2024/05/12 移動
-    /// Replaces a function with a variable of the same ID.
-    fn replace_func_with_var(&mut self, id: usize) {
-        self.visit_mut(&mut |f| {
-            let Self::Func(f_id, _) = f else { return };
-            if *f_id == id {
-                *f = Self::Var(id);
-            }
         });
     }
 }
@@ -181,33 +170,6 @@ impl Formula {
     pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {
         self.visit_terms_mut(|t| t.subst_map(map));
     }
-
-    // TODO: 2024/05/13 移動
-    // TODO: 2024/05/13 apply_mutを使う
-    // TODO: 2024/04/06 引数をskolem_idsにする
-    pub(super) fn replace_func_with_var(&mut self, id: usize) {
-        use Formula::*;
-        match self {
-            Pred(_, ts) => {
-                for t in ts {
-                    t.replace_func_with_var(id);
-                }
-            }
-            Not(p) => p.replace_func_with_var(id),
-            And(l) | Or(l) => {
-                for p in l {
-                    p.replace_func_with_var(id);
-                }
-            }
-            To(p, q) | Iff(p, q) => {
-                p.replace_func_with_var(id);
-                q.replace_func_with_var(id);
-            }
-            All(_, p) | Ex(_, p) => {
-                p.replace_func_with_var(id);
-            }
-        }
-    }
 }
 
 impl Default for Formula {
@@ -246,6 +208,7 @@ mod tests {
 
     #[case("x", "x", "f(y)" => "f(y)")]
     #[case("x", "x", "f(x)" => "f(x)")]
+    #[case("f(x,x)", "x", "y" => "f(y,y)")]
     #[case("f(x,g(y))", "y", "h(x,y)" => "f(x,g(h(x,y)))")]
     fn term_subst(term: &str, var: &str, subterm: &str) -> String {
         let mut names = Names::default();

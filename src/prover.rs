@@ -1,5 +1,6 @@
 use crate::formula::{Formula, Formula::*, Sequent as RawSequent, Term};
 use crate::naming::Names;
+use crate::parse_sequent;
 use crate::unification::{resolve_unifier, UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;
@@ -413,7 +414,7 @@ impl<'a> ProofTree<'a> {
 
     fn write(
         &self,
-        fml: &'a Formula,
+        seq: Sequent<'a>,
         fml_arena: &'a Arena<Formula>,
         entities: &Names,
         new_id: usize,
@@ -431,7 +432,7 @@ impl<'a> ProofTree<'a> {
             writeln!(w, r"\begin{{document}}")?;
             writeln!(w, r"\begin{{prooftree}}")?;
         }
-        let mut seqs = vec![(fml.to_seq(), false)];
+        let mut seqs = vec![(seq, false)];
         self.write_rec(
             &mut seqs,
             fml_arena,
@@ -507,20 +508,67 @@ fn get_label(fml: &Formula, fml_pos: FormulaPos, output: OutputType) -> String {
     format!("{fml_type}{fml_pos}")
 }
 
+impl Term {
+    /// Replaces a function with a variable of the same ID.
+    fn replace_func_with_var(&mut self, id: usize) {
+        self.visit_mut(&mut |f| {
+            let Self::Func(f_id, _) = f else { return };
+            if *f_id == id {
+                *f = Self::Var(id);
+            }
+        });
+    }
+}
+
 impl Formula {
-    fn to_seq(&self) -> Sequent {
+    // TODO: 2024/05/13 apply_mutを使う
+    // TODO: 2024/04/06 引数をskolem_idsにする
+    pub(super) fn replace_func_with_var(&mut self, id: usize) {
+        use Formula::*;
+        match self {
+            Pred(_, ts) => {
+                for t in ts {
+                    t.replace_func_with_var(id);
+                }
+            }
+            Not(p) => p.replace_func_with_var(id),
+            And(l) | Or(l) => {
+                for p in l {
+                    p.replace_func_with_var(id);
+                }
+            }
+            To(p, q) | Iff(p, q) => {
+                p.replace_func_with_var(id);
+                q.replace_func_with_var(id);
+            }
+            All(_, p) | Ex(_, p) => {
+                p.replace_func_with_var(id);
+            }
+        }
+    }
+}
+
+impl RawSequent {
+    pub fn to_seq(&self) -> Sequent {
         let mut seq = Sequent::default();
-        seq.suc.insert(self);
+        for fml in &self.ant {
+            seq.ant.insert(fml);
+        }
+        for fml in &self.suc {
+            seq.suc.insert(fml);
+        }
         seq
     }
+}
 
-    fn prove<'a>(
-        &'a self,
-        fml_arena: &'a Arena<Self>,
+impl<'a> Sequent<'a> {
+    fn prove(
+        self,
+        fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: usize,
     ) -> (
-        ProofTree,
+        ProofTree<'a>,
         ProofResult,
         HashMap<usize, Term>,
         Vec<usize>,
@@ -529,7 +577,7 @@ impl Formula {
         let mut unresolved = vec![];
         let mut free_vars = vec![];
         let mut new_id = new_id;
-        let tree = self.to_seq().prove_rec(
+        let tree = self.prove_rec(
             &mut vec![],
             &mut unresolved,
             fml_arena,
@@ -660,9 +708,9 @@ impl Formula {
             for (_, seq, _) in &unresolved {
                 let mut pairs = vec![];
                 for p in &seq.ant {
-                    if let Self::Pred(id1, terms1) = p {
+                    if let Pred(id1, terms1) = p {
                         'outer0: for q in &seq.suc {
-                            if let Self::Pred(id2, terms2) = q {
+                            if let Pred(id2, terms2) = q {
                                 if id1 == id2 && terms1.len() == terms2.len() {
                                     let mut u = vec![];
                                     for (t1, t2) in terms1.iter().zip(terms2.iter()) {
@@ -716,7 +764,7 @@ impl Formula {
         }
     }
 
-    pub fn assert_provable(&self, new_id: usize) {
+    pub fn assert_provable(self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let (_, result, _, _, _) = self.prove(&fml_arena, &tree_arena, new_id);
@@ -747,25 +795,28 @@ fn unify_pairs_matrix(
 }
 
 pub fn example(s: &str) -> io::Result<()> {
-    use crate::parser::parse_formula;
+    use crate::parser::parse_sequent;
     use std::time::Instant;
 
     // parse
     let mut entities = Names::default();
-    let fml = match parse_formula(s, &mut entities, true) {
-        Ok(fml) => fml,
+    let seq = match parse_sequent(s, &mut entities, true, false) {
+        Ok(seq) => seq,
         Err(e) => {
             println!("{}", e);
             return Ok(());
         }
     };
-    println!("{}", fml.display(&entities));
+    println!("{}", seq.display(&entities));
+
+    let seq = seq.to_seq();
 
     // prove
     let fml_arena = Arena::new();
     let tree_arena = Arena::new();
     let start_time = Instant::now();
-    let (proof, result, u, free_vars, new_id) = fml.prove(&fml_arena, &tree_arena, entities.len());
+    let (proof, result, u, free_vars, new_id) =
+        seq.clone().prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
     println!("u: {:?}", u);
     println!(">> {result:?}");
@@ -801,7 +852,7 @@ pub fn example(s: &str) -> io::Result<()> {
     // print console
     let mut w = BufWriter::new(vec![]);
     proof.write(
-        &fml,
+        seq.clone(),
         &fml_arena,
         &entities,
         old_id,
@@ -816,7 +867,7 @@ pub fn example(s: &str) -> io::Result<()> {
     let f = File::create("proof.tex")?;
     let mut w = BufWriter::new(f);
     proof.write(
-        &fml,
+        seq,
         &fml_arena,
         &entities,
         old_id,
@@ -830,8 +881,6 @@ pub fn example(s: &str) -> io::Result<()> {
 }
 
 pub fn example_iltp_prop() {
-    use crate::parser::modify_tptp;
-    use crate::parser::parse;
     use std::fs;
     use std::time::Instant;
 
@@ -850,12 +899,13 @@ pub fn example_iltp_prop() {
         println!();
         println!("{file_name}");
         let s = fs::read_to_string(&file).unwrap();
-        let (fml, entities) = parse(&modify_tptp(&s)).unwrap();
+        let mut names = Names::default();
+        let seq = parse_sequent(&s, &mut names, true, true).unwrap();
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let start_time = Instant::now();
-        let (_, result, _, _, _) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let (_, result, _, _, _) = seq.to_seq().prove(&fml_arena, &tree_arena, names.len());
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
@@ -866,7 +916,6 @@ pub fn example_iltp_prop() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
     use insta::assert_snapshot;
 
     #[test]
@@ -931,19 +980,21 @@ mod tests {
 
     fn prove(s: &str) -> String {
         // parse
-        let (fml, entities) = parse(s).unwrap();
+        let mut names = Names::default();
+        let seq = parse_sequent(s, &mut names, true, false).unwrap();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
-        let (proof, _, u, free_vars, new_id) = fml.prove(&fml_arena, &tree_arena, entities.len());
+        let (proof, _, u, free_vars, new_id) =
+            seq.to_seq().prove(&fml_arena, &tree_arena, names.len());
         // latex
         let mut w = BufWriter::new(vec![]);
         proof
             .write(
-                &fml,
+                seq.to_seq(),
                 &fml_arena,
-                &entities,
-                entities.len(),
+                &names,
+                names.len(),
                 &hashset!(), // TODO: 2024/03/14
                 &u,
                 OutputType::Latex,

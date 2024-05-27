@@ -78,7 +78,7 @@ pub(super) fn parse_formula(
 }
 
 /// Parses a sequent.
-fn parse_sequent(
+pub fn parse_sequent(
     s: &str,
     names: &mut Names,
     modify_formula: bool,
@@ -113,30 +113,6 @@ fn check_parentheses(s: &str) -> Result<(), Error> {
     } else {
         Err(Error::Parentheses { lp, rp })
     }
-}
-
-// TODO: 2024/05/21 削除
-pub fn parse(s: &str) -> Result<(Formula, Names), Error> {
-    // Normalize the string.
-    let s = s.nfkc().collect::<String>().trim().to_string();
-    // Replace all whitespaces with a single space.
-    let s = Regex::new(r"\s").unwrap().replace_all(&s, " ");
-    // Check if the number of left and right parentheses are equal.
-    let lp = s.chars().filter(|&c| c == '(').count();
-    let rp = s.chars().filter(|&c| c == ')').count();
-    if lp != rp {
-        return Err(Error::Parentheses { lp, rp });
-    }
-    let pfml = parser::formula(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
-    let mut names = Names::default();
-    let mut fml = pfml.into_formula(&mut names);
-    // Modify the formula.
-    fml.flatten();
-    fml.unique();
-    fml.rename_nested_bdd_vars(&mut names, &hashmap!());
-    fml.rename_bdd_vars(&mut names);
-    fml.subst_free_vars_with_constants(&hashset!());
-    Ok((fml, names))
 }
 
 pub fn modify_tptp(s: &str) -> String {

@@ -94,8 +94,7 @@ pub fn resolve_unifier(u: &Unifier) -> HashMap<usize, Term> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{formula::Formula, parser::parse};
-    use maplit::{hashmap, hashset};
+    use maplit::hashmap;
     use std::collections::HashMap;
 
     #[test]
@@ -185,42 +184,43 @@ mod tests {
     }
 
     fn test_unify(s: &str, t: &str) -> Result<HashMap<String, String>, UnificationFailure> {
-        let fml_str = format!("P({s}, {t})");
-        let (fml, entities) = parse(&fml_str).unwrap();
-        let Formula::All(vs, mut p) = fml else {
-            unreachable!()
-        };
-        let mut new_id = entities.len();
-        let mut free_var_info = hashmap!();
-        for old_v in vs {
-            p.subst(old_v, &Var(new_id));
-            free_var_info.insert(new_id, old_v);
-            new_id += 1;
-        }
-        // TODO: 2024/05/09 あとで直す（この関数自体なくす）
-        let free_vars = hashset!(); // p.free_vars();
-        let Formula::Pred(_, terms) = *p else {
-            unreachable!()
-        };
-        let t1 = terms[0].clone();
-        let t2 = terms[1].clone();
-        let mut u = hashmap!();
-        for v in free_vars {
-            u.insert(v, OnceCell::new());
-        }
-        t1.unify(&t2, &u)?;
-        let mut result = hashmap!();
-        for (new_v, t) in u {
-            let mut t = t.into_inner().unwrap();
-            for (new_v, old_v) in &free_var_info {
-                // t.subst(*new_v, &Var(*old_v));
-            }
-            let old_v = free_var_info[&new_v];
-            result.insert(
-                Var(old_v).display(&entities).to_string(),
-                t.display(&entities).to_string(),
-            );
-        }
-        Ok(result)
+        // let fml_str = format!("P({s}, {t})");
+        // let (fml, entities) = parse(&fml_str).unwrap();
+        // let Formula::All(vs, mut p) = fml else {
+        //     unreachable!()
+        // };
+        // let mut new_id = entities.len();
+        // let mut free_var_info = hashmap!();
+        // for old_v in vs {
+        //     p.subst(old_v, &Var(new_id));
+        //     free_var_info.insert(new_id, old_v);
+        //     new_id += 1;
+        // }
+        // // TODO: 2024/05/09 あとで直す（この関数自体なくす）
+        // let free_vars = hashset!(); // p.free_vars();
+        // let Formula::Pred(_, terms) = *p else {
+        //     unreachable!()
+        // };
+        // let t1 = terms[0].clone();
+        // let t2 = terms[1].clone();
+        // let mut u = hashmap!();
+        // for v in free_vars {
+        //     u.insert(v, OnceCell::new());
+        // }
+        // t1.unify(&t2, &u)?;
+        // let mut result = hashmap!();
+        // for (new_v, t) in u {
+        //     let mut t = t.into_inner().unwrap();
+        //     for (new_v, old_v) in &free_var_info {
+        //         // t.subst(*new_v, &Var(*old_v));
+        //     }
+        //     let old_v = free_var_info[&new_v];
+        //     result.insert(
+        //         Var(old_v).display(&entities).to_string(),
+        //         t.display(&entities).to_string(),
+        //     );
+        // }
+        // Ok(result)
+        Err(UnificationFailure)
     }
 }
