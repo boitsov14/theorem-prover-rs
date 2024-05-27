@@ -24,8 +24,6 @@ pub struct Sequent {
     pub suc: Vec<Formula>,
 }
 
-static TRUE: Formula = Formula::And(vec![]);
-
 impl Term {
     /// Visits and applies a function to the term and its subterms recursively.
     pub(super) fn visit<F>(&self, f: &mut F)
@@ -173,8 +171,9 @@ impl Formula {
 }
 
 impl Default for Formula {
+    /// Returns `True`.
     fn default() -> Self {
-        TRUE.clone()
+        Formula::And(vec![])
     }
 }
 
@@ -208,7 +207,7 @@ mod tests {
 
     #[case("x", "x", "f(y)" => "f(y)")]
     #[case("x", "x", "f(x)" => "f(x)")]
-    #[case("f(x,x)", "x", "y" => "f(y,y)")]
+    #[case("f(x,x,x)", "x", "g(y)" => "f(g(y),g(y),g(y))")]
     #[case("f(x,g(y))", "y", "h(x,y)" => "f(x,g(h(x,y)))")]
     fn term_subst(term: &str, var: &str, subterm: &str) -> String {
         let mut names = Names::default();
@@ -221,7 +220,9 @@ mod tests {
 
     #[case("x", &[("x", "f(y)")] => "f(y)")]
     #[case("x", &[("x", "f(x)")] => "f(x)")]
-    #[case("h(z,f(x,g(y)))", &[("y", "h(x,y)"), ("z", "i(a,b)")] => "h(i(a,b),f(x,g(h(x,y))))")]
+    #[case("f(x,y,z)", &[("x", "g(u)"), ("y", "h(v)"), ("z", "i(w)")] => "f(g(u),h(v),i(w))")]
+    #[case("x", &[("x", "y"), ("y", "z")] => "y")]
+    #[case("h(z,f(x,g(y)))", &[("y", "h(x,y)"), ("z", "i(u,v)")] => "h(i(u,v),f(x,g(h(x,y))))")]
     fn term_subst_map(term: &str, map: &[(&str, &str)]) -> String {
         let mut names = Names::default();
         let mut term = parse_term(term, &mut names).unwrap();
@@ -240,10 +241,11 @@ mod tests {
 
     #[case("P(x)", "x", "f(y)" => "P(f(y))")]
     #[case("P(x)", "x", "f(x)" => "P(f(x))")]
+    #[case("P(x,x,x)", "x", "g(y)" => "P(g(y),g(y),g(y))")]
     #[case("P(x,g(y))", "y", "h(x,y)" => "P(x,g(h(x,y)))")]
-    #[case("∀xP(x)", "x", "f(y)" => "∀xP(f(y))")]
+    #[case("∀xP(x)", "x", "y" => "∀xP(y)")]
     #[case("∀xP(x)", "x", "f(x)" => "∀xP(f(x))")]
-    #[case("∀xP(y)", "y", "f(x)" => "∀xP(f(x))")]
+    #[case("∀xP(y)", "y", "x" => "∀xP(x)")]
     #[case("(((¬P(x) ∧ Q(x)) ∨ R(x)) → S(x)) → T(x)", "x", "f(y)" => "(((¬P(f(y)) ∧ Q(f(y))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
     fn fml_subst(fml: &str, var: &str, term: &str) -> String {
         let mut names = Names::default();
@@ -256,11 +258,13 @@ mod tests {
 
     #[case("P(x)", &[("x", "f(y)")] => "P(f(y))")]
     #[case("P(x)", &[("x", "f(x)")] => "P(f(x))")]
+    #[case("P(x,y,z)", &[("x", "g(u)"), ("y", "h(v)"), ("z", "i(w)")] => "P(g(u),h(v),i(w))")]
+    #[case("P(x)", &[("x", "y"), ("y", "z")] => "P(y)")]
     #[case("P(x,g(y))", &[("y", "h(x,y)")] => "P(x,g(h(x,y)))")]
-    #[case("∀xP(x)", &[("x", "f(y)")] => "∀xP(f(y))")]
+    #[case("∀xP(x)", &[("x", "y")] => "∀xP(y)")]
     #[case("∀xP(x)", &[("x", "f(x)")] => "∀xP(f(x))")]
-    #[case("∀xP(y)", &[("y", "f(x)")] => "∀xP(f(x))")]
-    #[case("(((¬P(x) ∧ Q(z)) ∨ R(x)) → S(x)) → T(x)", &[("x", "f(y)"), ("z", "i(a,b)")] => "(((¬P(f(y)) ∧ Q(i(a,b))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
+    #[case("∀xP(y)", &[("y", "x")] => "∀xP(x)")]
+    #[case("(((¬P(x) ∧ Q(z)) ∨ R(x)) → S(x)) → T(x)", &[("x", "f(y)"), ("z", "i(u,v)")] => "(((¬P(f(y)) ∧ Q(i(u,v))) ∨ R(f(y))) → S(f(y))) → T(f(y))")]
     fn fml_subst_map(fml: &str, map: &[(&str, &str)]) -> String {
         let mut names = Names::default();
         let mut fml = parse_formula(fml, &mut names, false).unwrap();
