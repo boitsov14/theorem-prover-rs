@@ -1,6 +1,6 @@
 use crate::formula::{Formula, Formula::*, Sequent as RawSequent, Term};
 use crate::naming::Names;
-use crate::parse_sequent;
+use crate::parser::parse_sequent;
 use crate::unification::{resolve_unifier, UnificationFailure, Unifier};
 use core::hash::BuildHasherDefault;
 use indexmap::IndexSet;

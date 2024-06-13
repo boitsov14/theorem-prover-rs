@@ -104,7 +104,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                     .join(",")
             )?,
             Not(p) => write!(f, "¬{}", p.display_inner(self.names))?,
-            And(l) if l.is_empty() => write!(f, "true")?,
+            And(l) if l.is_empty() => write!(f, "⊤")?,
             And(l) => {
                 if self.is_inner {
                     write!(f, "(")?;
@@ -121,7 +121,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                     write!(f, ")")?;
                 }
             }
-            Or(l) if l.is_empty() => write!(f, "false")?,
+            Or(l) if l.is_empty() => write!(f, "⊥")?,
             Or(l) => {
                 if self.is_inner {
                     write!(f, "(")?;
@@ -250,8 +250,8 @@ impl Sequent {
 
 fn to_latex(s: &str) -> String {
     let s = s
-        .replace("true", r"\top")
-        .replace("false", r"\bot")
+        .replace("⊤", r"\top")
+        .replace("⊥", r"\bot")
         .replace('¬', r"\lnot ")
         .replace('∧', r"\land")
         .replace('∨', r"\lor")

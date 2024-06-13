@@ -115,7 +115,8 @@ fn check_parentheses(s: &str) -> Result<(), Error> {
     }
 }
 
-pub fn modify_tptp(s: &str) -> String {
+/// Modifies the TPTP format.
+fn modify_tptp(s: &str) -> String {
     let s = s
         .lines()
         .filter(|line| !line.trim_start().starts_with('%'))
@@ -191,14 +192,14 @@ peg::parser!( grammar parser() for str {
     rule pred_id() = quiet!{ id() } / expected!("predicate")
     rule p_true() = quiet!{ "⊤" / "true" / r"\top" }
     rule p_false() = quiet!{ "⊥" / "⟂" / "false" / r"\bot" }
-    rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!("'¬'")
-    rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!("'∧'")
-    rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!("'∨'")
-    rule to() = quiet!{ "→" / "->" / "⇒" / "=>" / "to" / r"\rightarrow" / r"\to" } / expected!("'→'")
-    rule iff() = quiet!{ "↔" / "<->" / "⇔" / "<=>" / "iff" / r"\leftrightarrow" } / expected!("'↔'")
-    rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!("'∀'")
-    rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!("'∃'")
-    rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!("'⊢'")
+    rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!(r#""¬""#)
+    rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!(r#""∧""#)
+    rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!(r#""∨""#)
+    rule to() = quiet!{ "→" / "->" / "=>" / "to" / r"\rightarrow" / r"\to" } / expected!(r#""→""#)
+    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "iff" / r"\leftrightarrow" } / expected!(r#""↔""#)
+    rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!(r#""∀""#)
+    rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!(r#""∃""#)
+    rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!(r#""⊢""#)
     rule _ = quiet!{ [' ']* }
 });
 
@@ -516,8 +517,8 @@ mod tests {
     #[test]
     fn test_parse_pfml() {
         use PFormula::*;
-        assert_eq!(pfml("true"), True);
-        assert_eq!(pfml("false"), False);
+        assert_eq!(pfml("⊤"), True);
+        assert_eq!(pfml("⊥"), False);
         assert_eq!(pfml("P"), Pred("P".into(), vec![]));
         assert_eq!(pfml("P(x)"), Pred("P".into(), vec![pterm("x")]));
         assert_eq!(
@@ -705,9 +706,9 @@ mod tests {
     }
 
     #[case("P ∧ P ∧ Q ∧ Q ∧ R ∧ R ∧ P ∧ Q ∧ R" => "P ∧ Q ∧ R")]
-    #[case("true ∧ P ∧ true ∧ Q ∧ true" => "P ∧ Q")]
-    #[case("false ∨ P ∨ false ∨ Q ∨ false" => "P ∨ Q")]
-    #[case("(P ∧ true ∧ P ∧ false ∨ P ∧ P) → P" => "((P ∧ false) ∨ P) → P")]
+    #[case("⊤ ∧ P ∧ ⊤ ∧ Q ∧ ⊤" => "P ∧ Q")]
+    #[case("⊥ ∨ Q ∨ ⊥ ∨ P ∨ ⊥" => "Q ∨ P")]
+    #[case("(P ∧ ⊤ ∧ P ∧ ⊥ ∨ P ∧ P ∨ ⊤) → P" => "((P ∧ ⊥) ∨ P ∨ ⊤) → P")]
     #[case("∀x∀x∀y∀y∀z∀z∀x∀y∀zP(x,y,z)" => "∀x∀y∀zP(x,y,z)")]
     #[case("∀x∀x∃x∃x∀x∀xP(x,y) → Q" => "∀x∃x∀xP(x,y) → Q")]
     fn test_unique(s: &str) -> String {
@@ -719,8 +720,8 @@ mod tests {
     }
 
     #[case("P ∧ P", "P")]
-    #[case("P ∧ true", "P")]
-    #[case("P ∨ false", "P")]
+    #[case("P ∧ ⊤", "P")]
+    #[case("Q ∨ ⊥", "Q")]
     fn test_unique_singleton(s: &str, name: &str) {
         let mut names = Names::default();
         let mut fml = parse_formula(s, &mut names, false).unwrap();
