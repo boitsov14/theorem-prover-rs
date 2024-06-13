@@ -679,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_fml_nfkc() {
+    fn test_nfkc() {
         let mut names = Names::default();
         let fml = parse_formula("Ｐ０", &mut names, false).unwrap();
         assert_eq!(fml.display(&names).to_string(), "P0");
@@ -871,8 +871,17 @@ mod tests {
         );
     }
 
+    #[case("P, P, P ⊢ P, P, P" => "P ⊢ P")]
+    #[case("P, Q, P, Q ⊢ P, P, Q, Q" => "P, Q ⊢ P, Q")]
+    fn test_unique_seq(s: &str) -> String {
+        let mut names = Names::default();
+        let mut seq = parse_sequent(s, &mut names, false, false).unwrap();
+        seq.unique();
+        seq.display(&names).to_string()
+    }
+
     #[test]
-    fn test_parse_tptp() {
+    fn test_tptp_prop() {
         let s = "
 % Comments : 
 %--------------------------------------------------------------------------
