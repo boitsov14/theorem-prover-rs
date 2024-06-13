@@ -47,7 +47,7 @@ enum PFormula {
     Ex(String, Box<PFormula>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct PSequent {
     ant: Vec<PFormula>,
     suc: Vec<PFormula>,
@@ -502,6 +502,9 @@ mod tests {
     fn pfml(s: &str) -> PFormula {
         parser::formula(s).unwrap()
     }
+    fn pseq(s: &str) -> PSequent {
+        parser::sequent(s).unwrap()
+    }
 
     #[test]
     fn test_parse_pterm() {
@@ -584,15 +587,95 @@ mod tests {
     fn test_parse_pfml_precedence() {
         use PFormula::*;
         assert_eq!(
-            pfml("¬P ∧ Q ∨ R → S"),
-            To(
-                Box::new(Or(
-                    Box::new(And(Box::new(Not(Box::new(pfml("P")))), Box::new(pfml("Q")))),
-                    Box::new(pfml("R"))
+            pfml("¬P ∧ Q ∨ R → S ↔ T"),
+            Iff(
+                Box::new(To(
+                    Box::new(Or(
+                        Box::new(And(Box::new(Not(Box::new(pfml("P")))), Box::new(pfml("Q")))),
+                        Box::new(pfml("R"))
+                    )),
+                    Box::new(pfml("S"))
                 )),
-                Box::new(pfml("S"))
+                Box::new(pfml("T"))
             )
         );
+        assert_eq!(
+            pfml("∀xP(x) → ∃yQ(y) → R"),
+            To(
+                Box::new(All("x".into(), Box::new(pfml("P(x)")))),
+                Box::new(To(
+                    Box::new(Ex("y".into(), Box::new(pfml("Q(y)")))),
+                    Box::new(pfml("R"))
+                ))
+            )
+        )
+    }
+
+    #[test]
+    fn test_parse_pseq() {
+        assert_eq!(
+            pseq("P, Q, R ⊢ S, T, U"),
+            PSequent {
+                ant: vec![pfml("P"), pfml("Q"), pfml("R")],
+                suc: vec![pfml("S"), pfml("T"), pfml("U")]
+            }
+        );
+        assert_eq!(
+            pseq("P, Q ⊢ R, S"),
+            PSequent {
+                ant: vec![pfml("P"), pfml("Q")],
+                suc: vec![pfml("R"), pfml("S")]
+            }
+        );
+        assert_eq!(
+            pseq("P ⊢ Q"),
+            PSequent {
+                ant: vec![pfml("P")],
+                suc: vec![pfml("Q")]
+            }
+        );
+        assert_eq!(
+            pseq("P ⊢"),
+            PSequent {
+                ant: vec![pfml("P")],
+                suc: vec![]
+            }
+        );
+        assert_eq!(
+            pseq("⊢ P"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("P")]
+            }
+        );
+        assert_eq!(
+            pseq("⊢"),
+            PSequent {
+                ant: vec![],
+                suc: vec![]
+            }
+        );
+        assert_eq!(
+            pseq("P ∧ Q, R ∨ S, ∀xP(x) ⊢ ∃yQ(y), ¬R, ∃z∀wS(z,w)"),
+            PSequent {
+                ant: vec![pfml("P ∧ Q"), pfml("R ∨ S"), pfml("∀xP(x)")],
+                suc: vec![pfml("∃yQ(y)"), pfml("¬R"), pfml("∃z∀wS(z,w)")]
+            }
+        );
+        assert_eq!(
+            pseq("P"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("P")]
+            }
+        );
+        assert_eq!(
+            pseq("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")]
+            }
+        )
     }
 
     #[test]
