@@ -271,7 +271,7 @@ fn to_latex(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{parse_formula, parse_term};
+    use crate::parser::{parse_formula, parse_sequent, parse_term};
     use test_case::case;
 
     #[case("x")]
@@ -301,5 +301,14 @@ mod tests {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, true).unwrap();
         assert_eq!(fml.display(&names).to_string(), s);
+    }
+
+    #[case("P ⊢ Q")]
+    #[case("P, Q, R ⊢ S, T, U")]
+    #[case(" ⊢ ")]
+    fn sequent_display(s: &str) {
+        let mut names = Names::default();
+        let seq = parse_sequent(s, &mut names, true, false).unwrap();
+        assert_eq!(seq.display(&names).to_string(), s);
     }
 }
