@@ -1,4 +1,4 @@
-use crate::formula::{Formula, Sequent, Term};
+use crate::lang::{Formula, Sequent, Term};
 use itertools::Itertools;
 use regex::Regex;
 use std::fmt;

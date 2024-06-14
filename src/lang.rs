@@ -200,7 +200,7 @@ impl Sequent {
 #[cfg(test)]
 mod tests {
     use crate::{
-        naming::Names,
+        name::Names,
         parser::{parse_formula, parse_term},
     };
     use test_case::case;

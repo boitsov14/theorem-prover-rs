@@ -1,4 +1,4 @@
-use crate::formula::Term;
+use crate::lang::Term;
 use maplit::hashmap;
 use std::{cell::OnceCell, collections::HashMap};
 use Term::*;

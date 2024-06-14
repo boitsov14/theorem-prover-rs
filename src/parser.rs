@@ -1,5 +1,5 @@
-use crate::formula::{Formula, Sequent, Term};
-use crate::naming::Names;
+use crate::lang::{Formula, Sequent, Term};
+use crate::name::Names;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
 use regex::Regex;
