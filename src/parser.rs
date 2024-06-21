@@ -101,7 +101,7 @@ fn modify_string(s: &str) -> String {
     // Normalize the string.
     let s = s.nfkc().collect::<String>().trim().to_string();
     // Replace all whitespaces with a single space.
-    Regex::new(r"\s").unwrap().replace_all(&s, " ").to_string()
+    Regex::new(r"\s+").unwrap().replace_all(&s, " ").to_string()
 }
 
 /// Checks if the number of left and right parentheses are equal.
