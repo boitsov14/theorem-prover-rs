@@ -12,8 +12,7 @@ maplit = "1.0.2"
 mimalloc = { version = "0.1.42", default-features = false }
 peg = "0.8.3"
 regex = "1.10.5"
-rustc-hash = "1.1.0"
-test-case = "3.3.1"
+rustc-hash = "2.0.0"
 thiserror = "1.0.61"
 typed-arena = "2.0.2"
 unicode-normalization = "0.1.23"
@@ -21,6 +20,7 @@ unicode-normalization = "0.1.23"
 [dev-dependencies]
 criterion = "0.5.1"
 insta = "1.39.0"
+test-case = "3.3.1"
 
 [[bench]]
 name = "benchmark"
