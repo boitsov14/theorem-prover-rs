@@ -36,23 +36,19 @@ impl Term {
     pub fn get_unifiable_pairs<'a>(
         &'a self,
         other: &'a Self,
-        pairs: &mut Vec<(&'a Term, &'a Term)>,
+        pairs: &mut Vec<(&'a Self, &'a Self)>,
     ) -> Result<(), UnificationFailure> {
-        match (self, other) {
-            (Func(id1, terms1), Func(id2, terms2)) => {
-                if id1 != id2 || terms1.len() != terms2.len() {
-                    return Err(UnificationFailure);
-                }
-                for (t1, t2) in terms1.iter().zip(terms2.iter()) {
-                    t1.get_unifiable_pairs(t2, pairs)?;
-                }
-                Ok(())
+        if let (Func(id1, terms1), Func(id2, terms2)) = (self, other) {
+            if id1 != id2 || terms1.len() != terms2.len() {
+                return Err(UnificationFailure);
             }
-            _ => {
-                pairs.push((self, other));
-                Ok(())
+            for (t1, t2) in terms1.iter().zip(terms2.iter()) {
+                t1.get_unifiable_pairs(t2, pairs)?;
             }
+        } else {
+            pairs.push((self, other));
         }
+        Ok(())
     }
 
     fn resolve<'a>(&'a self, u: &'a Unifier) -> &'a Self {
@@ -183,7 +179,7 @@ mod tests {
         assert_eq!(result, Err(UnificationFailure));
     }
 
-    fn test_unify(s: &str, t: &str) -> Result<HashMap<String, String>, UnificationFailure> {
+    fn test_unify(_s: &str, _t: &str) -> Result<HashMap<String, String>, UnificationFailure> {
         // let fml_str = format!("P({s}, {t})");
         // let (fml, entities) = parse(&fml_str).unwrap();
         // let Formula::All(vs, mut p) = fml else {

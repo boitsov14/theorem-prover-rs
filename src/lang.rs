@@ -61,7 +61,7 @@ impl Term {
     }
 
     /// Substitutes variables with terms.
-    pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {
+    pub(super) fn subst_map(&mut self, map: &HashMap<usize, Self>) {
         self.visit_mut(&mut |v| {
             let Self::Var(id) = v else { return };
             let Some(t) = map.get(id) else { return };
@@ -173,7 +173,7 @@ impl Formula {
 impl Default for Formula {
     /// Returns `True`.
     fn default() -> Self {
-        Formula::And(vec![])
+        Self::And(vec![])
     }
 }
 
@@ -230,7 +230,7 @@ mod tests {
             .iter()
             .map(|(k, v)| {
                 (
-                    names.get_id(k.to_string()),
+                    names.get_id((*k).into()),
                     parse_term(v, &mut names).unwrap(),
                 )
             })
@@ -272,7 +272,7 @@ mod tests {
             .iter()
             .map(|(k, v)| {
                 (
-                    names.get_id(k.to_string()),
+                    names.get_id((*k).into()),
                     parse_term(v, &mut names).unwrap(),
                 )
             })

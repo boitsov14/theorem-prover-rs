@@ -60,9 +60,9 @@ enum OutputType {
 }
 
 impl<'a> Sequent<'a> {
-    fn to_raw(self) -> RawSequent {
-        let ant = self.ant.into_iter().map(|f| f.clone()).collect();
-        let suc = self.suc.into_iter().map(|f| f.clone()).collect();
+    fn into_raw(self) -> RawSequent {
+        let ant = self.ant.into_iter().cloned().collect();
+        let suc = self.suc.into_iter().cloned().collect();
         RawSequent { ant, suc }
     }
     fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
@@ -111,7 +111,7 @@ impl<'a> Sequent<'a> {
         mut self,
         fml: &'a Formula,
         fml_pos: FormulaPos,
-        seqs: &mut Vec<(Sequent<'a>, bool)>,
+        seqs: &mut Vec<(Self, bool)>,
         fml_arena: &'a Arena<Formula>,
         new_id: &mut usize,
         free_vars: &mut Vec<usize>,
@@ -255,12 +255,8 @@ impl<'a> Sequent<'a> {
 
     fn prove_rec(
         self,
-        seqs: &mut Vec<(Sequent<'a>, bool)>,
-        unresolved: &mut Vec<(
-            &'a OnceCell<ProofTree<'a>>,
-            Sequent<'a>,
-            HashSet<&'a Formula>,
-        )>,
+        seqs: &mut Vec<(Self, bool)>,
+        unresolved: &mut Vec<(&'a OnceCell<ProofTree<'a>>, Self, HashSet<&'a Formula>)>,
         fml_arena: &'a Arena<Formula>,
         tree_arena: &'a Arena<OnceCell<ProofTree<'a>>>,
         new_id: &mut usize,
@@ -294,7 +290,7 @@ impl<'a> Sequent<'a> {
         u: &HashMap<usize, Term>,
         skolem_ids: &HashSet<usize>,
         fml_arena: &'a Arena<Formula>,
-    ) -> Sequent<'a> {
+    ) -> Self {
         let mut ant: IndexSet<&Formula, _> = FxIndexSet::default();
         let mut suc: IndexSet<&Formula, _> = FxIndexSet::default();
         for fml in self.ant {
@@ -336,7 +332,7 @@ impl<'a> ProofTree<'a> {
                     "{}",
                     &seq.clone()
                         .format_for_print(u, skolem_ids, fml_arena)
-                        .to_raw()
+                        .into_raw()
                         .display(entities)
                 )?;
             }
@@ -355,7 +351,7 @@ impl<'a> ProofTree<'a> {
                             w,
                             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
                             seq.format_for_print(u, skolem_ids, fml_arena)
-                                .to_raw()
+                                .into_raw()
                                 .display(entities)
                                 .to_latex()
                         )?;
@@ -377,7 +373,7 @@ impl<'a> ProofTree<'a> {
                             w,
                             r"\hypo{{{}}}",
                             seq.format_for_print(u, skolem_ids, fml_arena)
-                                .to_raw()
+                                .into_raw()
                                 .display(entities)
                                 .to_latex()
                         )?;
@@ -402,7 +398,7 @@ impl<'a> ProofTree<'a> {
                         w,
                         r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
                         seq.format_for_print(u, skolem_ids, fml_arena)
-                            .to_raw()
+                            .into_raw()
                             .display(entities)
                             .to_latex()
                     )?;
@@ -700,7 +696,7 @@ impl<'a> Sequent<'a> {
                 unification_cnt += 1;
                 unresolved.push((cell, seq, applied_fmls));
                 // TODO: 2024/03/12 Kotlin版とcntの方法が異なる
-                println!("unification_cnt: {}", unification_cnt);
+                println!("unification_cnt: {unification_cnt}");
             }
 
             // try unify unresolved sequents
@@ -787,7 +783,7 @@ fn unify_pairs_matrix(
                     return Ok(());
                 }
             } else {
-                *u = old_u.clone();
+                u.clone_from(&old_u);
             }
         }
     }
@@ -803,7 +799,7 @@ pub fn example(s: &str) -> io::Result<()> {
     let seq = match parse_sequent(s, &mut entities, true, false) {
         Ok(seq) => seq,
         Err(e) => {
-            println!("{}", e);
+            println!("{e}");
             return Ok(());
         }
     };
@@ -818,23 +814,22 @@ pub fn example(s: &str) -> io::Result<()> {
     let (proof, result, u, free_vars, new_id) =
         seq.clone().prove(&fml_arena, &tree_arena, entities.len());
     let end_time = Instant::now();
-    println!("u: {:?}", u);
+    println!("u: {u:?}");
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
     let old_id = entities.len();
-    let mut entities = entities;
     let mut skolem_ids = hashset!();
     if matches!(result, ProofResult::Failure) {
         let mut variable_id = 0;
         let mut function_id = 0;
         for i in old_id..new_id {
             if free_vars.contains(&i) {
-                entities.get_id(format!("v_{}", variable_id));
+                entities.get_id(format!("v_{variable_id}"));
                 variable_id += 1;
             } else {
-                entities.get_id(format!("t_{}", function_id));
+                entities.get_id(format!("t_{function_id}"));
                 function_id += 1;
             }
         }
@@ -842,7 +837,7 @@ pub fn example(s: &str) -> io::Result<()> {
         let mut function_id = 0;
         for i in old_id..new_id {
             if !free_vars.contains(&i) {
-                entities.get_id(format!("v_{}", function_id));
+                entities.get_id(format!("v_{function_id}"));
                 skolem_ids.insert(i);
                 function_id += 1;
             }

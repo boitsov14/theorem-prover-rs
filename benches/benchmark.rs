@@ -62,7 +62,7 @@ fn from_iltp_prop_1(c: &mut Criterion) {
     let mut group = c.benchmark_group("iltp_prop_1");
     group.sample_size(10);
 
-    let list = vec!["SYJ202+1.004.p", "SYJ206+1.010.p"];
+    let list = ["SYJ202+1.004.p", "SYJ206+1.010.p"];
 
     let seqs = fs::read_dir("benches/iltp_prop")
         .unwrap()

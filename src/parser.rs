@@ -57,7 +57,7 @@ struct PSequent {
 pub(super) fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
-    let pterm = parser::term(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    let pterm = parser::term(&s).map_err(|e| Error::Peg { s, e })?;
     Ok(pterm.into_term(names))
 }
 
@@ -69,7 +69,7 @@ pub(super) fn parse_formula(
 ) -> Result<Formula, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
-    let pfml = parser::formula(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    let pfml = parser::formula(&s).map_err(|e| Error::Peg { s, e })?;
     let mut fml = pfml.into_formula(names);
     if modify_formula {
         fml.modify(names);
@@ -87,7 +87,7 @@ pub fn parse_sequent(
     let s = if tptp { modify_tptp(s) } else { s.to_string() };
     let s = modify_string(&s);
     check_parentheses(&s)?;
-    let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s: s.into(), e })?;
+    let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s, e })?;
     let mut seq = pseq.into_sequent(names);
     if modify_formula {
         seq.visit_formulas_mut(|p| p.modify(names));
@@ -170,8 +170,8 @@ peg::parser!( grammar parser() for str {
         p:@ _ and() _ q:(@) { And(Box::new(p), Box::new(q)) }
         --
         not() _ p:@ { Not(Box::new(p)) }
-        all() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { vs.iter().rev().fold(p, |p, s| All(s.to_string(), Box::new(p))) }
-        ex() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { vs.iter().rev().fold(p, |p, s| Ex(s.to_string(), Box::new(p))) }
+        all() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { vs.iter().rev().fold(p, |p, &s| All(s.into(), Box::new(p))) }
+        ex() _ vs:($bdd_var_id() ++ (_ "," _)) _ p:@ { vs.iter().rev().fold(p, |p, &s| Ex(s.into(), Box::new(p))) }
         --
         p:predicate() { p }
         "(" _ p:formula() _ ")" { p }
@@ -461,7 +461,7 @@ impl Formula {
             }
             All(vs, p) | Ex(vs, p) => {
                 let mut bdd_vars = bdd_vars.clone();
-                bdd_vars.extend(vs.iter().cloned());
+                bdd_vars.extend(vs.iter().copied());
                 p.subst_free_vars_with_constants(&bdd_vars);
             }
             _ => {
@@ -608,7 +608,7 @@ mod tests {
                     Box::new(pfml("R"))
                 ))
             )
-        )
+        );
     }
 
     #[test]
@@ -675,7 +675,7 @@ mod tests {
                 ant: vec![],
                 suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")]
             }
-        )
+        );
     }
 
     #[test]

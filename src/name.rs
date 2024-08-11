@@ -40,7 +40,7 @@ impl Names {
         self.names
             .get(id)
             .cloned()
-            .unwrap_or_else(|| format!("?_{}", id))
+            .unwrap_or_else(|| format!("?_{id}"))
     }
 
     /// Generates a fresh name and retrieves the ID associated with it.
