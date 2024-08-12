@@ -1,5 +1,6 @@
 mod lang;
 mod name;
+mod new_prover;
 mod parser;
 mod prover;
 mod unification;
