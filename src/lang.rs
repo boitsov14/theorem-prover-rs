@@ -18,6 +18,9 @@ pub enum Formula {
     Ex(Vec<usize>, Box<Formula>),
 }
 
+pub(crate) const TRUE: Formula = Formula::And(vec![]);
+pub(crate) const FALSE: Formula = Formula::Or(vec![]);
+
 #[derive(Clone, Debug)]
 pub struct Sequent {
     pub ant: Vec<Formula>,
