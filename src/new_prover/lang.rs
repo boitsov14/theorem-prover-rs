@@ -1,5 +1,5 @@
 use crate::lang::{Formula, FALSE, TRUE};
-use crate::new_prover::lang::Side::{Left, Right};
+use itertools::Itertools;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Side {
@@ -60,10 +60,10 @@ impl<'a> SequentExtended<'a> {
             finished: false,
         };
         for fml in ant.iter().rev() {
-            seq.push(FormulaExtended::new(fml, Left));
+            seq.push(FormulaExtended::new(fml, Side::Left));
         }
         for fml in suc.iter().rev() {
-            seq.push(FormulaExtended::new(fml, Right));
+            seq.push(FormulaExtended::new(fml, Side::Right));
         }
         seq
     }
@@ -77,7 +77,9 @@ impl<'a> SequentExtended<'a> {
             self.finished = true;
         }
 
-        if (*fml.fml == TRUE && fml.side == Right) || (*fml.fml == FALSE && fml.side == Left) {
+        if (*fml.fml == TRUE && fml.side == Side::Right)
+            || (*fml.fml == FALSE && fml.side == Side::Left)
+        {
             self.finished = true;
         }
 
@@ -92,14 +94,38 @@ impl<'a> SequentExtended<'a> {
     fn pop(&mut self) -> Option<FormulaExtended<'a>> {
         use Cost::*;
         use Formula::*;
-        let fml = self.seq.pop()?;
-        let fml = match fml.cost {
-            Alpha | Beta(_) => Some(fml),
-            Quant | Redundant | Atom => None,
-        }?;
+        use Side::*;
+        let fml = self.seq.last()?;
+        match fml.cost {
+            Quant | Redundant | Atom => {
+                return None;
+            }
+            _ => {}
+        }
+        let mut fml = self.seq.pop()?;
         match (fml.fml, fml.side) {
-            (And(l), Right) => {}
-            (Or(l), Left) => {}
+            (And(l), Right) => {
+                if self
+                    .seq
+                    .iter()
+                    .any(|p| p.side == Right && l.iter().contains(p.fml))
+                {
+                    fml.cost = Redundant;
+                    self.push(fml);
+                    return self.pop();
+                }
+            }
+            (Or(l), Left) => {
+                if self
+                    .seq
+                    .iter()
+                    .any(|p| p.side == Left && l.iter().contains(p.fml))
+                {
+                    fml.cost = Redundant;
+                    self.push(fml);
+                    return self.pop();
+                }
+            }
             (To(p, q), Left) => {}
             (Iff(p, q), Left) => {}
             (Iff(p, q), Right) => {}
