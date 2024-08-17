@@ -11,9 +11,9 @@ enum Side {
 enum Cost {
     Alpha,
     Beta(usize),
+    Atom,
     Quant,
     Redundant,
-    Atom,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -23,6 +23,20 @@ struct FormulaExtended<'a> {
     cost: Cost,
 }
 
+struct SequentIdx {
+    start: usize,
+    redundant: usize,
+    quant: usize,
+    atom: usize,
+    beta: usize,
+}
+
+struct SequentTable<'a> {
+    seqs: Vec<FormulaExtended<'a>>,
+    idxs: Vec<SequentIdx>,
+}
+
+// TODO: 2024/08/17 あとで消す
 struct SequentExtended<'a> {
     seq: Vec<FormulaExtended<'a>>,
     finished: bool,
@@ -53,6 +67,42 @@ impl<'a> FormulaExtended<'a> {
     }
 }
 
+impl<'a> SequentTable<'a> {
+    fn push_fml(&mut self, fml: FormulaExtended<'a>, idx: &mut SequentIdx) {
+        use Cost::*;
+        match fml.cost {
+            Alpha => self.seqs.push(fml),
+            Beta(_) => {
+                let i = self.seqs[idx.start + idx.atom..idx.start + idx.beta]
+                    .iter()
+                    .rposition(|p| p.cost >= fml.cost)
+                    .map_or(0, |x| x + 1);
+                self.seqs.insert(idx.start + idx.beta + i, fml);
+                idx.beta += 1;
+            }
+            Atom => {
+                self.seqs.insert(idx.start + idx.atom, fml);
+                idx.atom += 1;
+                idx.beta += 1;
+            }
+            Quant => {
+                self.seqs.insert(idx.start + idx.quant, fml);
+                idx.quant += 1;
+                idx.atom += 1;
+                idx.beta += 1;
+            }
+            Redundant => {
+                self.seqs.insert(idx.start + idx.redundant, fml);
+                idx.redundant += 1;
+                idx.quant += 1;
+                idx.atom += 1;
+                idx.beta += 1;
+            }
+        }
+    }
+}
+
+// TODO: 2024/08/17 あとで消す
 impl<'a> SequentExtended<'a> {
     fn new(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
         let mut seq = Self {
