@@ -57,6 +57,18 @@ impl Formula {
     }
 }
 
+impl SequentIdx {
+    fn init(table: &SequentTable) -> Self {
+        Self {
+            start: table.seqs.len(),
+            redundant: 0,
+            quant: 0,
+            atom: 0,
+            beta: 0,
+        }
+    }
+}
+
 impl<'a> FormulaExtended<'a> {
     fn new(fml: &'a Formula, side: Side) -> Self {
         Self {
@@ -68,6 +80,22 @@ impl<'a> FormulaExtended<'a> {
 }
 
 impl<'a> SequentTable<'a> {
+    fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
+        let mut table = Self {
+            seqs: vec![],
+            idxs: vec![],
+        };
+        let mut idx = SequentIdx::init(&table);
+        for fml in ant {
+            table.push_fml(FormulaExtended::new(fml, Side::Left), &mut idx);
+        }
+        for fml in suc {
+            table.push_fml(FormulaExtended::new(fml, Side::Right), &mut idx);
+        }
+        table.idxs.push(idx);
+        table
+    }
+
     fn push_fml(&mut self, fml: FormulaExtended<'a>, idx: &mut SequentIdx) {
         use Cost::*;
         match fml.cost {
