@@ -23,6 +23,7 @@ struct FormulaExtended<'a> {
     cost: Cost,
 }
 
+#[derive(Clone, Copy, Debug)]
 struct SequentIdx {
     start: usize,
     redundant: usize,
@@ -32,7 +33,7 @@ struct SequentIdx {
 }
 
 struct SequentTable<'a> {
-    seqs: Vec<FormulaExtended<'a>>,
+    table: Vec<FormulaExtended<'a>>,
     idxs: Vec<SequentIdx>,
 }
 
@@ -58,9 +59,19 @@ impl Formula {
 }
 
 impl SequentIdx {
+    fn new() -> Self {
+        Self {
+            start: 0,
+            redundant: 0,
+            quant: 0,
+            atom: 0,
+            beta: 0,
+        }
+    }
+
     fn init(table: &SequentTable) -> Self {
         Self {
-            start: table.seqs.len(),
+            start: table.table.len(),
             redundant: 0,
             quant: 0,
             atom: 0,
@@ -77,56 +88,121 @@ impl<'a> FormulaExtended<'a> {
             cost: fml.get_cost(side),
         }
     }
+
+    fn is_trivial(&self, fmls: &[Self]) -> bool {
+        if (*self.fml == TRUE && self.side == Side::Right)
+            || (*self.fml == FALSE && self.side == Side::Left)
+        {
+            true
+        } else {
+            fmls.iter()
+                .any(|p| p.fml == self.fml && p.side != self.side)
+        }
+    }
 }
 
 impl<'a> SequentTable<'a> {
     fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
         let mut table = Self {
-            seqs: vec![],
-            idxs: vec![],
+            table: vec![],
+            idxs: vec![SequentIdx::new()],
         };
-        let mut idx = SequentIdx::init(&table);
         for fml in ant {
-            table.push_fml(FormulaExtended::new(fml, Side::Left), &mut idx);
+            table.push_fml(FormulaExtended::new(fml, Side::Left));
         }
         for fml in suc {
-            table.push_fml(FormulaExtended::new(fml, Side::Right), &mut idx);
+            table.push_fml(FormulaExtended::new(fml, Side::Right));
         }
-        table.idxs.push(idx);
         table
     }
 
-    fn push_fml(&mut self, fml: FormulaExtended<'a>, idx: &mut SequentIdx) {
+    fn last(&self) -> Option<(&[FormulaExtended<'a>], SequentIdx)> {
+        let idx = self.idxs.last()?;
+        Some((&self.table[idx.start..], *idx))
+    }
+
+    fn push_fml(&mut self, fml: FormulaExtended<'a>) {
         use Cost::*;
         match fml.cost {
-            Alpha => self.seqs.push(fml),
+            Alpha => self.table.push(fml),
             Beta(_) => {
-                let i = self.seqs[idx.start + idx.atom..idx.start + idx.beta]
+                let i = self.table[self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom
+                    ..self.idxs.last().unwrap().start + self.idxs.last().unwrap().beta]
                     .iter()
                     .rposition(|p| p.cost >= fml.cost)
                     .map_or(0, |x| x + 1);
-                self.seqs.insert(idx.start + idx.beta + i, fml);
-                idx.beta += 1;
+                self.table.insert(
+                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().beta + i,
+                    fml,
+                );
+                self.idxs.last_mut().unwrap().beta += 1;
             }
             Atom => {
-                self.seqs.insert(idx.start + idx.atom, fml);
-                idx.atom += 1;
-                idx.beta += 1;
+                self.table.insert(
+                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom,
+                    fml,
+                );
+                self.idxs.last_mut().unwrap().atom += 1;
+                self.idxs.last_mut().unwrap().beta += 1;
             }
             Quant => {
-                self.seqs.insert(idx.start + idx.quant, fml);
-                idx.quant += 1;
-                idx.atom += 1;
-                idx.beta += 1;
+                self.table.insert(
+                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().quant,
+                    fml,
+                );
+                self.idxs.last_mut().unwrap().quant += 1;
+                self.idxs.last_mut().unwrap().atom += 1;
+                self.idxs.last_mut().unwrap().beta += 1;
             }
             Redundant => {
-                self.seqs.insert(idx.start + idx.redundant, fml);
-                idx.redundant += 1;
-                idx.quant += 1;
-                idx.atom += 1;
-                idx.beta += 1;
+                self.table.insert(
+                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().redundant,
+                    fml,
+                );
+                self.idxs.last_mut().unwrap().redundant += 1;
+                self.idxs.last_mut().unwrap().quant += 1;
+                self.idxs.last_mut().unwrap().atom += 1;
+                self.idxs.last_mut().unwrap().beta += 1;
             }
         }
+    }
+
+    fn prove_prop(&mut self) -> bool {
+        use Formula::*;
+        use Side::*;
+        let Some(fml) = self.table.pop() else {
+            return true;
+        };
+        match (fml.fml, fml.side) {
+            (Not(p), Left) => {
+                let new_fml = FormulaExtended::new(p, Right);
+                if new_fml.is_trivial(self.last().unwrap().0) {
+                    todo!()
+                }
+                self.push_fml(new_fml);
+            }
+            (Not(p), Right) => {
+                let new_fml = FormulaExtended::new(p, Left);
+                self.push_fml(new_fml);
+            }
+            (And(l), Left) => {
+                for p in l {
+                    let new_fml = FormulaExtended::new(p, Left);
+                    self.push_fml(new_fml);
+                }
+            }
+            (And(l), Right) => {}
+            (Or(l), Left) => {}
+            (Or(l), Right) => {}
+            (To(p, q), Left) => {}
+            (To(p, q), Right) => {}
+            (Iff(p, q), Left) => {}
+            (Iff(p, q), Right) => {}
+            (Pred(_, _), _) | (Ex(_, _), _) | (All(_, _), _) => {
+                return false;
+            }
+        }
+        true
     }
 }
 
