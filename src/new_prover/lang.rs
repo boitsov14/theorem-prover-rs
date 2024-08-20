@@ -1,4 +1,5 @@
 use crate::lang::{Formula, FALSE, TRUE};
+use crate::new_prover::lang::Cost::{Alpha, Atom, Quant, Redundant};
 use itertools::Itertools;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -89,15 +90,14 @@ impl<'a> FormulaExtended<'a> {
         }
     }
 
-    fn is_trivial(&self, fmls: &[Self]) -> bool {
-        if (*self.fml == TRUE && self.side == Side::Right)
+    fn is_trivial(&self) -> bool {
+        (*self.fml == TRUE && self.side == Side::Right)
             || (*self.fml == FALSE && self.side == Side::Left)
-        {
-            true
-        } else {
-            fmls.iter()
-                .any(|p| p.fml == self.fml && p.side != self.side)
-        }
+    }
+
+    fn is_axiom(&self, fmls: &[Self]) -> bool {
+        fmls.iter()
+            .any(|p| p.fml == self.fml && p.side != self.side)
     }
 }
 
@@ -121,18 +121,44 @@ impl<'a> SequentTable<'a> {
         Some((&self.table[idx.start..], *idx))
     }
 
+    fn last_redundant(&self) -> Option<&[FormulaExtended<'a>]> {
+        let idx = self.idxs.last()?;
+        Some(&self.table[idx.start..idx.start + idx.redundant])
+    }
+
+    fn last_quant(&self) -> Option<&[FormulaExtended<'a>]> {
+        let idx = self.idxs.last()?;
+        Some(&self.table[idx.start + idx.redundant..idx.start + idx.quant])
+    }
+
+    fn last_atom(&self) -> Option<&[FormulaExtended<'a>]> {
+        let idx = self.idxs.last()?;
+        Some(&self.table[idx.start + idx.quant..idx.start + idx.atom])
+    }
+
+    fn last_beta(&self) -> Option<&[FormulaExtended<'a>]> {
+        let idx = self.idxs.last()?;
+        Some(&self.table[idx.start + idx.atom..idx.start + idx.beta])
+    }
+
+    fn last_alpha(&self) -> Option<&[FormulaExtended<'a>]> {
+        let idx = self.idxs.last()?;
+        Some(&self.table[idx.start + idx.beta..])
+    }
+
     fn push_fml(&mut self, fml: FormulaExtended<'a>) {
         use Cost::*;
         match fml.cost {
             Alpha => self.table.push(fml),
             Beta(_) => {
-                let i = self.table[self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom
-                    ..self.idxs.last().unwrap().start + self.idxs.last().unwrap().beta]
+                let i = self
+                    .last_beta()
+                    .unwrap()
                     .iter()
                     .rposition(|p| p.cost >= fml.cost)
                     .map_or(0, |x| x + 1);
                 self.table.insert(
-                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().beta + i,
+                    self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom + i,
                     fml,
                 );
                 self.idxs.last_mut().unwrap().beta += 1;
@@ -167,39 +193,65 @@ impl<'a> SequentTable<'a> {
         }
     }
 
+    fn pop_fml(&mut self) -> Option<FormulaExtended<'a>> {
+        use Cost::*;
+        let fml = self.table.pop()?;
+        match fml.cost {
+            Alpha => {}
+            Beta(_) => {
+                self.idxs.last_mut()?.beta -= 1;
+            }
+            Atom => {
+                self.idxs.last_mut()?.atom -= 1;
+                self.idxs.last_mut()?.beta -= 1;
+            }
+            Quant => {
+                self.idxs.last_mut()?.quant -= 1;
+                self.idxs.last_mut()?.atom -= 1;
+                self.idxs.last_mut()?.beta -= 1;
+            }
+            Redundant => {
+                self.idxs.last_mut()?.redundant -= 1;
+                self.idxs.last_mut()?.quant -= 1;
+                self.idxs.last_mut()?.atom -= 1;
+                self.idxs.last_mut()?.beta -= 1;
+            }
+        }
+        Some(fml)
+    }
+
     fn prove_prop(&mut self) -> bool {
         use Formula::*;
         use Side::*;
-        let Some(fml) = self.table.pop() else {
-            return true;
-        };
-        match (fml.fml, fml.side) {
-            (Not(p), Left) => {
-                let new_fml = FormulaExtended::new(p, Right);
-                if new_fml.is_trivial(self.last().unwrap().0) {
-                    todo!()
+        while let Some(fml) = self.pop_fml() {
+            match (fml.fml, fml.side) {
+                (Not(p), Left) => {
+                    let new_fml = FormulaExtended::new(p, Right);
+                    if new_fml.is_trivial() {
+                        continue;
+                    }
+                    self.push_fml(new_fml);
                 }
-                self.push_fml(new_fml);
-            }
-            (Not(p), Right) => {
-                let new_fml = FormulaExtended::new(p, Left);
-                self.push_fml(new_fml);
-            }
-            (And(l), Left) => {
-                for p in l {
+                (Not(p), Right) => {
                     let new_fml = FormulaExtended::new(p, Left);
                     self.push_fml(new_fml);
                 }
-            }
-            (And(l), Right) => {}
-            (Or(l), Left) => {}
-            (Or(l), Right) => {}
-            (To(p, q), Left) => {}
-            (To(p, q), Right) => {}
-            (Iff(p, q), Left) => {}
-            (Iff(p, q), Right) => {}
-            (Pred(_, _), _) | (Ex(_, _), _) | (All(_, _), _) => {
-                return false;
+                (And(l), Left) => {
+                    for p in l {
+                        let new_fml = FormulaExtended::new(p, Left);
+                        self.push_fml(new_fml);
+                    }
+                }
+                (And(l), Right) => {}
+                (Or(l), Left) => {}
+                (Or(l), Right) => {}
+                (To(p, q), Left) => {}
+                (To(p, q), Right) => {}
+                (Iff(p, q), Left) => {}
+                (Iff(p, q), Right) => {}
+                (Pred(_, _), _) | (Ex(_, _), _) | (All(_, _), _) => {
+                    return false;
+                }
             }
         }
         true
