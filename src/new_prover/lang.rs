@@ -17,7 +17,7 @@ enum Cost {
     Redundant,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct FormulaExtended<'a> {
     fml: &'a Formula,
     side: Side,
@@ -59,6 +59,16 @@ impl Formula {
     }
 }
 
+impl Side {
+    fn opposite(self) -> Self {
+        use Side::*;
+        match self {
+            Left => Right,
+            Right => Left,
+        }
+    }
+}
+
 impl SequentIdx {
     fn new() -> Self {
         Self {
@@ -89,16 +99,6 @@ impl<'a> FormulaExtended<'a> {
             cost: fml.get_cost(side),
         }
     }
-
-    fn is_trivial(&self) -> bool {
-        (*self.fml == TRUE && self.side == Side::Right)
-            || (*self.fml == FALSE && self.side == Side::Left)
-    }
-
-    fn is_axiom(&self, fmls: &[Self]) -> bool {
-        fmls.iter()
-            .any(|p| p.fml == self.fml && p.side != self.side)
-    }
 }
 
 impl<'a> SequentTable<'a> {
@@ -116,9 +116,9 @@ impl<'a> SequentTable<'a> {
         table
     }
 
-    fn last(&self) -> Option<(&[FormulaExtended<'a>], SequentIdx)> {
+    fn last_seq(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some((&self.table[idx.start..], *idx))
+        Some(&self.table[idx.start..])
     }
 
     fn last_redundant(&self) -> Option<&[FormulaExtended<'a>]> {
@@ -144,6 +144,17 @@ impl<'a> SequentTable<'a> {
     fn last_alpha(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
         Some(&self.table[idx.start + idx.beta..])
+    }
+
+    fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
+        (*fml.fml == TRUE && fml.side == Side::Right)
+            || (*fml.fml == FALSE && fml.side == Side::Left)
+            || (fml.fml.is_atom()
+                && self
+                    .last_atom()
+                    .unwrap()
+                    .iter()
+                    .any(|p| p.fml == fml.fml && p.side != fml.side))
     }
 
     fn push_fml(&mut self, fml: FormulaExtended<'a>) {
@@ -230,42 +241,85 @@ impl<'a> SequentTable<'a> {
         use Side::*;
         while let Some(fml) = self.pop_fml() {
             match (fml.fml, fml.side) {
-                (Not(p), Left) => {
-                    let new_fml = FormulaExtended::new(p, Right);
-                    if new_fml.is_trivial()
-                        || matches!(**p, Pred(..)) && new_fml.is_axiom(self.last_atom().unwrap())
-                    {
+                (Not(p), _) => {
+                    // add the inner formula to the opposite side
+                    let new_fml = FormulaExtended::new(p, fml.side.opposite());
+                    if self.is_trivial(new_fml) {
                         self.drop_last_seq();
                         continue;
                     }
                     self.push_fml(new_fml);
                 }
-                (Not(p), Right) => {
-                    let new_fml = FormulaExtended::new(p, Left);
-                    if new_fml.is_trivial()
-                        || matches!(**p, Pred(..)) && new_fml.is_axiom(self.last_atom().unwrap())
-                    {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_fml);
-                }
-                (And(l), Left) => {
+                (And(l), Left) | (Or(l), Right) => {
+                    // add all formulas to the same side
                     for p in l {
-                        let new_fml = FormulaExtended::new(p, Left);
+                        let new_fml = FormulaExtended::new(p, fml.side);
+                        if self.is_trivial(new_fml) {
+                            self.drop_last_seq();
+                            continue;
+                        }
                         self.push_fml(new_fml);
                     }
                 }
-                (And(l), Right) => {}
+                (And(l), Right) => {
+                    // TODO: 2024/08/20 costがなければもっとシンプルに書ける
+                    // check if the formula is redundant
+                    if l.iter().any(|p| {
+                        self.last_seq()
+                            .unwrap()
+                            .iter()
+                            .any(|q| q.fml == p && q.side == Right)
+                    }) {
+                        let mut fml = fml;
+                        fml.cost = Redundant;
+                        self.push_fml(fml);
+                        continue;
+                    }
+                    todo!();
+                }
                 (Or(l), Left) => {}
-                (Or(l), Right) => {}
-                (To(p, q), Left) => {}
-                (To(p, q), Right) => {}
+                (To(p, q), Left) => {
+                    // add the premise to the succedent side
+                    let new_fml = FormulaExtended::new(p, Right);
+                    if self.is_trivial(new_fml) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_fml);
+                    // make a new sequent
+                    let idx = self.idxs.last().unwrap();
+                    for i in idx.start..self.table.len() - 1 {
+                        self.table.push(self.table[i]);
+                    }
+                    self.idxs.push(*idx);
+                    // add the conclusion to the antecedent side
+                    let new_fml = FormulaExtended::new(q, Left);
+                    if self.is_trivial(new_fml) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_fml);
+                }
+                (To(p, q), Right) => {
+                    // add the premise to the antecedent side
+                    let new_fml = FormulaExtended::new(p, Left);
+                    if self.is_trivial(new_fml) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_fml);
+                    // add the conclusion to the succedent side
+                    let new_fml = FormulaExtended::new(q, Right);
+                    if self.is_trivial(new_fml) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_fml);
+                }
                 (Iff(p, q), Left) => {}
                 (Iff(p, q), Right) => {}
-                (Pred(_, _), _) | (Ex(_, _), _) | (All(_, _), _) => {
-                    return false;
-                }
+                (Pred(_, _), _) => return false,
+                (Ex(_, _) | All(_, _), _) => unimplemented!(),
             }
         }
         true

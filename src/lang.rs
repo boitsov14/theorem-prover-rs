@@ -74,6 +74,11 @@ impl Term {
 }
 
 impl Formula {
+    /// Returns `true` if the formula is an atom.
+    pub(super) fn is_atom(&self) -> bool {
+        matches!(self, Self::Pred(..))
+    }
+
     /// Visits and applies a function to the children of the formula.
     fn visit_children<F>(&self, mut f: F)
     where
