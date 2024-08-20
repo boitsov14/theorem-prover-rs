@@ -220,6 +220,11 @@ impl<'a> SequentTable<'a> {
         Some(fml)
     }
 
+    fn drop_last_seq(&mut self) {
+        let idx = self.idxs.pop().unwrap();
+        self.table.truncate(idx.start);
+    }
+
     fn prove_prop(&mut self) -> bool {
         use Formula::*;
         use Side::*;
@@ -227,13 +232,22 @@ impl<'a> SequentTable<'a> {
             match (fml.fml, fml.side) {
                 (Not(p), Left) => {
                     let new_fml = FormulaExtended::new(p, Right);
-                    if new_fml.is_trivial() {
+                    if new_fml.is_trivial()
+                        || matches!(**p, Pred(..)) && new_fml.is_axiom(self.last_atom().unwrap())
+                    {
+                        self.drop_last_seq();
                         continue;
                     }
                     self.push_fml(new_fml);
                 }
                 (Not(p), Right) => {
                     let new_fml = FormulaExtended::new(p, Left);
+                    if new_fml.is_trivial()
+                        || matches!(**p, Pred(..)) && new_fml.is_axiom(self.last_atom().unwrap())
+                    {
+                        self.drop_last_seq();
+                        continue;
+                    }
                     self.push_fml(new_fml);
                 }
                 (And(l), Left) => {
