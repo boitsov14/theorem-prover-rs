@@ -1,5 +1,4 @@
 use crate::lang::{Formula, FALSE, TRUE};
-use crate::new_prover::lang::Cost::{Alpha, Atom, Quant, Redundant};
 use itertools::Itertools;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -272,7 +271,7 @@ impl<'a> SequentGrid<'a> {
                             .any(|q| q.fml == p && q.side == Right)
                     }) {
                         let mut fml = fml;
-                        fml.cost = Redundant;
+                        fml.cost = Cost::Redundant;
                         self.push_fml(fml);
                         continue;
                     }
