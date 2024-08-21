@@ -33,8 +33,9 @@ struct SequentIdx {
     beta: usize,
 }
 
-struct SequentTable<'a> {
-    table: Vec<FormulaExtended<'a>>,
+/// Grid of sequents
+struct SequentGrid<'a> {
+    grid: Vec<FormulaExtended<'a>>,
     idxs: Vec<SequentIdx>,
 }
 
@@ -80,9 +81,9 @@ impl SequentIdx {
         }
     }
 
-    fn init(table: &SequentTable) -> Self {
+    fn init(grid: &SequentGrid) -> Self {
         Self {
-            start: table.table.len(),
+            start: grid.grid.len(),
             redundant: 0,
             quant: 0,
             atom: 0,
@@ -101,49 +102,49 @@ impl<'a> FormulaExtended<'a> {
     }
 }
 
-impl<'a> SequentTable<'a> {
+impl<'a> SequentGrid<'a> {
     fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
-        let mut table = Self {
-            table: vec![],
+        let mut grid = Self {
+            grid: vec![],
             idxs: vec![SequentIdx::new()],
         };
         for fml in ant {
-            table.push_fml(FormulaExtended::new(fml, Side::Left));
+            grid.push_fml(FormulaExtended::new(fml, Side::Left));
         }
         for fml in suc {
-            table.push_fml(FormulaExtended::new(fml, Side::Right));
+            grid.push_fml(FormulaExtended::new(fml, Side::Right));
         }
-        table
+        grid
     }
 
     fn last_seq(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start..])
+        Some(&self.grid[idx.start..])
     }
 
     fn last_redundant(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start..idx.start + idx.redundant])
+        Some(&self.grid[idx.start..idx.start + idx.redundant])
     }
 
     fn last_quant(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start + idx.redundant..idx.start + idx.quant])
+        Some(&self.grid[idx.start + idx.redundant..idx.start + idx.quant])
     }
 
     fn last_atom(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start + idx.quant..idx.start + idx.atom])
+        Some(&self.grid[idx.start + idx.quant..idx.start + idx.atom])
     }
 
     fn last_beta(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start + idx.atom..idx.start + idx.beta])
+        Some(&self.grid[idx.start + idx.atom..idx.start + idx.beta])
     }
 
     fn last_alpha(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
-        Some(&self.table[idx.start + idx.beta..])
+        Some(&self.grid[idx.start + idx.beta..])
     }
 
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
@@ -160,7 +161,7 @@ impl<'a> SequentTable<'a> {
     fn push_fml(&mut self, fml: FormulaExtended<'a>) {
         use Cost::*;
         match fml.cost {
-            Alpha => self.table.push(fml),
+            Alpha => self.grid.push(fml),
             Beta(_) => {
                 let i = self
                     .last_beta()
@@ -168,14 +169,14 @@ impl<'a> SequentTable<'a> {
                     .iter()
                     .rposition(|p| p.cost >= fml.cost)
                     .map_or(0, |x| x + 1);
-                self.table.insert(
+                self.grid.insert(
                     self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom + i,
                     fml,
                 );
                 self.idxs.last_mut().unwrap().beta += 1;
             }
             Atom => {
-                self.table.insert(
+                self.grid.insert(
                     self.idxs.last().unwrap().start + self.idxs.last().unwrap().atom,
                     fml,
                 );
@@ -183,7 +184,7 @@ impl<'a> SequentTable<'a> {
                 self.idxs.last_mut().unwrap().beta += 1;
             }
             Quant => {
-                self.table.insert(
+                self.grid.insert(
                     self.idxs.last().unwrap().start + self.idxs.last().unwrap().quant,
                     fml,
                 );
@@ -192,7 +193,7 @@ impl<'a> SequentTable<'a> {
                 self.idxs.last_mut().unwrap().beta += 1;
             }
             Redundant => {
-                self.table.insert(
+                self.grid.insert(
                     self.idxs.last().unwrap().start + self.idxs.last().unwrap().redundant,
                     fml,
                 );
@@ -206,7 +207,7 @@ impl<'a> SequentTable<'a> {
 
     fn pop_fml(&mut self) -> Option<FormulaExtended<'a>> {
         use Cost::*;
-        let fml = self.table.pop()?;
+        let fml = self.grid.pop()?;
         match fml.cost {
             Alpha => {}
             Beta(_) => {
@@ -233,7 +234,7 @@ impl<'a> SequentTable<'a> {
 
     fn drop_last_seq(&mut self) {
         let idx = self.idxs.pop().unwrap();
-        self.table.truncate(idx.start);
+        self.grid.truncate(idx.start);
     }
 
     fn prove_prop(&mut self) -> bool {
@@ -288,8 +289,8 @@ impl<'a> SequentTable<'a> {
                     self.push_fml(new_fml);
                     // make a new sequent
                     let idx = self.idxs.last().unwrap();
-                    for i in idx.start..self.table.len() - 1 {
-                        self.table.push(self.table[i]);
+                    for i in idx.start..self.grid.len() - 1 {
+                        self.grid.push(self.grid[i]);
                     }
                     self.idxs.push(*idx);
                     // add the conclusion to the antecedent side
