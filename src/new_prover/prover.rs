@@ -76,19 +76,18 @@ impl<'a> SequentGrid<'a> {
                     self.push_fml(new_q);
                 }
                 (To(p, q), Right) => {
-                    // add p to the left side
+                    // add p to the left side and q to the right side
                     let new_p = FormulaExtended::new(p, Left);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_p);
-                    // add q to the right side
                     let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
                     }
+                    self.push_fml(new_p);
                     self.push_fml(new_q);
                 }
                 (Iff(p, q), Left) => {
@@ -96,11 +95,11 @@ impl<'a> SequentGrid<'a> {
                     // TODO: 2024/08/21
                     // add p and q to the left side
                     let new_p = FormulaExtended::new(p, Left);
-                    let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
+                    let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
@@ -111,11 +110,11 @@ impl<'a> SequentGrid<'a> {
                     self.clone_last_seq();
                     // add p and q to the right side
                     let new_p = FormulaExtended::new(p, Right);
-                    let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
+                    let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
@@ -128,11 +127,11 @@ impl<'a> SequentGrid<'a> {
                     // TODO: 2024/08/21
                     // add p to the left side and q to the right side
                     let new_p = FormulaExtended::new(p, Left);
-                    let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
+                    let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
@@ -143,11 +142,11 @@ impl<'a> SequentGrid<'a> {
                     self.clone_last_seq();
                     // add p to the right side and q to the left side
                     let new_p = FormulaExtended::new(p, Right);
-                    let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
+                    let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
