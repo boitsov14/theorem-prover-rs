@@ -17,7 +17,7 @@ impl<'a> SequentGrid<'a> {
                     .any(|p| p.fml == fml.fml && p.side != fml.side))
     }
 
-    fn prove_prop(&mut self) -> bool {
+    pub(super) fn prove_prop(&mut self) -> bool {
         while let Some(fml) = self.pop_fml() {
             match (fml.fml, fml.side) {
                 (Not(p), _) => {

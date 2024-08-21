@@ -11,7 +11,7 @@ pub(super) struct SequentGrid<'a> {
 }
 
 impl<'a> SequentGrid<'a> {
-    fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
+    pub(super) fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
         let mut grid = Self {
             grid: vec![],
             idxs: vec![SequentIdx::new()],
