@@ -58,7 +58,7 @@ impl<'a> SequentGrid<'a> {
                 }
                 (Or(l), Left) => {}
                 (To(p, q), Left) => {
-                    // add p to the succedent side
+                    // add p to the right side
                     let new_p = FormulaExtended::new(p, Right);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
@@ -67,7 +67,7 @@ impl<'a> SequentGrid<'a> {
                     self.push_fml(new_p);
                     // add a new sequent
                     self.clone_last_seq();
-                    // add q to the antecedent side
+                    // add q to the left side
                     let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
@@ -76,14 +76,14 @@ impl<'a> SequentGrid<'a> {
                     self.push_fml(new_q);
                 }
                 (To(p, q), Right) => {
-                    // add p to the antecedent side
+                    // add p to the left side
                     let new_p = FormulaExtended::new(p, Left);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
                     self.push_fml(new_p);
-                    // add q to the succedent side
+                    // add q to the right side
                     let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_q) {
                         self.drop_last_seq();
@@ -94,8 +94,40 @@ impl<'a> SequentGrid<'a> {
                 (Iff(p, q), Left) => {
                     // check if the formula is redundant
                     // TODO: 2024/08/21
-                    // add p and q to the antecedent side
+                    // add p and q to the left side
+                    let new_p = FormulaExtended::new(p, Left);
+                    let new_q = FormulaExtended::new(q, Left);
+                    if self.is_trivial(new_p) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    if self.is_trivial(new_q) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_p);
+                    self.push_fml(new_q);
+                    // add a new sequent
+                    self.clone_last_seq();
+                    // add p and q to the right side
                     let new_p = FormulaExtended::new(p, Right);
+                    let new_q = FormulaExtended::new(q, Right);
+                    if self.is_trivial(new_p) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    if self.is_trivial(new_q) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_p);
+                    self.push_fml(new_q);
+                }
+                (Iff(p, q), Right) => {
+                    // check if the formula is redundant
+                    // TODO: 2024/08/21
+                    // add p to the left side and q to the right side
+                    let new_p = FormulaExtended::new(p, Left);
                     let new_q = FormulaExtended::new(q, Right);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
@@ -109,8 +141,8 @@ impl<'a> SequentGrid<'a> {
                     self.push_fml(new_q);
                     // add a new sequent
                     self.clone_last_seq();
-                    // add p and q to the succedent side
-                    let new_p = FormulaExtended::new(p, Left);
+                    // add p to the right side and q to the left side
+                    let new_p = FormulaExtended::new(p, Right);
                     let new_q = FormulaExtended::new(q, Left);
                     if self.is_trivial(new_p) {
                         self.drop_last_seq();
@@ -123,7 +155,6 @@ impl<'a> SequentGrid<'a> {
                     self.push_fml(new_p);
                     self.push_fml(new_q);
                 }
-                (Iff(p, q), Right) => {}
                 (Pred(_, _), _) => return false,
                 (Ex(_, _) | All(_, _), _) => unimplemented!(),
             }
