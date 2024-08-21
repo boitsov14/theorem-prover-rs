@@ -819,6 +819,8 @@ pub fn example(s: &str) -> io::Result<()> {
     let elapsed_time = end_time.duration_since(start_time);
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
+    return Ok(());
+
     let old_id = entities.len();
     let mut skolem_ids = hashset!();
     if matches!(result, ProofResult::Failure) {
