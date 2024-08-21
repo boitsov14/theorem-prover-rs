@@ -40,23 +40,41 @@ impl<'a> SequentGrid<'a> {
                         self.push_fml(new_p);
                     }
                 }
-                (And(l), Right) => {
+                (And(l), Right) | (Or(l), Left) => {
                     // TODO: 2024/08/20 costがなければもっとシンプルに書ける
                     // check if the formula is redundant
                     if l.iter().any(|p| {
                         self.last_seq()
                             .unwrap()
                             .iter()
-                            .any(|q| q.fml == p && q.side == Right)
+                            .any(|q| q.fml == p && q.side == fml.side)
                     }) {
                         let mut fml = fml;
                         fml.cost = Cost::Redundant;
                         self.push_fml(fml);
                         continue;
                     }
-                    todo!();
+                    let (p0, l) = l.split_first().unwrap();
+                    // add p0 to the same side
+                    let new_p = FormulaExtended::new(p0, fml.side);
+                    if self.is_trivial(new_p) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_p);
+                    // add all others to the same side with a new sequent
+                    for p in l {
+                        // add a new sequent
+                        self.clone_last_seq();
+                        // add p to the same side
+                        let new_p = FormulaExtended::new(p, fml.side);
+                        if self.is_trivial(new_p) {
+                            self.drop_last_seq();
+                            continue;
+                        }
+                        self.push_fml(new_p);
+                    }
                 }
-                (Or(l), Left) => {}
                 (To(p, q), Left) => {
                     // add p to the right side
                     let new_p = FormulaExtended::new(p, Right);
