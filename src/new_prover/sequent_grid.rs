@@ -133,6 +133,16 @@ impl<'a> SequentGrid<'a> {
         Some(fml)
     }
 
+    /// Clones the last sequent and appends it to the grid without the last formula.
+    pub(super) fn clone_last_seq(&mut self) {
+        let mut idx = *self.idxs.last().unwrap();
+        idx.start = self.len();
+        for i in idx.start..self.len() - 1 {
+            self.grid.push(self.grid[i]);
+        }
+        self.idxs.push(idx);
+    }
+
     pub(super) fn drop_last_seq(&mut self) {
         let idx = self.idxs.pop().unwrap();
         self.grid.truncate(idx.start);

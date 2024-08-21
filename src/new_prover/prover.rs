@@ -22,22 +22,22 @@ impl<'a> SequentGrid<'a> {
             match (fml.fml, fml.side) {
                 (Not(p), _) => {
                     // add the inner formula to the opposite side
-                    let new_fml = FormulaExtended::new(p, fml.side.opposite());
-                    if self.is_trivial(new_fml) {
+                    let new_p = FormulaExtended::new(p, fml.side.opposite());
+                    if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_fml);
+                    self.push_fml(new_p);
                 }
                 (And(l), Left) | (Or(l), Right) => {
                     // add all formulas to the same side
                     for p in l {
-                        let new_fml = FormulaExtended::new(p, fml.side);
-                        if self.is_trivial(new_fml) {
+                        let new_p = FormulaExtended::new(p, fml.side);
+                        if self.is_trivial(new_p) {
                             self.drop_last_seq();
                             continue;
                         }
-                        self.push_fml(new_fml);
+                        self.push_fml(new_p);
                     }
                 }
                 (And(l), Right) => {
@@ -58,45 +58,71 @@ impl<'a> SequentGrid<'a> {
                 }
                 (Or(l), Left) => {}
                 (To(p, q), Left) => {
-                    // add the premise to the succedent side
-                    let new_fml = FormulaExtended::new(p, Right);
-                    if self.is_trivial(new_fml) {
+                    // add p to the succedent side
+                    let new_p = FormulaExtended::new(p, Right);
+                    if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_fml);
-                    // make a new sequent
-                    let mut idx = *self.idxs.last().unwrap();
-                    idx.start = self.len();
-                    for i in idx.start..self.len() - 1 {
-                        self.grid.push(self.grid[i]);
-                    }
-                    self.idxs.push(idx);
-                    // add the conclusion to the antecedent side
-                    let new_fml = FormulaExtended::new(q, Left);
-                    if self.is_trivial(new_fml) {
+                    self.push_fml(new_p);
+                    // add a new sequent
+                    self.clone_last_seq();
+                    // add q to the antecedent side
+                    let new_q = FormulaExtended::new(q, Left);
+                    if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_fml);
+                    self.push_fml(new_q);
                 }
                 (To(p, q), Right) => {
-                    // add the premise to the antecedent side
-                    let new_fml = FormulaExtended::new(p, Left);
-                    if self.is_trivial(new_fml) {
+                    // add p to the antecedent side
+                    let new_p = FormulaExtended::new(p, Left);
+                    if self.is_trivial(new_p) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_fml);
-                    // add the conclusion to the succedent side
-                    let new_fml = FormulaExtended::new(q, Right);
-                    if self.is_trivial(new_fml) {
+                    self.push_fml(new_p);
+                    // add q to the succedent side
+                    let new_q = FormulaExtended::new(q, Right);
+                    if self.is_trivial(new_q) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_fml);
+                    self.push_fml(new_q);
                 }
-                (Iff(p, q), Left) => {}
+                (Iff(p, q), Left) => {
+                    // check if the formula is redundant
+                    // TODO: 2024/08/21
+                    // add p and q to the antecedent side
+                    let new_p = FormulaExtended::new(p, Right);
+                    let new_q = FormulaExtended::new(q, Right);
+                    if self.is_trivial(new_p) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    if self.is_trivial(new_q) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_p);
+                    self.push_fml(new_q);
+                    // add a new sequent
+                    self.clone_last_seq();
+                    // add p and q to the succedent side
+                    let new_p = FormulaExtended::new(p, Left);
+                    let new_q = FormulaExtended::new(q, Left);
+                    if self.is_trivial(new_p) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    if self.is_trivial(new_q) {
+                        self.drop_last_seq();
+                        continue;
+                    }
+                    self.push_fml(new_p);
+                    self.push_fml(new_q);
+                }
                 (Iff(p, q), Right) => {}
                 (Pred(_, _), _) => return false,
                 (Ex(_, _) | All(_, _), _) => unimplemented!(),
