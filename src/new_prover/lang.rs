@@ -30,6 +30,7 @@ pub(super) struct SequentIdx {
     pub(super) quant: usize,
     pub(super) atom: usize,
     pub(super) beta: usize,
+    pub(super) end: usize,
 }
 
 // TODO: 2024/08/17 あとで消す
@@ -71,17 +72,28 @@ impl SequentIdx {
             quant: 0,
             atom: 0,
             beta: 0,
+            end: 0,
         }
     }
 
     fn init(start: usize) -> Self {
         Self {
             start,
-            redundant: 0,
-            quant: 0,
-            atom: 0,
-            beta: 0,
+            redundant: start,
+            quant: start,
+            atom: start,
+            beta: start,
+            end: start,
         }
+    }
+
+    pub(super) fn add_all(&mut self, n: usize) {
+        self.start += n;
+        self.redundant += n;
+        self.quant += n;
+        self.atom += n;
+        self.beta += n;
+        self.end += n;
     }
 }
 

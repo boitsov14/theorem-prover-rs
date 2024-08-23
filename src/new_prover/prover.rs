@@ -22,22 +22,22 @@ impl<'a> SequentGrid<'a> {
             match (fml.fml, fml.side) {
                 (Not(p), _) => {
                     // add the inner formula to the opposite side
-                    let new_p = FormulaExtended::new(p, fml.side.opposite());
-                    if self.is_trivial(new_p) {
+                    let p = FormulaExtended::new(p, fml.side.opposite());
+                    if self.is_trivial(p) {
                         self.drop_last_seq();
-                        continue;
+                    } else {
+                        self.push_fml(p);
                     }
-                    self.push_fml(new_p);
                 }
                 (And(l), Left) | (Or(l), Right) => {
                     // add all formulas to the same side
                     for p in l {
-                        let new_p = FormulaExtended::new(p, fml.side);
-                        if self.is_trivial(new_p) {
+                        let p = FormulaExtended::new(p, fml.side);
+                        if self.is_trivial(p) {
                             self.drop_last_seq();
-                            continue;
+                        } else {
+                            self.push_fml(p);
                         }
-                        self.push_fml(new_p);
                     }
                 }
                 (And(l), Right) | (Or(l), Left) => {
@@ -54,123 +54,100 @@ impl<'a> SequentGrid<'a> {
                         self.push_fml(fml);
                         continue;
                     }
-                    let (p0, l) = l.split_first().unwrap();
-                    // add p0 to the same side
-                    let new_p = FormulaExtended::new(p0, fml.side);
-                    if self.is_trivial(new_p) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    // add all others to the same side with a new sequent
-                    for p in l {
-                        // add a new sequent
-                        self.clone_last_seq();
-                        // add p to the same side
-                        let new_p = FormulaExtended::new(p, fml.side);
-                        if self.is_trivial(new_p) {
-                            self.drop_last_seq();
-                            continue;
+                    for (i, p) in l.iter().enumerate() {
+                        let p = FormulaExtended::new(p, fml.side);
+                        if i == l.len() - 1 {
+                            if self.is_trivial(p) {
+                                self.drop_last_seq();
+                                break;
+                            }
+                            // if p is last, just push it
+                            self.push_fml(p);
+                        } else {
+                            if self.is_trivial(p) {
+                                // don't drop the last sequent to use it for the next iteration
+                                continue;
+                            }
+                            // if p is not last, clone the sequent for the next iteration, then push p
+                            let mut idx = self.clone_last_seq();
+                            idx.add_all(1);
+                            self.push_fml(p);
+                            self.idxs.push(idx);
                         }
-                        self.push_fml(new_p);
                     }
                 }
                 (To(p, q), Left) => {
-                    // add p to the right side
-                    let new_p = FormulaExtended::new(p, Right);
-                    if self.is_trivial(new_p) {
+                    // check if the formula is redundant
+                    // TODO: 2024/08/21
+                    let p = FormulaExtended::new(p, Right);
+                    if !self.is_trivial(p) {
+                        // clone the sequent for q, then push p
+                        let mut idx = self.clone_last_seq();
+                        idx.add_all(1);
+                        self.push_fml(p);
+                        self.idxs.push(idx);
+                    }
+                    let q = FormulaExtended::new(q, Left);
+                    if self.is_trivial(q) {
                         self.drop_last_seq();
                         continue;
                     }
-                    self.push_fml(new_p);
-                    // add a new sequent
-                    self.clone_last_seq();
-                    // add q to the left side
-                    let new_q = FormulaExtended::new(q, Left);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_q);
+                    self.push_fml(q);
                 }
                 (To(p, q), Right) => {
                     // add p to the left side and q to the right side
-                    let new_p = FormulaExtended::new(p, Left);
-                    if self.is_trivial(new_p) {
+                    let p = FormulaExtended::new(p, Left);
+                    let q = FormulaExtended::new(q, Right);
+                    if self.is_trivial(p) || self.is_trivial(q) {
                         self.drop_last_seq();
                         continue;
                     }
-                    let new_q = FormulaExtended::new(q, Right);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    self.push_fml(new_q);
+                    self.push_fml(p);
+                    self.push_fml(q);
                 }
                 (Iff(p, q), Left) => {
                     // check if the formula is redundant
                     // TODO: 2024/08/21
-                    // add p and q to the left side
-                    let new_p = FormulaExtended::new(p, Left);
-                    if self.is_trivial(new_p) {
+                    let p_l = FormulaExtended::new(p, Left);
+                    let q_l = FormulaExtended::new(q, Left);
+                    if !(self.is_trivial(p_l) || self.is_trivial(q_l)) {
+                        // clone the sequent for p_r and q_r, then push p_l and q_l
+                        let mut idx = self.clone_last_seq();
+                        idx.add_all(2);
+                        self.push_fml(p_l);
+                        self.push_fml(q_l);
+                        self.idxs.push(idx);
+                    }
+                    let p_r = FormulaExtended::new(p, Right);
+                    let q_r = FormulaExtended::new(q, Right);
+                    if self.is_trivial(p_r) || self.is_trivial(q_r) {
                         self.drop_last_seq();
                         continue;
                     }
-                    let new_q = FormulaExtended::new(q, Left);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    self.push_fml(new_q);
-                    // add a new sequent
-                    self.clone_last_seq();
-                    // add p and q to the right side
-                    let new_p = FormulaExtended::new(p, Right);
-                    if self.is_trivial(new_p) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    let new_q = FormulaExtended::new(q, Right);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    self.push_fml(new_q);
+                    self.push_fml(p_r);
+                    self.push_fml(q_r);
                 }
                 (Iff(p, q), Right) => {
                     // check if the formula is redundant
                     // TODO: 2024/08/21
-                    // add p to the left side and q to the right side
-                    let new_p = FormulaExtended::new(p, Left);
-                    if self.is_trivial(new_p) {
+                    let p_l = FormulaExtended::new(p, Left);
+                    let q_r = FormulaExtended::new(q, Right);
+                    if !(self.is_trivial(p_l) || self.is_trivial(q_r)) {
+                        // clone the sequent for p_r and q_l, then push p_r and q_l
+                        let mut idx = self.clone_last_seq();
+                        idx.add_all(2);
+                        self.push_fml(p_l);
+                        self.push_fml(q_r);
+                        self.idxs.push(idx);
+                    }
+                    let p_r = FormulaExtended::new(p, Right);
+                    let q_l = FormulaExtended::new(q, Left);
+                    if self.is_trivial(p_r) || self.is_trivial(q_l) {
                         self.drop_last_seq();
                         continue;
                     }
-                    let new_q = FormulaExtended::new(q, Right);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    self.push_fml(new_q);
-                    // add a new sequent
-                    self.clone_last_seq();
-                    // add p to the right side and q to the left side
-                    let new_p = FormulaExtended::new(p, Right);
-                    if self.is_trivial(new_p) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    let new_q = FormulaExtended::new(q, Left);
-                    if self.is_trivial(new_q) {
-                        self.drop_last_seq();
-                        continue;
-                    }
-                    self.push_fml(new_p);
-                    self.push_fml(new_q);
+                    self.push_fml(p_r);
+                    self.push_fml(q_l);
                 }
                 (Pred(_, _), _) => return false,
                 (Ex(_, _) | All(_, _), _) => unimplemented!(),
