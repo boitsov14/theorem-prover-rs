@@ -4,8 +4,11 @@ use crate::new_prover::lang::{
     Side::{Left, Right},
 };
 use crate::new_prover::sequent_grid::SequentGrid;
+use itertools::Itertools;
 
 impl<'a> SequentGrid<'a> {
+    #[inline]
+    // TODO: 2024/08/24 containsを使ってパフォーマンス比較
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
         (*fml.fml == TRUE && fml.side == Right)
             || (*fml.fml == FALSE && fml.side == Left)
@@ -17,7 +20,13 @@ impl<'a> SequentGrid<'a> {
                     .any(|p| p.fml == fml.fml && p.side != fml.side))
     }
 
+    #[inline]
+    fn is_redundant(&self, fml: &FormulaExtended<'a>) -> bool {
+        self.last_atom().unwrap().iter().contains(fml)
+    }
+
     pub(super) fn prove_prop(&mut self) -> bool {
+        let mut i = 0;
         while let Some(fml) = self.pop_fml() {
             match (fml.fml, fml.side) {
                 (Not(p), _) => {
@@ -44,11 +53,9 @@ impl<'a> SequentGrid<'a> {
                     // TODO: 2024/08/20 costがなければもっとシンプルに書ける
                     // check if the formula is redundant
                     if l.iter().any(|p| {
-                        self.last_seq()
-                            .unwrap()
-                            .iter()
-                            .any(|q| q.fml == p && q.side == fml.side)
+                        p.is_atom() && self.is_redundant(&FormulaExtended::new(p, fml.side))
                     }) {
+                        i += 1;
                         let mut fml = fml;
                         fml.cost = Cost::Redundant;
                         self.push_fml(fml);
@@ -153,6 +160,7 @@ impl<'a> SequentGrid<'a> {
                 (Ex(_, _) | All(_, _), _) => unimplemented!(),
             }
         }
+        println!("redundant: {i}");
         true
     }
 }

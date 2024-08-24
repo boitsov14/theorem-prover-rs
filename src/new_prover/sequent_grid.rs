@@ -29,6 +29,7 @@ impl<'a> SequentGrid<'a> {
         self.grid.len()
     }
 
+    #[inline]
     pub(super) fn last_seq(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
         Some(&self.grid[idx.start..idx.end])
@@ -44,6 +45,7 @@ impl<'a> SequentGrid<'a> {
         Some(&self.grid[idx.redundant..idx.quant])
     }
 
+    #[inline]
     pub(super) fn last_atom(&self) -> Option<&[FormulaExtended<'a>]> {
         let idx = self.idxs.last()?;
         Some(&self.grid[idx.quant..idx.atom])
@@ -59,6 +61,7 @@ impl<'a> SequentGrid<'a> {
         Some(&self.grid[idx.beta..idx.end])
     }
 
+    #[inline(always)]
     pub(super) fn push_fml(&mut self, fml: FormulaExtended<'a>) {
         use Cost::*;
         match fml.cost {
@@ -101,6 +104,7 @@ impl<'a> SequentGrid<'a> {
         }
     }
 
+    #[inline(always)]
     pub(super) fn pop_fml(&mut self) -> Option<FormulaExtended<'a>> {
         use crate::new_prover::lang::Cost::*;
         let fml = self.grid.pop()?;
@@ -135,6 +139,7 @@ impl<'a> SequentGrid<'a> {
     }
 
     /// Clones the last sequent and appends it to the grid and returns the new idx
+    #[inline]
     pub(super) fn clone_last_seq(&mut self) -> SequentIdx {
         // copy the last idx
         let mut idx = *self.idxs.last().unwrap();
@@ -148,6 +153,7 @@ impl<'a> SequentGrid<'a> {
         idx
     }
 
+    #[inline]
     pub(super) fn drop_last_seq(&mut self) {
         let idx = self.idxs.pop().unwrap();
         self.grid.truncate(idx.start);

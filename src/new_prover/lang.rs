@@ -41,6 +41,7 @@ struct SequentExtended<'a> {
 
 impl Formula {
     // TODO: 2024/08/21 cost不要ならproverへ移動
+    #[inline(always)]
     fn get_cost(&self, side: Side) -> Cost {
         use Cost::*;
         use Side::*;
@@ -87,6 +88,7 @@ impl SequentIdx {
         }
     }
 
+    #[inline]
     pub(super) fn add_all(&mut self, n: usize) {
         self.start += n;
         self.redundant += n;
@@ -98,6 +100,7 @@ impl SequentIdx {
 }
 
 impl<'a> FormulaExtended<'a> {
+    #[inline]
     pub(super) fn new(fml: &'a Formula, side: Side) -> Self {
         Self {
             fml,
