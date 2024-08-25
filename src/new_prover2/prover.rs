@@ -51,6 +51,7 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>) -> bool {
                     .any(|p| seq.contains(&FormulaExtended::init(p, side)))
                 {
                     redundant_i += 1;
+                    seqs.push(seq);
                     continue 'outer;
                 }
                 'inner: for (i, p) in l.iter().enumerate() {
