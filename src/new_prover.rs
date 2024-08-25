@@ -5,7 +5,7 @@ mod lang;
 mod prover;
 mod sequent_grid;
 
-pub fn example2(s: &str) {
+pub fn example_new(s: &str) {
     use crate::parser::parse_sequent;
     use std::time::Instant;
 
