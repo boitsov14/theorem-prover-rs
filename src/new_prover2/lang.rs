@@ -26,7 +26,7 @@ pub(super) struct FormulaExtended<'a> {
 }
 
 #[derive(Clone, Debug, Default)]
-struct SequentExtended<'a> {
+pub(super) struct SequentExtended<'a> {
     seq: FxIndexSet<FormulaExtended<'a>>,
 }
 
@@ -41,8 +41,8 @@ impl Side {
 }
 
 impl<'a> FormulaExtended<'a> {
-    #[inline]
-    pub(super) fn new(fml: &'a Formula, side: Side) -> Self {
+    #[inline(always)]
+    pub(super) fn init(fml: &'a Formula, side: Side) -> Self {
         Self { fml, side }
     }
     #[inline(always)]
@@ -57,21 +57,32 @@ impl<'a> FormulaExtended<'a> {
             (All(..), Left) | (Ex(..), Right) => Quant,
         }
     }
+    #[inline(always)]
+    pub(super) fn opposite(&self) -> Self {
+        Self::init(self.fml, self.side.opposite())
+    }
 }
 
 impl<'a> SequentExtended<'a> {
     pub(super) fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
         let mut seq = Self::default();
-        // TODO: 2024/08/25
+        for fml in ant {
+            seq.push(FormulaExtended::init(fml, Side::Left));
+        }
+        for fml in suc {
+            seq.push(FormulaExtended::init(fml, Side::Right));
+        }
         seq
     }
 
     #[inline(always)]
     pub(super) fn push(&mut self, fml: FormulaExtended<'a>) {
+        // TODO: 2024/08/25 costを最初に定義することのパフォーマンスへの影響考察
+        let cost = fml.get_cost();
         let i = self
             .seq
             .iter()
-            .rposition(|p| p.get_cost() >= fml.get_cost())
+            .rposition(|p| p.get_cost() >= cost)
             .map_or(0, |x| x + 1);
         self.seq.shift_insert(i, fml);
     }
@@ -79,5 +90,10 @@ impl<'a> SequentExtended<'a> {
     #[inline(always)]
     pub(super) fn pop(&mut self) -> Option<FormulaExtended<'a>> {
         self.seq.pop()
+    }
+
+    #[inline(always)]
+    pub(super) fn contains(&self, fml: &FormulaExtended<'a>) -> bool {
+        self.seq.contains(fml)
     }
 }
