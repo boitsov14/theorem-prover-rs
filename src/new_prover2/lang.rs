@@ -17,10 +17,9 @@ pub(super) enum Cost {
     Beta(usize),
     Atom,
     Quant,
-    Redundant,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) struct FormulaExtended<'a> {
     pub(super) fml: &'a Formula,
     pub(super) side: Side,
@@ -66,13 +65,19 @@ impl<'a> SequentExtended<'a> {
         // TODO: 2024/08/25
         seq
     }
+
     #[inline(always)]
-    pub(super) fn push_fml(&mut self, fml: FormulaExtended<'a>) {
+    pub(super) fn push(&mut self, fml: FormulaExtended<'a>) {
         let i = self
             .seq
             .iter()
             .rposition(|p| p.get_cost() >= fml.get_cost())
             .map_or(0, |x| x + 1);
-        // TODO: 2024/08/25
+        self.seq.shift_insert(i, fml);
+    }
+
+    #[inline(always)]
+    pub(super) fn pop(&mut self) -> Option<FormulaExtended<'a>> {
+        self.seq.pop()
     }
 }
