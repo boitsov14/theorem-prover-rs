@@ -22,7 +22,13 @@ pub(crate) const TRUE: Formula = Formula::And(vec![]);
 pub(crate) const FALSE: Formula = Formula::Or(vec![]);
 
 #[derive(Clone, Debug)]
-pub struct Sequent {
+pub struct Sequent<'a> {
+    pub ant: Vec<&'a Formula>,
+    pub suc: Vec<&'a Formula>,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct SequentOwned {
     pub ant: Vec<Formula>,
     pub suc: Vec<Formula>,
 }
@@ -185,23 +191,12 @@ impl Default for Formula {
     }
 }
 
-impl Sequent {
-    /// Visits and applies a function to all formulas in the sequent.
-    pub(super) fn visit_formulas<F>(&self, mut f: F)
-    where
-        F: FnMut(&Formula),
-    {
-        self.ant.iter().for_each(&mut f);
-        self.suc.iter().for_each(&mut f);
-    }
-
-    /// Visits and applies a function to all formulas in the sequent, allowing mutation of the formulas.
-    pub(super) fn visit_formulas_mut<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Formula),
-    {
-        self.ant.iter_mut().for_each(&mut f);
-        self.suc.iter_mut().for_each(&mut f);
+impl SequentOwned {
+    pub(super) fn to_sequent(&self) -> Sequent {
+        Sequent {
+            ant: self.ant.iter().collect(),
+            suc: self.suc.iter().collect(),
+        }
     }
 }
 

@@ -1,4 +1,3 @@
-use crate::new_prover2::lang::SequentExtended;
 use crate::new_prover2::prover::prove_prop;
 use crate::Names;
 
@@ -18,9 +17,9 @@ pub fn example_new2(s: &str) {
             return;
         }
     };
+    let seq = seq.to_sequent();
     println!("{}", seq.display(&entities));
-
-    let seq = SequentExtended::init(&seq.ant, &seq.suc);
+    let seq = seq.to_sequent_extended();
 
     // prove
     let start_time = Instant::now();

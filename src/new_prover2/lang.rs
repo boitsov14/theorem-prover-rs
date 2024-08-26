@@ -1,4 +1,4 @@
-use crate::lang::{Formula, Formula::*};
+use crate::lang::{Formula, Formula::*, Sequent};
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
@@ -63,16 +63,31 @@ impl<'a> FormulaExtended<'a> {
     }
 }
 
-impl<'a> SequentExtended<'a> {
-    pub(super) fn init(ant: &'a [Formula], suc: &'a [Formula]) -> Self {
-        let mut seq = Self::default();
-        for fml in ant {
+impl<'a> Sequent<'a> {
+    pub(super) fn to_sequent_extended(&self) -> SequentExtended<'a> {
+        let mut seq = SequentExtended::default();
+        for fml in &self.ant {
             seq.push(FormulaExtended::init(fml, Side::Left));
         }
-        for fml in suc {
+        for fml in &self.suc {
             seq.push(FormulaExtended::init(fml, Side::Right));
         }
         seq
+    }
+}
+
+impl<'a> SequentExtended<'a> {
+    pub(super) fn to_sequent(&self) -> Sequent<'a> {
+        use Side::*;
+        let mut ant = Vec::with_capacity(self.seq.len());
+        let mut suc = Vec::with_capacity(self.seq.len());
+        for FormulaExtended { fml, side } in &self.seq {
+            match side {
+                Left => ant.push(*fml),
+                Right => suc.push(*fml),
+            }
+        }
+        Sequent { ant, suc }
     }
 
     #[inline(always)]

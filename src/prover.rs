@@ -60,9 +60,9 @@ enum OutputType {
 }
 
 impl<'a> Sequent<'a> {
-    fn into_raw(self) -> RawSequent {
-        let ant = self.ant.into_iter().cloned().collect();
-        let suc = self.suc.into_iter().cloned().collect();
+    fn into_raw(self) -> RawSequent<'a> {
+        let ant = self.ant.into_iter().collect();
+        let suc = self.suc.into_iter().collect();
         RawSequent { ant, suc }
     }
     fn get_fml(&self) -> Option<(&'a Formula, FormulaPos)> {
@@ -544,7 +544,7 @@ impl Formula {
     }
 }
 
-impl RawSequent {
+impl<'a> RawSequent<'a> {
     pub fn to_seq(&self) -> Sequent {
         let mut seq = Sequent::default();
         for fml in &self.ant {
@@ -803,8 +803,8 @@ pub fn example(s: &str) -> io::Result<()> {
             return Ok(());
         }
     };
+    let seq = seq.to_sequent();
     println!("{}", seq.display(&entities));
-
     let seq = seq.to_seq();
 
     // prove
@@ -898,6 +898,7 @@ pub fn example_iltp_prop() {
         let s = fs::read_to_string(&file).unwrap();
         let mut names = Names::default();
         let seq = parse_sequent(&s, &mut names, true, true).unwrap();
+        let seq = seq.to_sequent();
         // println!("{}", fml.display(&entities));
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
@@ -979,6 +980,7 @@ mod tests {
         // parse
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
+        let seq = seq.to_sequent();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();

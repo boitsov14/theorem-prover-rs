@@ -18,7 +18,7 @@ pub fn example_new(s: &str) {
             return;
         }
     };
-    println!("{}", seq.display(&entities));
+    println!("{}", seq.to_sequent().display(&entities));
 
     let mut grid = SequentGrid::init(&seq.ant, &seq.suc);
 

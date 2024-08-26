@@ -206,7 +206,7 @@ impl Formula {
 }
 
 pub struct SequentDisplay<'a> {
-    sequent: &'a Sequent,
+    sequent: &'a Sequent<'a>,
     names: &'a Names,
 }
 
@@ -238,9 +238,9 @@ impl SequentDisplay<'_> {
     }
 }
 
-impl Sequent {
+impl<'a> Sequent<'a> {
     /// Returns a `SequentDisplay` used to display the sequent with the given names.
-    pub fn display<'a>(&'a self, names: &'a Names) -> SequentDisplay<'a> {
+    pub fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
         SequentDisplay {
             sequent: self,
             names,
@@ -309,6 +309,6 @@ mod tests {
     fn sequent_display(s: &str) {
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
-        assert_eq!(seq.display(&names).to_string(), s);
+        assert_eq!(seq.to_sequent().display(&names).to_string(), s);
     }
 }

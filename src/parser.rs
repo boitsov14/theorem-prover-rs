@@ -1,4 +1,4 @@
-use crate::lang::{Formula, Sequent, Term};
+use crate::lang::{Formula, SequentOwned, Term};
 use crate::name::Names;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
@@ -83,14 +83,15 @@ pub fn parse_sequent(
     names: &mut Names,
     modify_formula: bool,
     tptp: bool,
-) -> Result<Sequent, Error> {
+) -> Result<SequentOwned, Error> {
     let s = if tptp { modify_tptp(s) } else { s.to_string() };
     let s = modify_string(&s);
     check_parentheses(&s)?;
     let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s, e })?;
-    let mut seq = pseq.into_sequent(names);
+    let mut seq = pseq.into_sequent_owned(names);
     if modify_formula {
-        seq.visit_formulas_mut(|p| p.modify(names));
+        seq.ant.iter_mut().for_each(|p| p.modify(names));
+        seq.suc.iter_mut().for_each(|p| p.modify(names));
         seq.unique();
     }
     Ok(seq)
@@ -248,8 +249,8 @@ impl PFormula {
 }
 
 impl PSequent {
-    fn into_sequent(self, names: &mut Names) -> Sequent {
-        Sequent {
+    fn into_sequent_owned(self, names: &mut Names) -> SequentOwned {
+        SequentOwned {
             ant: self
                 .ant
                 .into_iter()
@@ -471,7 +472,7 @@ impl Formula {
     }
 }
 
-impl Sequent {
+impl SequentOwned {
     /// Removes duplicate elements from `ant` and `suc`.
     fn unique(&mut self) {
         let mut new_ant = vec![];
@@ -877,7 +878,7 @@ mod tests {
         let mut names = Names::default();
         let mut seq = parse_sequent(s, &mut names, false, false).unwrap();
         seq.unique();
-        seq.display(&names).to_string()
+        seq.to_sequent().display(&names).to_string()
     }
 
     #[test]
@@ -903,7 +904,7 @@ fof(con,conjecture,(
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, true).unwrap();
         assert_eq!(
-            seq.display(&names).to_string(),
+            seq.to_sequent().display(&names).to_string(),
             "(p1 ↔ p2) → (p1 ∧ p2 ∧ p3), (p2 ↔ p3) → (p1 ∧ p2 ∧ p3), (p3 ↔ p1) → (p1 ∧ p2 ∧ p3) ⊢ p1 ∧ p2 ∧ p3"
         );
     }
