@@ -92,6 +92,9 @@ impl<'a> SequentExtended<'a> {
 
     #[inline(always)]
     pub(super) fn push(&mut self, fml: FormulaExtended<'a>) {
+        if self.seq.contains(&fml) {
+            return;
+        }
         // TODO: 2024/08/25 costを最初に定義することのパフォーマンスへの影響考察
         let cost = fml.get_cost();
         let i = self

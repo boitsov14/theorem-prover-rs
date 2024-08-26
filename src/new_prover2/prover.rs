@@ -2,6 +2,7 @@ use crate::lang::Formula::*;
 use crate::lang::{FALSE, TRUE};
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+use crate::Names;
 
 impl<'a> SequentExtended<'a> {
     #[inline]
@@ -17,11 +18,18 @@ impl<'a> SequentExtended<'a> {
     }
 }
 
-pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>) -> bool {
+pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool {
     let mut redundant_i: usize = 0;
     let mut iter: usize = 0;
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
+        if cfg!(debug_assertions) {
+            for seq in seqs.iter() {
+                println!("{}", seq.to_sequent().display(names));
+            }
+            println!("{}", seq.to_sequent().display(names));
+            println!("----------------");
+        }
         iter += 1;
         let FormulaExtended { fml, side } = seq.pop().unwrap();
         match (fml, side) {

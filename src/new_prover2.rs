@@ -23,7 +23,7 @@ pub fn example_new2(s: &str) {
 
     // prove
     let start_time = Instant::now();
-    let result = prove_prop(&mut vec![seq]);
+    let result = prove_prop(&mut vec![seq], &entities);
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);
