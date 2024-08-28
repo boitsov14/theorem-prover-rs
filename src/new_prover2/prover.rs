@@ -11,11 +11,6 @@ impl<'a> SequentExtended<'a> {
             || fml == FormulaExtended::init(&FALSE, Left)
             || self.contains(&fml.opposite())
     }
-
-    #[inline]
-    fn is_redundant(&self, fml: &FormulaExtended<'a>) -> bool {
-        self.contains(fml)
-    }
 }
 
 pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool {
@@ -79,7 +74,11 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
             }
             (To(p, q), Left) => {
                 // check if the formula is redundant
-                // TODO: 2024/08/25
+                if seq.contains(&FormulaExtended::init(q, Left)) {
+                    redundant_i += 1;
+                    seqs.push(seq);
+                    continue 'outer;
+                }
                 let p = FormulaExtended::init(p, Right);
                 if !seq.is_trivial(p) {
                     let mut seq = seq.clone();
@@ -104,8 +103,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                 seqs.push(seq);
             }
             (Iff(p, q), Left) => {
-                // check if the formula is redundant
-                // TODO: 2024/08/21
                 let p_l = FormulaExtended::init(p, Left);
                 let q_l = FormulaExtended::init(q, Left);
                 if !(seq.is_trivial(p_l) || seq.is_trivial(q_l)) {
@@ -124,8 +121,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                 }
             }
             (Iff(p, q), Right) => {
-                // check if the formula is redundant
-                // TODO: 2024/08/21
                 let p_l = FormulaExtended::init(p, Left);
                 let q_r = FormulaExtended::init(q, Right);
                 if !(seq.is_trivial(p_l) || seq.is_trivial(q_r)) {
