@@ -29,16 +29,13 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
         let FormulaExtended { fml, side } = seq.pop().unwrap();
         match (fml, side) {
             (Not(p), _) => {
-                // add the inner formula to the opposite side
                 let p = FormulaExtended::init(p, side.opposite());
-                if seq.is_trivial(p) {
-                    continue 'outer;
+                if !seq.is_trivial(p) {
+                    seq.push(p);
+                    seqs.push(seq);
                 }
-                seq.push(p);
-                seqs.push(seq);
             }
             (And(l), Left) | (Or(l), Right) => {
-                // add all formulas to the same side
                 for p in l {
                     let p = FormulaExtended::init(p, side);
                     if seq.is_trivial(p) {
@@ -49,7 +46,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                 seqs.push(seq);
             }
             (And(l), Right) | (Or(l), Left) => {
-                // check if the formula is redundant
                 if l.iter()
                     .any(|p| seq.contains(&FormulaExtended::init(p, side)))
                 {
@@ -57,84 +53,83 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                     seqs.push(seq);
                     continue 'outer;
                 }
-                'inner: for (i, p) in l.iter().enumerate() {
+                let (p, l) = l.split_first().unwrap();
+                for p in l.iter().rev() {
                     let p = FormulaExtended::init(p, side);
-                    if seq.is_trivial(p) {
-                        continue 'inner;
-                    }
-                    if i == l.len() - 1 {
+                    if !seq.is_trivial(p) {
+                        let mut seq = seq.clone();
                         seq.push(p);
                         seqs.push(seq);
-                        continue 'outer;
                     }
-                    let mut seq = seq.clone();
+                }
+                let p = FormulaExtended::init(p, side);
+                if !seq.is_trivial(p) {
                     seq.push(p);
                     seqs.push(seq);
                 }
             }
             (To(p, q), Left) => {
-                // check if the formula is redundant
-                if seq.contains(&FormulaExtended::init(q, Left)) {
+                let p = FormulaExtended::init(p, Right);
+                let q = FormulaExtended::init(q, Left);
+                if seq.contains(&q) {
                     redundant_i += 1;
                     seqs.push(seq);
                     continue 'outer;
                 }
-                let p = FormulaExtended::init(p, Right);
-                if !seq.is_trivial(p) {
+                if !seq.is_trivial(q) {
                     let mut seq = seq.clone();
-                    seq.push(p);
+                    seq.push(q);
                     seqs.push(seq);
                 }
-                let q = FormulaExtended::init(q, Left);
-                if !seq.is_trivial(q) {
-                    seq.push(q);
+                if !seq.is_trivial(p) {
+                    seq.push(p);
                     seqs.push(seq);
                 }
             }
             (To(p, q), Right) => {
-                // add p to the left side and q to the right side
                 let p = FormulaExtended::init(p, Left);
                 let q = FormulaExtended::init(q, Right);
-                if seq.is_trivial(p) || seq.is_trivial(q) {
+                if seq.is_trivial(p) {
                     continue 'outer;
                 }
                 seq.push(p);
+                if seq.is_trivial(q) {
+                    continue 'outer;
+                }
                 seq.push(q);
                 seqs.push(seq);
             }
             (Iff(p, q), Left) => {
-                let p_l = FormulaExtended::init(p, Left);
-                let q_l = FormulaExtended::init(q, Left);
-                if !(seq.is_trivial(p_l) || seq.is_trivial(q_l)) {
-                    let mut seq = seq.clone();
-                    seq.push(p_l);
-                    seq.push(q_l);
-                    seqs.push(seq);
-                }
                 let p_r = FormulaExtended::init(p, Right);
                 let q_r = FormulaExtended::init(q, Right);
-                if !(seq.is_trivial(p_r) || seq.is_trivial(q_r)) {
-                    let mut seq = seq;
+                if !seq.is_trivial(p_r) && !seq.is_trivial(q_r) {
+                    let mut seq = seq.clone();
                     seq.push(p_r);
                     seq.push(q_r);
+                    seqs.push(seq);
+                }
+                let p_l = FormulaExtended::init(p, Left);
+                let q_l = FormulaExtended::init(q, Left);
+                if !seq.is_trivial(p_l) && !seq.is_trivial(q_l) {
+                    seq.push(p_l);
+                    seq.push(q_l);
                     seqs.push(seq);
                 }
             }
             (Iff(p, q), Right) => {
-                let p_l = FormulaExtended::init(p, Left);
-                let q_r = FormulaExtended::init(q, Right);
-                if !(seq.is_trivial(p_l) || seq.is_trivial(q_r)) {
-                    let mut seq = seq.clone();
-                    seq.push(p_l);
-                    seq.push(q_r);
-                    seqs.push(seq);
-                }
                 let p_r = FormulaExtended::init(p, Right);
                 let q_l = FormulaExtended::init(q, Left);
                 if !(seq.is_trivial(p_r) || seq.is_trivial(q_l)) {
-                    let mut seq = seq;
+                    let mut seq = seq.clone();
                     seq.push(p_r);
                     seq.push(q_l);
+                    seqs.push(seq);
+                }
+                let p_l = FormulaExtended::init(p, Left);
+                let q_r = FormulaExtended::init(q, Right);
+                if !(seq.is_trivial(p_l) || seq.is_trivial(q_r)) {
+                    seq.push(p_l);
+                    seq.push(q_r);
                     seqs.push(seq);
                 }
             }
