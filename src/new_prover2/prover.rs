@@ -5,7 +5,7 @@ use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
 use crate::Names;
 
 impl<'a> SequentExtended<'a> {
-    #[inline]
+    #[inline(always)]
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
         fml == FormulaExtended::init(&TRUE, Right)
             || fml == FormulaExtended::init(&FALSE, Left)
