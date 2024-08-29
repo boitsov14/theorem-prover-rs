@@ -9,7 +9,7 @@ impl<'a> SequentExtended<'a> {
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
         fml == FormulaExtended::init(&TRUE, Right)
             || fml == FormulaExtended::init(&FALSE, Left)
-            || self.contains(&fml.opposite())
+            || (fml.is_atom() && self.contains(&fml.opposite()))
     }
 }
 
@@ -47,7 +47,7 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
             }
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
-                    .any(|p| seq.contains(&FormulaExtended::init(p, side)))
+                    .any(|p| p.is_atom() && seq.contains(&FormulaExtended::init(p, side)))
                 {
                     redundant_i += 1;
                     seqs.push(seq);
@@ -71,7 +71,7 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
             (To(p, q), Left) => {
                 let p = FormulaExtended::init(p, Right);
                 let q = FormulaExtended::init(q, Left);
-                if seq.contains(&q) {
+                if q.is_atom() && seq.contains(&q) {
                     redundant_i += 1;
                     seqs.push(seq);
                     continue 'outer;

@@ -31,6 +31,7 @@ pub(super) struct SequentExtended<'a> {
 }
 
 impl Side {
+    #[inline(always)]
     pub(super) fn opposite(self) -> Self {
         use Side::*;
         match self {
@@ -60,6 +61,10 @@ impl<'a> FormulaExtended<'a> {
     #[inline(always)]
     pub(super) fn opposite(&self) -> Self {
         Self::init(self.fml, self.side.opposite())
+    }
+    #[inline(always)]
+    pub(super) fn is_atom(&self) -> bool {
+        self.fml.is_atom()
     }
 }
 
