@@ -877,40 +877,6 @@ pub fn example(s: &str) -> io::Result<()> {
     Ok(())
 }
 
-pub fn example_iltp_prop() {
-    use std::fs;
-    use std::time::Instant;
-
-    let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = s.lines().collect_vec();
-
-    let files = fs::read_dir("benches/iltp_prop")
-        .unwrap()
-        .map(|entry| entry.unwrap().path());
-
-    for file in files {
-        let file_name = file.file_name().unwrap().to_str().unwrap();
-        if exclude_list.contains(&file_name) {
-            continue;
-        }
-        println!();
-        println!("{file_name}");
-        let s = fs::read_to_string(&file).unwrap();
-        let mut names = Names::default();
-        let seq = parse_sequent(&s, &mut names, true, true).unwrap();
-        let seq = seq.to_sequent();
-        // println!("{}", fml.display(&entities));
-        let fml_arena = Arena::new();
-        let tree_arena = Arena::new();
-        let start_time = Instant::now();
-        let (_, result, _, _, _) = seq.to_seq().prove(&fml_arena, &tree_arena, names.len());
-        let end_time = Instant::now();
-        let elapsed_time = end_time.duration_since(start_time);
-        println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
-        assert!(matches!(result, ProofResult::Provable));
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
