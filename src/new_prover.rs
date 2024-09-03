@@ -1,5 +1,5 @@
+use crate::name::Names;
 use crate::new_prover::sequent_grid::SequentGrid;
-use crate::Names;
 
 mod lang;
 mod prover;

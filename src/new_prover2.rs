@@ -1,5 +1,5 @@
+use crate::name::Names;
 use crate::new_prover2::prover::prove_prop;
-use crate::Names;
 
 mod lang;
 mod prover;

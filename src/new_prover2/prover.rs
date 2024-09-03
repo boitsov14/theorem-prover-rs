@@ -1,8 +1,8 @@
 use crate::lang::Formula::*;
 use crate::lang::{FALSE, TRUE};
+use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
-use crate::Names;
 
 impl<'a> SequentExtended<'a> {
     #[inline(always)]
