@@ -10,7 +10,7 @@ pub struct Names {
 
 impl Names {
     /// The number of names.
-    pub fn len(&self) -> usize {
+    pub(super) fn len(&self) -> usize {
         self.names.len()
     }
 
@@ -189,7 +189,7 @@ impl fmt::Display for FormulaDisplay<'_> {
 
 impl Formula {
     /// Returns a `FormulaDisplay` used to display the formula with the given names.
-    pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
+    pub(super) fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
             names,

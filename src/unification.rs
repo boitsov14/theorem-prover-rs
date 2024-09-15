@@ -3,13 +3,13 @@ use maplit::hashmap;
 use std::{cell::OnceCell, collections::HashMap};
 use Term::*;
 
-pub type Unifier = HashMap<usize, OnceCell<Term>>;
+pub(super) type Unifier = HashMap<usize, OnceCell<Term>>;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UnificationFailure;
+pub(super) struct UnificationFailure;
 
 impl Term {
-    pub fn unify(&self, other: &Self, u: &Unifier) -> Result<(), UnificationFailure> {
+    pub(super) fn unify(&self, other: &Self, u: &Unifier) -> Result<(), UnificationFailure> {
         let t1 = self.resolve(u);
         let t2 = other.resolve(u);
         match (t1, t2) {
@@ -33,7 +33,7 @@ impl Term {
         }
     }
 
-    pub fn get_unifiable_pairs<'a>(
+    pub(super) fn get_unifiable_pairs<'a>(
         &'a self,
         other: &'a Self,
         pairs: &mut Vec<(&'a Self, &'a Self)>,
@@ -77,7 +77,7 @@ impl Term {
     }
 }
 
-pub fn resolve_unifier(u: &Unifier) -> HashMap<usize, Term> {
+pub(super) fn resolve_unifier(u: &Unifier) -> HashMap<usize, Term> {
     let mut result = hashmap!();
     for (v, t) in u {
         if let Some(t) = t.get() {

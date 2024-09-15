@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Term {
+pub(super) enum Term {
     Var(usize),
     Func(usize, Vec<Term>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Formula {
+pub(super) enum Formula {
     Pred(usize, Vec<Term>),
     Not(Box<Formula>),
     And(Vec<Formula>),
@@ -18,19 +18,19 @@ pub enum Formula {
     Ex(Vec<usize>, Box<Formula>),
 }
 
-pub(crate) const TRUE: Formula = Formula::And(vec![]);
-pub(crate) const FALSE: Formula = Formula::Or(vec![]);
+pub(super) const TRUE: Formula = Formula::And(vec![]);
+pub(super) const FALSE: Formula = Formula::Or(vec![]);
 
 #[derive(Clone, Debug)]
 pub struct Sequent<'a> {
-    pub ant: Vec<&'a Formula>,
-    pub suc: Vec<&'a Formula>,
+    pub(super) ant: Vec<&'a Formula>,
+    pub(super) suc: Vec<&'a Formula>,
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct SequentOwned {
-    pub ant: Vec<Formula>,
-    pub suc: Vec<Formula>,
+pub struct SequentOwned {
+    pub(super) ant: Vec<Formula>,
+    pub(super) suc: Vec<Formula>,
 }
 
 impl Term {

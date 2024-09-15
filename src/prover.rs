@@ -19,9 +19,9 @@ type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// Sequent of formulae
 #[derive(Clone, Debug, Default)]
-pub struct Sequent<'a> {
-    pub ant: FxIndexSet<&'a Formula>,
-    pub suc: FxIndexSet<&'a Formula>,
+pub(super) struct Sequent<'a> {
+    ant: FxIndexSet<&'a Formula>,
+    suc: FxIndexSet<&'a Formula>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -545,7 +545,7 @@ impl Formula {
 }
 
 impl<'a> RawSequent<'a> {
-    pub fn to_seq(&self) -> Sequent {
+    fn to_seq(&self) -> Sequent {
         let mut seq = Sequent::default();
         for fml in &self.ant {
             seq.ant.insert(fml);
@@ -760,7 +760,7 @@ impl<'a> Sequent<'a> {
         }
     }
 
-    pub fn assert_provable(self, new_id: usize) {
+    fn assert_provable(self, new_id: usize) {
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();
         let (_, result, _, _, _) = self.prove(&fml_arena, &tree_arena, new_id);

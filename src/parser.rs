@@ -10,7 +10,7 @@ use unicode_normalization::UnicodeNormalization;
 
 /// Parse error.
 #[derive(Error, Debug)]
-pub enum Error {
+pub(super) enum Error {
     /// Mismatched parentheses.
     #[error("Found {lp} left parentheses and {rp} right parentheses.")]
     Parentheses { lp: usize, rp: usize },
@@ -78,7 +78,7 @@ pub(super) fn parse_formula(
 }
 
 /// Parses a sequent.
-pub fn parse_sequent(
+pub(super) fn parse_sequent(
     s: &str,
     names: &mut Names,
     modify_formula: bool,
