@@ -1,10 +1,10 @@
-use crate::name::Names;
-use crate::new_prover2::prover::prove_prop;
-
 mod lang;
 mod prover;
 
+pub use prover::prove_prop;
+
 pub fn example_new2(s: &str) {
+    use crate::name::Names;
     use crate::parser::parse_sequent;
     use std::time::Instant;
 
@@ -19,11 +19,10 @@ pub fn example_new2(s: &str) {
     };
     let seq = seq.to_sequent();
     println!("{}", seq.display(&entities));
-    let seq = seq.to_sequent_extended();
 
     // prove
     let start_time = Instant::now();
-    let result = prove_prop(&mut vec![seq], &entities);
+    let result = prove_prop(&seq, &entities);
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);

@@ -1,12 +1,11 @@
-use crate::name::Names;
-use crate::new_prover::sequent_grid::SequentGrid;
-
 mod lang;
 mod prover;
 mod sequent_grid;
 
 pub fn example_new(s: &str) {
+    use crate::name::Names;
     use crate::parser::parse_sequent;
+    use sequent_grid::SequentGrid;
     use std::time::Instant;
 
     // parse
