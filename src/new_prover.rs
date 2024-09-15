@@ -2,6 +2,8 @@ mod lang;
 mod prover;
 mod sequent_grid;
 
+pub use prover::prove_prop;
+
 pub fn example_new(s: &str) {
     use crate::name::Names;
     use crate::parser::parse_sequent;

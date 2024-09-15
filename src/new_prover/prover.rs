@@ -27,10 +27,7 @@ impl<'a> SequentGrid<'a> {
     }
 
     fn prove_prop(&mut self) -> bool {
-        let mut redundant_i: usize = 0;
-        let mut iter: usize = 0;
         while let Some(fml) = self.pop_fml() {
-            iter += 1;
             match (fml.fml, fml.side) {
                 (Not(p), _) => {
                     // add the inner formula to the opposite side
@@ -58,7 +55,6 @@ impl<'a> SequentGrid<'a> {
                     if l.iter().any(|p| {
                         p.is_atom() && self.is_redundant(&FormulaExtended::new(p, fml.side))
                     }) {
-                        redundant_i += 1;
                         let mut fml = fml;
                         fml.cost = Cost::Redundant;
                         self.push_fml(fml);
@@ -163,8 +159,6 @@ impl<'a> SequentGrid<'a> {
                 (Ex(_, _) | All(_, _), _) => unimplemented!(),
             }
         }
-        println!("iter: {iter}");
-        println!("redundant: {redundant_i}");
         true
     }
 }
