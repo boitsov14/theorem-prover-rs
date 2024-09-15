@@ -9,8 +9,8 @@ pub fn example_new2(s: &str) {
     use std::time::Instant;
 
     // parse
-    let mut entities = Names::default();
-    let seq = match parse_sequent(s, &mut entities, true, false) {
+    let mut names = Names::default();
+    let seq = match parse_sequent(s, &mut names, true, false) {
         Ok(seq) => seq,
         Err(e) => {
             println!("{e}");
@@ -18,11 +18,11 @@ pub fn example_new2(s: &str) {
         }
     };
     let seq = seq.to_sequent();
-    println!("{}", seq.display(&entities));
+    println!("{}", seq.display(&names));
 
     // prove
     let start_time = Instant::now();
-    let result = prove_prop(&seq, &entities);
+    let result = prove_prop(&seq, &names);
     let end_time = Instant::now();
     println!(">> {result:?}");
     let elapsed_time = end_time.duration_since(start_time);

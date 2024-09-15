@@ -1,6 +1,7 @@
-use crate::lang::{Formula::*, FALSE, TRUE};
+use crate::lang::{Formula::*, Sequent, FALSE, TRUE};
+use crate::name::Names;
 use crate::new_prover::lang::{
-    Cost, FormulaExtended,
+    Cost, FormulaExtended, SequentIdx,
     Side::{Left, Right},
 };
 use crate::new_prover::sequent_grid::SequentGrid;
@@ -25,7 +26,7 @@ impl<'a> SequentGrid<'a> {
         self.last_atom().unwrap().iter().contains(fml)
     }
 
-    pub(super) fn prove_prop(&mut self) -> bool {
+    fn prove_prop(&mut self) -> bool {
         let mut redundant_i: usize = 0;
         let mut iter: usize = 0;
         while let Some(fml) = self.pop_fml() {
@@ -166,4 +167,18 @@ impl<'a> SequentGrid<'a> {
         println!("redundant: {redundant_i}");
         true
     }
+}
+
+pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+    let mut grid = SequentGrid {
+        grid: vec![],
+        idxs: vec![SequentIdx::new()],
+    };
+    for fml in &seq.ant {
+        grid.push_fml(FormulaExtended::new(fml, Left));
+    }
+    for fml in &seq.suc {
+        grid.push_fml(FormulaExtended::new(fml, Right));
+    }
+    grid.prove_prop()
 }
