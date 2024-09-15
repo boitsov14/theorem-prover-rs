@@ -19,7 +19,7 @@ unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 criterion = "0.5.1"
-insta = "1.39.0"
+insta = "1.40.0"
 test-case = "3.3.1"
 
 [[bench]]
@@ -43,5 +43,6 @@ missing_errors_doc = "allow"
 must_use_candidate = "allow"
 match_wildcard_for_single_variants = "allow"
 module_name_repetitions = "allow"
+inline_always = "allow"
 # nursery
 missing_const_for_fn = "allow"
