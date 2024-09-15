@@ -19,6 +19,18 @@ fn hard_propositional_examples(c: &mut Criterion) {
     group.finish();
 }
 
+fn easy_propositional_examples(c: &mut Criterion) {
+    let mut group = c.benchmark_group("easy_propositional_examples");
+    let arena = Arena::new();
+    let seqs = read_file_and_parse("benches/easy_propositional_examples.txt", &arena);
+    for (seq, names) in &seqs {
+        group.bench_function(BenchmarkId::from_parameter(seq.display(names)), |b| {
+            b.iter(|| assert!(prove_prop(seq, names)));
+        });
+    }
+    group.finish();
+}
+
 fn iltp_propositional_examples(c: &mut Criterion) {
     let arena = Arena::new();
     let seqs = read_file_and_parse("benches/iltp_propositional_examples.txt", &arena);
@@ -34,6 +46,7 @@ fn iltp_propositional_examples(c: &mut Criterion) {
 criterion_group!(
     benches,
     hard_propositional_examples,
+    easy_propositional_examples,
     iltp_propositional_examples
 );
 criterion_main!(benches);
