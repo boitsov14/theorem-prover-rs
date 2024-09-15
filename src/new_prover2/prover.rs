@@ -1,5 +1,5 @@
 use crate::lang::Formula::*;
-use crate::lang::{FALSE, TRUE};
+use crate::lang::{Sequent, FALSE, TRUE};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
@@ -13,9 +13,9 @@ impl<'a> SequentExtended<'a> {
     }
 }
 
-pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool {
-    let mut redundant_i: usize = 0;
-    let mut iter: usize = 0;
+pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+    let seq = seq.to_sequent_extended();
+    let seqs = &mut vec![seq];
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
         if cfg!(debug_assertions) {
@@ -25,7 +25,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
             println!("{}", seq.to_sequent().display(names));
             println!("----------------");
         }
-        iter += 1;
         let FormulaExtended { fml, side } = seq.pop().unwrap();
         match (fml, side) {
             (Not(p), _) => {
@@ -49,7 +48,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                 if l.iter()
                     .any(|p| p.is_atom() && seq.contains(&FormulaExtended::init(p, side)))
                 {
-                    redundant_i += 1;
                     seqs.push(seq);
                     continue 'outer;
                 }
@@ -72,7 +70,6 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
                 let p = FormulaExtended::init(p, Right);
                 let q = FormulaExtended::init(q, Left);
                 if q.is_atom() && seq.contains(&q) {
-                    redundant_i += 1;
                     seqs.push(seq);
                     continue 'outer;
                 }
@@ -137,7 +134,5 @@ pub(super) fn prove_prop(seqs: &mut Vec<SequentExtended>, names: &Names) -> bool
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
         }
     }
-    println!("iter: {iter}");
-    println!("redundant: {redundant_i}");
     true
 }
