@@ -1,99 +1,39 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use itertools::Itertools;
 use mimalloc::MiMalloc;
-use std::fs;
-use theorem_prover_rs::{parse_sequent, Names};
+use theorem_prover_rs::new_prover2::prove_prop;
+use theorem_prover_rs::read_file_and_parse;
+use typed_arena::Arena;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn from_example_prop(c: &mut Criterion) {
-    let mut group = c.benchmark_group("example_prop");
-    group.sample_size(10);
-
-    let s = fs::read_to_string("benches/examples.txt").unwrap();
-    let seqs = s.lines().filter(|s| !s.is_empty()).map(|s| {
-        let mut names = Names::default();
-        let seq = parse_sequent(s, &mut names, true, false).unwrap();
-        (seq, names)
-    });
-
-    for (ref seq, entities) in seqs {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(seq.display(&entities)),
-            seq,
-            |b, seq| {
-                b.iter(|| seq.to_seq().assert_provable(entities.len()));
-            },
-        );
+fn hard_propositional_examples(c: &mut Criterion) {
+    let mut group = c.benchmark_group("hard_propositional_examples");
+    let arena = Arena::new();
+    let seqs = read_file_and_parse("benches/hard_propositional_examples.txt", &arena);
+    for (seq, names) in &seqs {
+        group.bench_function(BenchmarkId::from_parameter(seq.display(names)), |b| {
+            b.iter(|| assert!(prove_prop(seq, names)));
+        });
     }
     group.finish();
 }
 
-fn from_iltp_prop_0(c: &mut Criterion) {
-    let s = fs::read_to_string("benches/iltp_prop/exclude.txt").unwrap();
-    let exclude_list = s.lines().collect_vec();
-
-    let seqs = fs::read_dir("benches/iltp_prop")
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|file| {
-            let file_name = file.file_name().unwrap().to_str().unwrap();
-            !exclude_list.contains(&file_name)
-        })
-        .map(|file| {
-            let s = fs::read_to_string(&file).unwrap();
-            let mut names = Names::default();
-            let seq = parse_sequent(&s, &mut names, true, true).unwrap();
-            (seq, names)
-        })
-        .collect_vec();
-
-    c.bench_function("iltp_prop_0", |b| {
+fn iltp_propositional_examples(c: &mut Criterion) {
+    let arena = Arena::new();
+    let seqs = read_file_and_parse("benches/iltp_propositional_examples.txt", &arena);
+    c.bench_function("iltp_propositional_examples", |b| {
         b.iter(|| {
-            for (seqs, entities) in &seqs {
-                seqs.to_seq().assert_provable(entities.len());
+            for (seq, names) in &seqs {
+                assert!(prove_prop(seq, names));
             }
         });
     });
 }
 
-fn from_iltp_prop_1(c: &mut Criterion) {
-    let mut group = c.benchmark_group("iltp_prop_1");
-    group.sample_size(10);
-
-    let list = ["SYJ202+1.004.p", "SYJ206+1.010.p"];
-
-    let seqs = fs::read_dir("benches/iltp_prop")
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|file| {
-            let file_name = file.file_name().unwrap().to_str().unwrap();
-            list.contains(&file_name)
-        })
-        .map(|file| {
-            let s = fs::read_to_string(&file).unwrap();
-            let mut names = Names::default();
-            let seq = parse_sequent(&s, &mut names, true, true).unwrap();
-            (seq, names)
-        });
-
-    for (ref seq, entities) in seqs {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(seq.display(&entities)),
-            seq,
-            |b, seq| {
-                b.iter(|| seq.to_seq().assert_provable(entities.len()));
-            },
-        );
-    }
-    group.finish();
-}
-
 criterion_group!(
     benches,
-    from_iltp_prop_0,
-    from_example_prop,
-    from_iltp_prop_1
+    hard_propositional_examples,
+    iltp_propositional_examples
 );
 criterion_main!(benches);
