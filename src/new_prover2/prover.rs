@@ -7,9 +7,10 @@ use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
 impl<'a> SequentExtended<'a> {
     #[inline(always)]
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
-        fml == FormulaExtended::init(&TRUE, Right)
-            || fml == FormulaExtended::init(&FALSE, Left)
-            || (fml.is_atom() && self.contains(&fml.opposite()))
+        (fml.is_atom() && self.contains(&fml.opposite())) || {
+            let FormulaExtended { fml, side } = fml;
+            (fml == &TRUE && side == Right) || (fml == &FALSE && side == Left)
+        }
     }
 }
 
