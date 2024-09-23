@@ -41,11 +41,14 @@ impl Side {
     }
 }
 
-impl<'a> FormulaExtended<'a> {
+impl Formula {
     #[inline(always)]
-    pub(super) fn init(fml: &'a Formula, side: Side) -> Self {
-        Self { fml, side }
+    pub(super) fn extended(&self, side: Side) -> FormulaExtended {
+        FormulaExtended { fml: self, side }
     }
+}
+
+impl<'a> FormulaExtended<'a> {
     #[inline(always)]
     fn get_cost(&self) -> Cost {
         use Cost::*;
@@ -60,7 +63,7 @@ impl<'a> FormulaExtended<'a> {
     }
     #[inline(always)]
     pub(super) fn opposite(&self) -> Self {
-        Self::init(self.fml, self.side.opposite())
+        self.fml.extended(self.side.opposite())
     }
     #[inline(always)]
     pub(super) fn is_atom(&self) -> bool {
@@ -69,20 +72,20 @@ impl<'a> FormulaExtended<'a> {
 }
 
 impl<'a> Sequent<'a> {
-    pub(super) fn to_sequent_extended(&self) -> SequentExtended<'a> {
+    pub(super) fn extended(&self) -> SequentExtended<'a> {
         let mut seq = SequentExtended::default();
         for fml in &self.ant {
-            seq.push(FormulaExtended::init(fml, Side::Left));
+            seq.push(fml.extended(Side::Left));
         }
         for fml in &self.suc {
-            seq.push(FormulaExtended::init(fml, Side::Right));
+            seq.push(fml.extended(Side::Right));
         }
         seq
     }
 }
 
 impl<'a> SequentExtended<'a> {
-    pub(super) fn to_sequent(&self) -> Sequent<'a> {
+    pub(super) fn to_seq(&self) -> Sequent<'a> {
         use Side::*;
         let mut ant = Vec::with_capacity(self.seq.len());
         let mut suc = Vec::with_capacity(self.seq.len());

@@ -15,21 +15,22 @@ impl<'a> SequentExtended<'a> {
 }
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
-    let seq = seq.to_sequent_extended();
+    let seq = seq.extended();
     let seqs = &mut vec![seq];
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
         if cfg!(debug_assertions) {
             for seq in seqs.iter() {
-                println!("{}", seq.to_sequent().display(names));
+                println!("{}", seq.to_seq().display(names));
             }
-            println!("{}", seq.to_sequent().display(names));
-            println!("----------------");
+            println!("{}", seq.to_seq().display(names));
+            println!();
         }
+        // TODO: 2024/09/23 seqが空のときfalseを返すようにする
         let FormulaExtended { fml, side } = seq.pop().unwrap();
         match (fml, side) {
             (Not(p), _) => {
-                let p = FormulaExtended::init(p, side.opposite());
+                let p = p.extended(side.opposite());
                 if !seq.is_trivial(p) {
                     seq.push(p);
                     seqs.push(seq);
@@ -37,7 +38,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             }
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
-                    let p = FormulaExtended::init(p, side);
+                    let p = p.extended(side);
                     if seq.is_trivial(p) {
                         continue 'outer;
                     }
@@ -47,29 +48,29 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             }
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
-                    .any(|p| p.is_atom() && seq.contains(&FormulaExtended::init(p, side)))
+                    .any(|p| p.is_atom() && seq.contains(&p.extended(side)))
                 {
                     seqs.push(seq);
                     continue 'outer;
                 }
                 let (p, l) = l.split_first().unwrap();
                 for p in l.iter().rev() {
-                    let p = FormulaExtended::init(p, side);
+                    let p = p.extended(side);
                     if !seq.is_trivial(p) {
                         let mut seq = seq.clone();
                         seq.push(p);
                         seqs.push(seq);
                     }
                 }
-                let p = FormulaExtended::init(p, side);
+                let p = p.extended(side);
                 if !seq.is_trivial(p) {
                     seq.push(p);
                     seqs.push(seq);
                 }
             }
             (To(p, q), Left) => {
-                let p = FormulaExtended::init(p, Right);
-                let q = FormulaExtended::init(q, Left);
+                let p = p.extended(Right);
+                let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
                     seqs.push(seq);
                     continue 'outer;
@@ -85,8 +86,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
             }
             (To(p, q), Right) => {
-                let p = FormulaExtended::init(p, Left);
-                let q = FormulaExtended::init(q, Right);
+                let p = p.extended(Left);
+                let q = q.extended(Right);
                 if seq.is_trivial(p) {
                     continue 'outer;
                 }
@@ -98,16 +99,16 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 seqs.push(seq);
             }
             (Iff(p, q), Left) => {
-                let p_r = FormulaExtended::init(p, Right);
-                let q_r = FormulaExtended::init(q, Right);
+                let p_r = p.extended(Right);
+                let q_r = q.extended(Right);
                 if !seq.is_trivial(p_r) && !seq.is_trivial(q_r) {
                     let mut seq = seq.clone();
                     seq.push(p_r);
                     seq.push(q_r);
                     seqs.push(seq);
                 }
-                let p_l = FormulaExtended::init(p, Left);
-                let q_l = FormulaExtended::init(q, Left);
+                let p_l = p.extended(Left);
+                let q_l = q.extended(Left);
                 if !seq.is_trivial(p_l) && !seq.is_trivial(q_l) {
                     seq.push(p_l);
                     seq.push(q_l);
@@ -115,16 +116,16 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
             }
             (Iff(p, q), Right) => {
-                let p_r = FormulaExtended::init(p, Right);
-                let q_l = FormulaExtended::init(q, Left);
+                let p_r = p.extended(Right);
+                let q_l = q.extended(Left);
                 if !(seq.is_trivial(p_r) || seq.is_trivial(q_l)) {
                     let mut seq = seq.clone();
                     seq.push(p_r);
                     seq.push(q_l);
                     seqs.push(seq);
                 }
-                let p_l = FormulaExtended::init(p, Left);
-                let q_r = FormulaExtended::init(q, Right);
+                let p_l = p.extended(Left);
+                let q_r = q.extended(Right);
                 if !(seq.is_trivial(p_l) || seq.is_trivial(q_r)) {
                     seq.push(p_l);
                     seq.push(q_r);
