@@ -70,19 +70,6 @@ impl<'a> FormulaExtended<'a> {
     }
 }
 
-impl<'a> Sequent<'a> {
-    pub(super) fn extended(&self) -> SequentExtended<'a> {
-        let mut seq = SequentExtended::default();
-        for fml in &self.ant {
-            seq.push(fml.extended(Side::Left));
-        }
-        for fml in &self.suc {
-            seq.push(fml.extended(Side::Right));
-        }
-        seq
-    }
-}
-
 impl<'a> SequentExtended<'a> {
     pub(super) fn to_seq(&self) -> Sequent<'a> {
         use Side::*;

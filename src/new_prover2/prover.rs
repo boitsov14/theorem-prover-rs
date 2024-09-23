@@ -11,7 +11,23 @@ impl<'a> SequentExtended<'a> {
 }
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
-    let seq = seq.extended();
+    let ant = &seq.ant;
+    let suc = &seq.suc;
+    let mut seq = SequentExtended::default();
+    for fml in ant {
+        let fml = fml.extended(Left);
+        if seq.is_trivial(fml) {
+            return true;
+        }
+        seq.push(fml);
+    }
+    for fml in suc {
+        let fml = fml.extended(Right);
+        if seq.is_trivial(fml) {
+            return true;
+        }
+        seq.push(fml);
+    }
     let seqs = &mut vec![seq];
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
