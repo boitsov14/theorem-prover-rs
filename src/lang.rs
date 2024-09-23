@@ -192,7 +192,7 @@ impl Default for Formula {
 }
 
 impl SequentOwned {
-    pub(super) fn to_sequent(&self) -> Sequent {
+    pub(super) fn to_seq(&self) -> Sequent {
         Sequent {
             ant: self.ant.iter().collect(),
             suc: self.suc.iter().collect(),

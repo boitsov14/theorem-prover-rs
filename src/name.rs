@@ -309,6 +309,6 @@ mod tests {
     fn sequent_display(s: &str) {
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
-        assert_eq!(seq.to_sequent().display(&names).to_string(), s);
+        assert_eq!(seq.to_seq().display(&names).to_string(), s);
     }
 }

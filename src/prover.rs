@@ -803,7 +803,7 @@ pub fn example(s: &str) -> io::Result<()> {
             return Ok(());
         }
     };
-    let seq = seq.to_sequent();
+    let seq = seq.to_seq();
     println!("{}", seq.display(&names));
     let seq = seq.to_seq();
 
@@ -946,7 +946,7 @@ mod tests {
         // parse
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
-        let seq = seq.to_sequent();
+        let seq = seq.to_seq();
         // prove
         let fml_arena = Arena::new();
         let tree_arena = Arena::new();

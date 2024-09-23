@@ -88,7 +88,7 @@ pub(super) fn parse_sequent(
     let s = modify_string(&s);
     check_parentheses(&s)?;
     let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s, e })?;
-    let mut seq = pseq.into_sequent_owned(names);
+    let mut seq = pseq.into_owned(names);
     if modify_formula {
         seq.ant.iter_mut().for_each(|p| p.modify(names));
         seq.suc.iter_mut().for_each(|p| p.modify(names));
@@ -249,7 +249,7 @@ impl PFormula {
 }
 
 impl PSequent {
-    fn into_sequent_owned(self, names: &mut Names) -> SequentOwned {
+    fn into_owned(self, names: &mut Names) -> SequentOwned {
         SequentOwned {
             ant: self
                 .ant
@@ -878,7 +878,7 @@ mod tests {
         let mut names = Names::default();
         let mut seq = parse_sequent(s, &mut names, false, false).unwrap();
         seq.unique();
-        seq.to_sequent().display(&names).to_string()
+        seq.to_seq().display(&names).to_string()
     }
 
     #[test]
@@ -904,7 +904,7 @@ fof(con,conjecture,(
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, true).unwrap();
         assert_eq!(
-            seq.to_sequent().display(&names).to_string(),
+            seq.to_seq().display(&names).to_string(),
             "(p1 ↔ p2) → (p1 ∧ p2 ∧ p3), (p2 ↔ p3) → (p1 ∧ p2 ∧ p3), (p3 ↔ p1) → (p1 ∧ p2 ∧ p3) ⊢ p1 ∧ p2 ∧ p3"
         );
     }

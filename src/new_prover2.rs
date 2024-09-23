@@ -17,7 +17,7 @@ pub fn example_new2(s: &str) {
             return;
         }
     };
-    let seq = seq.to_sequent();
+    let seq = seq.to_seq();
     println!("{}", seq.display(&names));
 
     // prove
