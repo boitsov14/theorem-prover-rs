@@ -1,4 +1,4 @@
-use crate::lang::{Formula::*, Sequent, FALSE, TRUE};
+use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover::lang::{
     Cost, FormulaExtended, SequentIdx,
@@ -11,14 +11,12 @@ impl<'a> SequentGrid<'a> {
     #[inline]
     // TODO: 2024/08/24 containsを使ってパフォーマンス比較
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
-        (*fml.fml == TRUE && fml.side == Right)
-            || (*fml.fml == FALSE && fml.side == Left)
-            || (fml.fml.is_atom()
-                && self
-                    .last_atom()
-                    .unwrap()
-                    .iter()
-                    .any(|p| p.fml == fml.fml && p.side != fml.side))
+        fml.fml.is_atom()
+            && self
+                .last_atom()
+                .unwrap()
+                .iter()
+                .any(|p| p.fml == fml.fml && p.side != fml.side)
     }
 
     #[inline]

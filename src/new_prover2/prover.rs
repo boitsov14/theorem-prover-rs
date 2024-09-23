@@ -1,5 +1,4 @@
-use crate::lang::Formula::*;
-use crate::lang::{Sequent, FALSE, TRUE};
+use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
@@ -7,10 +6,7 @@ use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
 impl<'a> SequentExtended<'a> {
     #[inline(always)]
     fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
-        (fml.is_atom() && self.contains(&fml.opposite())) || {
-            let FormulaExtended { fml, side } = fml;
-            (fml == &TRUE && side == Right) || (fml == &FALSE && side == Left)
-        }
+        fml.is_atom() && self.contains(&fml.opposite())
     }
 }
 
@@ -54,7 +50,9 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     seqs.push(seq);
                     continue 'outer;
                 }
-                let (p, l) = l.split_first().unwrap();
+                let Some((p, l)) = l.split_first() else {
+                    continue 'outer;
+                };
                 for p in l.iter().rev() {
                     let p = p.extended(side);
                     if !seq.is_trivial(p) {

@@ -18,9 +18,6 @@ pub(super) enum Formula {
     Ex(Vec<usize>, Box<Formula>),
 }
 
-pub(super) const TRUE: Formula = Formula::And(vec![]);
-pub(super) const FALSE: Formula = Formula::Or(vec![]);
-
 #[derive(Clone, Debug)]
 pub struct Sequent<'a> {
     pub(super) ant: Vec<&'a Formula>,

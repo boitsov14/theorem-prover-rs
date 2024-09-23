@@ -13,8 +13,7 @@ pub(super) enum Side {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) enum Cost {
-    Alpha,
-    Beta(usize),
+    Prop(usize),
     Atom,
     Quant,
 }
@@ -55,9 +54,9 @@ impl<'a> FormulaExtended<'a> {
         use Side::*;
         match (self.fml, self.side) {
             (Pred(..), _) => Atom,
-            (And(_) | Ex(..), Left) | (Or(_) | To(..) | All(..), Right) | (Not(_), _) => Alpha,
-            (To(..), Left) | (Iff(..), _) => Beta(2),
-            (And(l), Right) | (Or(l), Left) => Beta(l.len()),
+            (And(_) | Ex(..), Left) | (Or(_) | To(..) | All(..), Right) | (Not(_), _) => Prop(1),
+            (To(..), Left) | (Iff(..), _) => Prop(2),
+            (And(l), Right) | (Or(l), Left) => Prop(l.len()),
             (All(..), Left) | (Ex(..), Right) => Quant,
         }
     }
