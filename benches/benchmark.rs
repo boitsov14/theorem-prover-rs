@@ -46,7 +46,7 @@ fn iltp_propositional_examples(c: &mut Criterion) {
 criterion_group!(
     benches,
     hard_propositional_examples,
-    easy_propositional_examples,
+    // easy_propositional_examples,
     iltp_propositional_examples
 );
 criterion_main!(benches);
