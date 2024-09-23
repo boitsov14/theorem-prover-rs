@@ -26,8 +26,9 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             println!("{}", seq.to_seq().display(names));
             println!();
         }
-        // TODO: 2024/09/23 seqが空のときfalseを返すようにする
-        let FormulaExtended { fml, side } = seq.pop().unwrap();
+        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+            return false;
+        };
         match (fml, side) {
             (Not(p), _) => {
                 let p = p.extended(side.opposite());
