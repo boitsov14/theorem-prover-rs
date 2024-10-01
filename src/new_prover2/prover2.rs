@@ -56,15 +56,14 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
             }
             (And(l), Right) | (Or(l), Left) => {
-                // TODO: 2024/09/28 ここlをすべてmapでextendedにするのとパフォーマンス比較
                 if l.iter()
-                    .any(|p| p.is_atom() && seq.contains(&p.extended(side)))
+                    .map(|p| p.extended(side))
+                    .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when fml is redundant
                     // fml is already popped out, so nothing to do.
                     continue 'outer;
                 }
-
                 let mut l = l.iter().rev().peekable();
                 let mut seq2;
                 loop {
