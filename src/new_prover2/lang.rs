@@ -1,7 +1,9 @@
 use crate::lang::{Formula, Formula::*, Sequent};
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
+use std::cell::OnceCell;
 use std::hash::BuildHasherDefault;
+use std::{fs, io};
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
@@ -27,6 +29,18 @@ pub(super) struct FormulaExtended<'a> {
 #[derive(Clone, Debug, Default)]
 pub(super) struct SequentExtended<'a> {
     seq: FxIndexSet<FormulaExtended<'a>>,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct SequentWithArity<'a> {
+    pub(super) seq: SequentExtended<'a>,
+    pub(super) tactic: OnceCell<(usize, String)>,
+    pub(super) processed_children_cnt: usize,
+    pub(super) parent_idx: Option<usize>,
+}
+
+pub(super) struct Info<'a> {
+    pub(super) file: &'a mut io::BufWriter<fs::File>,
 }
 
 impl Side {
@@ -68,6 +82,27 @@ impl<'a> FormulaExtended<'a> {
     pub(super) fn is_atom(&self) -> bool {
         self.fml.is_atom()
     }
+    #[inline(always)]
+    pub(super) fn get_label(&self) -> String {
+        let FormulaExtended { fml, side } = self;
+        let fml_type = match fml {
+            Not(_) => r"$\lnot$",
+            And(l) => match l.as_slice() {
+                [] => r"$\top$",
+                _ => r"$\land$",
+            },
+            Or(l) => match l.as_slice() {
+                [] => r"$\bot$",
+                _ => r"$\lor$",
+            },
+            To(..) => r"$\rightarrow$",
+            Iff(..) => r"$\leftrightarrow$",
+            All(..) => r"$\forall$",
+            Ex(..) => r"$\exists$",
+            Pred(..) => unreachable!(),
+        };
+        format!("{fml_type}: {side:?}")
+    }
 }
 
 impl<'a> SequentExtended<'a> {
@@ -107,5 +142,20 @@ impl<'a> SequentExtended<'a> {
     #[inline(always)]
     pub(super) fn contains(&self, fml: &FormulaExtended<'a>) -> bool {
         self.seq.contains(fml)
+    }
+
+    #[inline(always)]
+    pub(super) fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
+        fml.is_atom() && self.contains(&fml.opposite())
+    }
+
+    #[inline(always)]
+    pub(super) fn into_sequent_with_arity(self, parent_idx: Option<usize>) -> SequentWithArity<'a> {
+        SequentWithArity {
+            seq: self,
+            tactic: OnceCell::new(),
+            processed_children_cnt: 0,
+            parent_idx,
+        }
     }
 }
