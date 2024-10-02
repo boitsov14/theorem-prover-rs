@@ -1,45 +1,59 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtended, SequentWithArity};
+use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+
+// impl Sequent
+impl Sequent<'_> {
+    fn extended(&self) -> Option<SequentExtended> {
+        let mut seq = SequentExtended::default();
+        for fml in &self.ant {
+            let fml = fml.extended(Left);
+            if seq.is_trivial(fml) {
+                return None;
+            }
+            seq.push(fml);
+        }
+        for fml in &self.suc {
+            let fml = fml.extended(Right);
+            if seq.is_trivial(fml) {
+                return None;
+            }
+            seq.push(fml);
+        }
+        Some(seq)
+    }
+}
+
+fn log_seqs(seqs: &[SequentExtended], names: &Names) {
+    for seq in seqs {
+        println!("{}", seq.to_seq().display(names));
+    }
+}
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
-    let ant = &seq.ant;
-    let suc = &seq.suc;
-    let mut seq = SequentExtended::default();
-    for fml in ant {
-        let fml = fml.extended(Left);
-        if seq.is_trivial(fml) {
-            return true;
-        }
-        seq.push(fml);
-    }
-    for fml in suc {
-        let fml = fml.extended(Right);
-        if seq.is_trivial(fml) {
-            return true;
-        }
-        seq.push(fml);
-    }
+    let Some(seq) = seq.extended() else {
+        return true;
+    };
     let mut seqs = vec![seq];
     'outer: loop {
-        if cfg!(debug_assertions) {
-            for seq in &seqs {
-                println!("{}", seq.to_seq().display(names));
-            }
-            println!();
-        }
+        #[cfg(debug_assertions)]
+        log_seqs(&seqs, names);
+        // get the last sequent
         let Some(seq) = seqs.last_mut() else {
+            // if no sequent to be proved, completed the proof
             return true;
         };
-        let Some(fml_ext) = seq.pop() else {
+        // pop the last formula
+        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+            // if no formula to be processed, failed to prove
             return false;
         };
-        let FormulaExtended { fml, side } = fml_ext;
         match (fml, side) {
             (Not(p), _) => {
                 let p = p.extended(side.opposite());
                 if seq.is_trivial(p) {
+                    // if the sequent is proved, drop it and continue to the next sequent
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
@@ -49,6 +63,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 for p in l {
                     let p = p.extended(side);
                     if seq.is_trivial(p) {
+                        // if the sequent is proved, drop it and continue to the next sequent
                         seqs.pop().unwrap();
                         continue 'outer;
                     }
@@ -60,22 +75,32 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     .map(|p| p.extended(side))
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
-                    // when fml is redundant
-                    // fml is already popped out, so nothing to do.
+                    // when `fml` is redundant
+                    // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
                 let mut l = l.iter().rev().peekable();
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
-                        // when `|- true` or `false |-` or all of l is trivial
+                        // when `|- true` or `false |-`
+                        // or all of l is trivial
+                        // the sequent is proved, so drop it and continue to the next sequent
                         seqs.pop().unwrap();
                         continue 'outer;
                     };
                     let p = p.extended(side);
                     if seq.is_trivial(p) {
+                        // if p is trivial, ignore it and continue to the next
                         continue;
                     }
+                    if l.peek().is_none() {
+                        seq.push(p);
+                        // if p is last, continue to the next sequent
+                        continue 'outer;
+                    }
+                    // if p is not last, need to clone the sequent
+                    // because `seq` is the reference to the last element
                     seq2 = seq.clone();
                     seq.push(p);
                     break;
@@ -100,41 +125,47 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
             }
             (To(p, q), Left) => {
-                let p = p.extended(Right);
                 let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
-                    // when fml is redundant
-                    // fml is already popped out, so nothing to do.
+                    // when `fml` is redundant
+                    // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
-                if seq.is_trivial(q) {
-                    if seq.is_trivial(p) {
-                        // when both p and q are trivial
+                let p = p.extended(Right);
+                match (seq.is_trivial(p), seq.is_trivial(q)) {
+                    (true, true) => {
+                        // if the sequent is proved, drop it and continue to the next sequent
                         seqs.pop().unwrap();
-                    } else {
-                        // when only q is trivial
+                    }
+                    (true, false) => {
+                        // when q is yet to be proved
+                        seq.push(q);
+                    }
+                    (false, true) => {
+                        // when p is yet to be proved
                         seq.push(p);
                     }
-                } else if seq.is_trivial(p) {
-                    // when only p is trivial
-                    seq.push(q);
-                } else {
-                    // when both p and q are not trivial
-                    let mut seq2 = seq.clone();
-                    seq.push(q);
-                    seq2.push(p);
-                    seqs.push(seq2);
+                    (false, false) => {
+                        // when both are yet to be proved
+                        let mut seq2 = seq.clone();
+                        seq.push(p);
+                        seq2.push(q);
+                        // `seq` is the reference to the last element, so don't need to push
+                        seqs.push(seq2);
+                    }
                 }
             }
             (To(p, q), Right) => {
                 let p = p.extended(Left);
-                let q = q.extended(Right);
                 if seq.is_trivial(p) {
+                    // if the sequent is proved, drop it and continue to the next sequent
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
                 seq.push(p);
+                let q = q.extended(Right);
                 if seq.is_trivial(q) {
+                    // if the sequent is proved, drop it and continue to the next sequent
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
