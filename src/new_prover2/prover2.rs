@@ -50,6 +50,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             return false;
         };
         match (fml, side) {
+            // Convert `¬p ⊢` to `⊢ p`
+            // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
                 let p = p.extended(side.opposite());
                 if seq.is_trivial(p) {
@@ -59,6 +61,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
                 seq.push(p);
             }
+            // Convert `p ∧ q ⊢` to `p, q ⊢`
+            // Convert `⊢ p ∨ q` to `⊢ p, q`
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
                     let p = p.extended(side);
@@ -70,6 +74,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     seq.push(p);
                 }
             }
+            // Convert `p ∨ q ⊢` to `p ⊢` and `q ⊢`
+            // Convert `⊢ p ∧ q` to `⊢ p` and `⊢ q`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.extended(side))
@@ -83,7 +89,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
-                        // when `|- true` or `false |-`
+                        // when `⊢ true` or `false ⊢`
                         // or all of l is trivial
                         // the sequent is proved, so drop it and continue to the next sequent
                         seqs.pop().unwrap();
@@ -124,6 +130,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     seqs.push(seq2);
                 }
             }
+            // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
                 let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
@@ -155,6 +162,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     }
                 }
             }
+            // Convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
                 let p = p.extended(Left);
                 if seq.is_trivial(p) {
@@ -171,6 +179,9 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
                 seq.push(q);
             }
+            // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
+            // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
+            // (Iff(p, q), side) => {}
             (Iff(p, q), Left) => {
                 let p_r = p.extended(Right);
                 let q_r = q.extended(Right);
