@@ -61,8 +61,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 }
                 seq.push(p);
             }
-            // Convert `p ∧ q ⊢` to `p, q ⊢`
-            // Convert `⊢ p ∨ q` to `⊢ p, q`
+            // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
+            // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
                     let p = p.extended(side);
@@ -74,8 +74,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     seq.push(p);
                 }
             }
-            // Convert `p ∨ q ⊢` to `p ⊢` and `q ⊢`
-            // Convert `⊢ p ∧ q` to `⊢ p` and `⊢ q`
+            // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
+            // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.extended(side))
@@ -85,7 +85,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
-                let mut l = l.iter().rev().peekable();
+                let mut l = l.iter().map(|p| p.extended(side)).rev().peekable();
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
@@ -95,7 +95,6 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                         seqs.pop().unwrap();
                         continue 'outer;
                     };
-                    let p = p.extended(side);
                     if seq.is_trivial(p) {
                         // if p is trivial, ignore it and continue to the next
                         continue;
@@ -115,7 +114,6 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     let Some(p) = l.next() else {
                         continue 'outer;
                     };
-                    let p = p.extended(side);
                     if seq2.is_trivial(p) {
                         continue;
                     }
