@@ -150,6 +150,26 @@ impl<'a> SequentExtended<'a> {
     }
 
     #[inline(always)]
+    pub(super) fn is_trivial2(&self, fml1: FormulaExtended<'a>, fml2: FormulaExtended<'a>) -> bool {
+        if (fml1.is_atom() && self.contains(&fml1.opposite()))
+            || (fml2.is_atom() && self.contains(&fml2.opposite()))
+        {
+            // trivial if either of them is trivial
+            return true;
+        }
+        let FormulaExtended {
+            fml: fml1,
+            side: side1,
+        } = fml1;
+        let FormulaExtended {
+            fml: fml2,
+            side: side2,
+        } = fml2;
+        // trivial if same formula with different side
+        fml1 == fml2 && side1 != side2
+    }
+
+    #[inline(always)]
     pub(super) fn into_sequent_with_arity(self, parent_idx: Option<usize>) -> SequentWithArity<'a> {
         SequentWithArity {
             seq: self,
