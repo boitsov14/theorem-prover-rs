@@ -60,6 +60,26 @@ impl Formula {
     pub(super) fn extended(&self, side: Side) -> FormulaExtended {
         FormulaExtended { fml: self, side }
     }
+    #[inline(always)]
+    pub(super) fn get_label(&self, side: Side) -> String {
+        let fml = match self {
+            Not(_) => r"$\lnot$",
+            And(l) => match l.as_slice() {
+                [] => r"$\top$",
+                _ => r"$\land$",
+            },
+            Or(l) => match l.as_slice() {
+                [] => r"$\bot$",
+                _ => r"$\lor$",
+            },
+            To(..) => r"$\rightarrow$",
+            Iff(..) => r"$\leftrightarrow$",
+            All(..) => r"$\forall$",
+            Ex(..) => r"$\exists$",
+            Pred(..) => unreachable!(),
+        };
+        format!("{fml}: {side:?}")
+    }
 }
 
 impl<'a> FormulaExtended<'a> {
@@ -84,6 +104,7 @@ impl<'a> FormulaExtended<'a> {
         self.fml.is_atom()
     }
     #[inline(always)]
+    // TODO: 2024/10/06 後で消す
     pub(super) fn get_label(&self) -> String {
         let FormulaExtended { fml, side } = self;
         let fml_type = match fml {

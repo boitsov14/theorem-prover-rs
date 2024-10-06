@@ -97,6 +97,7 @@ fn latex_sequent_calculus(
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
+                tactic.set((1, fml.get_label(side))).unwrap();
                 let p = p.extended(side.opposite());
                 if seq.is_trivial(p) {
                     // if the sequent is trivial, drop it and continue to the next sequent
