@@ -5,7 +5,7 @@ use crate::new_prover2::lang::{FormulaExtended, SequentExtendedLatex};
 use std::io::Write;
 use std::{fs, io};
 
-fn write_latex(
+fn write_all_proved_seqs(
     seqs: &mut Vec<SequentExtendedLatex>,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
@@ -40,25 +40,57 @@ fn write_latex(
     Ok(())
 }
 
+fn write_all_seqs(
+    seqs: &mut Vec<SequentExtendedLatex>,
+    names: &Names,
+    file: &mut io::BufWriter<fs::File>,
+) -> io::Result<()> {
+    while let Some(SequentExtendedLatex { seq, tactic, .. }) = seqs.pop() {
+        if let Some((children_cnt, label)) = tactic.get() {
+            // when has children
+            writeln!(
+                file,
+                r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
+                seq.to_seq().display(names).to_latex()
+            )?;
+        } else {
+            // when leaf
+            writeln!(file, r"\hypo{{{}}}", seq.to_seq().display(names).to_latex())?;
+        }
+    }
+    Ok(())
+}
+
 fn latex_sequent_calculus(
     seq: &Sequent,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<bool> {
     let Some(seq) = seq.extended() else {
+        // when trivial from the beginning
         writeln!(file, r"\hypo{{{}}}", seq.display(names).to_latex())?;
         return Ok(true);
     };
     let mut seqs = vec![seq.extended_latex(None)];
     'outer: loop {
+        // write all proved sequents
+        write_all_proved_seqs(&mut seqs, names, file)?;
         // get the last sequent
-        let Some(seq) = seqs.last_mut() else {
+        let Some(SequentExtendedLatex {
+            seq,
+            tactic,
+            processed_children_cnt,
+            parent_idx,
+        }) = seqs.last_mut()
+        else {
             // if no sequent to be proved, completed the proof
             return Ok(true);
         };
         // pop the last formula
         let Some(FormulaExtended { fml, side }) = seq.pop() else {
             // if no formula to be processed, failed to prove
+            // write all sequents
+            write_all_seqs(&mut seqs, names, file)?;
             return Ok(false);
         };
         match (fml, side) {
