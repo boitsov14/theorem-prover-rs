@@ -11,6 +11,7 @@ fn log_seqs(seqs: &[SequentExtended], names: &Names) {
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
     let Some(seq) = seq.extended() else {
+        // when trivial from the beginning
         return true;
     };
     let mut seqs = vec![seq];

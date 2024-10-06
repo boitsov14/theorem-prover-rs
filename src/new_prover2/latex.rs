@@ -1,28 +1,65 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
-use crate::new_prover2::lang::FormulaExtended;
 use crate::new_prover2::lang::Side::{Left, Right};
+use crate::new_prover2::lang::{FormulaExtended, SequentExtendedLatex};
+use std::io::Write;
 use std::{fs, io};
+
+fn write_latex(
+    seqs: &mut Vec<SequentExtendedLatex>,
+    names: &Names,
+    file: &mut io::BufWriter<fs::File>,
+) -> io::Result<()> {
+    while let Some(SequentExtendedLatex {
+        seq,
+        tactic,
+        processed_children_cnt,
+        parent_idx,
+    }) = seqs.last()
+    {
+        let Some((children_cnt, label)) = tactic.get() else {
+            // when tactic is not yet initialized
+            break;
+        };
+        if processed_children_cnt < children_cnt {
+            // when not all children are processed
+            break;
+        }
+        writeln!(
+            file,
+            r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
+            seq.to_seq().display(names).to_latex()
+        )?;
+        if let Some(parent_idx) = *parent_idx {
+            // when not the root
+            // increment the processed children count of the parent
+            seqs[parent_idx].processed_children_cnt += 1;
+        }
+        seqs.pop().unwrap();
+    }
+    Ok(())
+}
 
 fn latex_sequent_calculus(
     seq: &Sequent,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
-) -> bool {
+) -> io::Result<bool> {
     let Some(seq) = seq.extended() else {
-        return true;
+        writeln!(file, r"\hypo{{{}}}", seq.display(names).to_latex())?;
+        return Ok(true);
     };
-    let mut seqs = vec![seq];
+    let mut seqs = vec![seq.extended_latex(None)];
     'outer: loop {
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
             // if no sequent to be proved, completed the proof
-            return true;
+            return Ok(true);
         };
         // pop the last formula
         let Some(FormulaExtended { fml, side }) = seq.pop() else {
             // if no formula to be processed, failed to prove
-            return false;
+            return Ok(false);
         };
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
@@ -184,7 +221,7 @@ fn latex_sequent_calculus(
                     }
                 }
             }
-            (Pred(_, _), _) => return false,
+            (Pred(_, _), _) => return Ok(false),
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
         }
     }
