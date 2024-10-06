@@ -1,22 +1,19 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
+use crate::new_prover2::lang::FormulaExtended;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+use std::{fs, io};
 
-fn log_seqs(seqs: &[SequentExtended], names: &Names) {
-    for seq in seqs {
-        println!("{}", seq.to_seq().display(names));
-    }
-}
-
-pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+fn latex_sequent_calculus(
+    seq: &Sequent,
+    names: &Names,
+    file: &mut io::BufWriter<fs::File>,
+) -> bool {
     let Some(seq) = seq.extended() else {
         return true;
     };
     let mut seqs = vec![seq];
     'outer: loop {
-        #[cfg(debug_assertions)]
-        log_seqs(&seqs, names);
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
             // if no sequent to be proved, completed the proof

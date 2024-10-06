@@ -1,4 +1,5 @@
 use crate::lang::{Formula, Formula::*, Sequent};
+use crate::new_prover2::lang::Side::{Left, Right};
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
@@ -32,7 +33,7 @@ pub(super) struct SequentExtended<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct SequentWithArity<'a> {
+pub(super) struct SequentExtendedLatex<'a> {
     pub(super) seq: SequentExtended<'a>,
     pub(super) tactic: OnceCell<(usize, String)>,
     pub(super) processed_children_cnt: usize,
@@ -105,6 +106,27 @@ impl<'a> FormulaExtended<'a> {
     }
 }
 
+impl<'a> Sequent<'a> {
+    pub(super) fn extended(&self) -> Option<SequentExtended> {
+        let mut seq = SequentExtended::default();
+        for fml in &self.ant {
+            let fml = fml.extended(Left);
+            if seq.is_trivial(fml) {
+                return None;
+            }
+            seq.push(fml);
+        }
+        for fml in &self.suc {
+            let fml = fml.extended(Right);
+            if seq.is_trivial(fml) {
+                return None;
+            }
+            seq.push(fml);
+        }
+        Some(seq)
+    }
+}
+
 impl<'a> SequentExtended<'a> {
     pub(super) fn to_seq(&self) -> Sequent<'a> {
         use Side::*;
@@ -170,8 +192,8 @@ impl<'a> SequentExtended<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn into_sequent_with_arity(self, parent_idx: Option<usize>) -> SequentWithArity<'a> {
-        SequentWithArity {
+    pub(super) fn extended_latex(self, parent_idx: Option<usize>) -> SequentExtendedLatex<'a> {
+        SequentExtendedLatex {
             seq: self,
             tactic: OnceCell::new(),
             processed_children_cnt: 0,
