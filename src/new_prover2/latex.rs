@@ -135,14 +135,15 @@ fn latex_sequent_calculus(
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
-                    .map(|p| p.extended(side))
+                    .map(|p| p.extended(*side))
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when `fml` is redundant
-                    // `fml` is already popped out, so nothing to do.
+                    // drop `fml` and continue to the next sequent
+                    seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
-                let mut l = l.iter().map(|p| p.extended(side)).rev().peekable();
+                let mut l = l.iter().map(|p| p.extended(*side)).rev().peekable();
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
