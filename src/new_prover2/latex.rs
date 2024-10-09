@@ -113,15 +113,23 @@ fn latex_sequent_calculus(
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
+                // set the tactic
+                tactic.set((1, fml.get_label(*side))).unwrap();
+                let mut is_trivial = false;
+                let mut seq = seq.clone();
                 for p in l {
                     let p = p.extended(*side);
                     if seq.is_trivial(p) {
-                        // if the sequent is trivial, drop it and continue to the next sequent
-                        seqs.pop().unwrap();
-                        continue 'outer;
+                        is_trivial = true;
                     }
                     seq.push(p);
                 }
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
+                if is_trivial {
+                    // if the sequent is trivial, set the Axiom tactic
+                    seq.tactic.set((0, "Axiom".into())).unwrap();
+                }
+                seqs.push(seq);
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
