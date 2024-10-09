@@ -183,6 +183,11 @@ impl<'a> SequentExtended<'a> {
     }
 
     #[inline(always)]
+    pub(super) fn last(&self) -> Option<&FormulaExtended<'a>> {
+        self.seq.last()
+    }
+
+    #[inline(always)]
     pub(super) fn contains(&self, fml: &FormulaExtended<'a>) -> bool {
         self.seq.contains(fml)
     }

@@ -81,13 +81,13 @@ fn latex_sequent_calculus(
             tactic,
             processed_children_cnt,
             parent_idx,
-        }) = seqs.last_mut()
+        }) = seqs.last()
         else {
             // if no sequent to be proved, completed the proof
             return Ok(true);
         };
-        // pop the last formula
-        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+        // get the last formula
+        let Some(FormulaExtended { fml, side }) = seq.last() else {
             // if no formula to be processed, failed to prove
             // write all sequents
             write_all_seqs(&mut seqs, names, file)?;
@@ -97,20 +97,24 @@ fn latex_sequent_calculus(
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
-                tactic.set((1, fml.get_label(side))).unwrap();
+                // set the tactic
+                tactic.set((1, fml.get_label(*side))).unwrap();
                 let p = p.extended(side.opposite());
-                if seq.is_trivial(p) {
-                    // if the sequent is trivial, drop it and continue to the next sequent
-                    seqs.pop().unwrap();
-                    continue 'outer;
-                }
+                let is_trivial = seq.is_trivial(p);
+                let mut seq = seq.clone();
                 seq.push(p);
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
+                if is_trivial {
+                    // if the sequent is trivial, set the Axiom tactic
+                    seq.tactic.set((0, "Axiom".into())).unwrap();
+                }
+                seqs.push(seq);
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
-                    let p = p.extended(side);
+                    let p = p.extended(*side);
                     if seq.is_trivial(p) {
                         // if the sequent is trivial, drop it and continue to the next sequent
                         seqs.pop().unwrap();
