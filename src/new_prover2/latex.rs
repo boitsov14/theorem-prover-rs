@@ -170,40 +170,41 @@ fn latex_sequent_calculus(
                 // set the tactic
                 tactic.set((2, fml.get_label(*side))).unwrap();
                 let p = p.extended(Right);
-                match (seq.is_trivial(p), seq.is_trivial(q)) {
-                    (true, true) => {
-                        // if the sequent is trivial, drop it and continue to the next sequent
-                        seqs.pop().unwrap();
-                    }
-                    (true, false) => {
-                        // when q is yet to be proved
-                        seq.push(q);
-                    }
-                    (false, true) => {
-                        // when p is yet to be proved
-                        seq.push(p);
-                    }
-                    (false, false) => {
-                        // when both are yet to be proved
-                        let mut seq2 = seq.clone();
-                        seq.push(q);
-                        seq2.push(p);
-                        // `seq` is the reference to the last element, so don't need to push
-                        seqs.push(seq2);
-                    }
+                let is_trivial_q = seq.is_trivial(q);
+                let is_trivial_p = seq.is_trivial(p);
+                let mut seq1 = seq.clone();
+                let mut seq2 = seq.clone();
+                seq1.push(q);
+                seq2.push(p);
+                let seq1 = seq1.extended_latex(Some(seqs.len() - 1));
+                let seq2 = seq2.extended_latex(Some(seqs.len() - 1));
+                if is_trivial_q {
+                    // if the sequent is trivial, set the Axiom tactic
+                    seq1.tactic.set((0, "Axiom".into())).unwrap();
                 }
+                if is_trivial_p {
+                    // if the sequent is trivial, set the Axiom tactic
+                    seq2.tactic.set((0, "Axiom".into())).unwrap();
+                }
+                seqs.push(seq1);
+                seqs.push(seq2);
             }
             // Convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
+                // set the tactic
+                tactic.set((1, fml.get_label(*side))).unwrap();
                 let p = p.extended(Left);
                 let q = q.extended(Right);
-                if seq.is_trivial2(p, q) {
-                    // if the sequent is trivial, drop it and continue to the next sequent
-                    seqs.pop().unwrap();
-                    continue 'outer;
-                }
+                let is_trivial = seq.is_trivial2(p, q);
+                let mut seq = seq.clone();
                 seq.push(p);
                 seq.push(q);
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
+                if is_trivial {
+                    // if the sequent is trivial, set the Axiom tactic
+                    seq.tactic.set((0, "Axiom".into())).unwrap();
+                }
+                seqs.push(seq);
             }
             // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
