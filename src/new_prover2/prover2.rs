@@ -61,6 +61,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when `fml` is redundant
+                    // ex. `p ∨ q ∨ r, p ⊢`
+                    // ex. `⊢ p ∧ q ∧ r, p`
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
@@ -112,6 +114,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
                 let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
                     // when `fml` is redundant
+                    // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }

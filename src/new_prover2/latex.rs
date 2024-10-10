@@ -139,6 +139,8 @@ fn latex_sequent_calculus(
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when `fml` is redundant
+                    // ex. `p ∨ q ∨ r, p ⊢`
+                    // ex. `⊢ p ∧ q ∧ r, p`
                     // drop `fml` and continue to the next sequent
                     seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
@@ -163,6 +165,7 @@ fn latex_sequent_calculus(
                 let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
                     // when `fml` is redundant
+                    // ex. `p → q, q ⊢`
                     // drop `fml` and continue to the next sequent
                     seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
@@ -209,6 +212,8 @@ fn latex_sequent_calculus(
             // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
+                // set the tactic
+                tactic.set((2, fml.get_label(*side))).unwrap();
                 let p_l = p.extended(Left);
                 let p_r = p.extended(Right);
                 let q_l = q.extended(Left);
