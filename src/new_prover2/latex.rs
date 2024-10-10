@@ -143,47 +143,19 @@ fn latex_sequent_calculus(
                     seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
-                let mut l = l.iter().map(|p| p.extended(*side)).rev().peekable();
-                let mut seq2;
-                loop {
-                    let Some(p) = l.next() else {
-                        // when `⊢ true` or `false ⊢`
-                        // or all of l is trivial
-                        // the sequent is proved, so drop it and continue to the next sequent
-                        seqs.pop().unwrap();
-                        continue 'outer;
-                    };
-                    if seq.is_trivial(p) {
-                        // if p is trivial, ignore it and continue to the next
-                        continue;
-                    }
-                    if l.peek().is_none() {
-                        seq.push(p);
-                        // if p is last, continue to the next sequent
-                        continue 'outer;
-                    }
-                    // if p is not last, need to clone the sequent
-                    // because `seq` is the reference to the last element
-                    seq2 = seq.clone();
+                // set the tactic
+                tactic.set((l.len(), fml.get_label(*side))).unwrap();
+                for p in l.iter().rev() {
+                    let p = p.extended(*side);
+                    let is_trivial = seq.is_trivial(p);
+                    let mut seq = seq.clone();
                     seq.push(p);
-                    break;
-                }
-                loop {
-                    let Some(p) = l.next() else {
-                        continue 'outer;
-                    };
-                    if seq2.is_trivial(p) {
-                        continue;
+                    let seq = seq.extended_latex(Some(seqs.len() - 1));
+                    if is_trivial {
+                        // if the sequent is trivial, set the Axiom tactic
+                        seq.tactic.set((0, "Axiom".into())).unwrap();
                     }
-                    // check p is last element of l
-                    if l.peek().is_none() {
-                        seq2.push(p);
-                        seqs.push(seq2);
-                        continue 'outer;
-                    }
-                    let mut seq2 = seq2.clone();
-                    seq2.push(p);
-                    seqs.push(seq2);
+                    seqs.push(seq);
                 }
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
@@ -191,9 +163,12 @@ fn latex_sequent_calculus(
                 let q = q.extended(Left);
                 if q.is_atom() && seq.contains(&q) {
                     // when `fml` is redundant
-                    // `fml` is already popped out, so nothing to do.
+                    // drop `fml` and continue to the next sequent
+                    seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
+                // set the tactic
+                tactic.set((2, fml.get_label(*side))).unwrap();
                 let p = p.extended(Right);
                 match (seq.is_trivial(p), seq.is_trivial(q)) {
                     (true, true) => {
