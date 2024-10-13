@@ -105,7 +105,7 @@ fn latex_sequent_calculus(
                 seq.push(p);
                 let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
-                    // if the sequent is trivial, set the Axiom tactic
+                    // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
                 seqs.push(seq);
@@ -126,7 +126,7 @@ fn latex_sequent_calculus(
                 }
                 let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
-                    // if the sequent is trivial, set the Axiom tactic
+                    // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
                 seqs.push(seq);
@@ -154,7 +154,7 @@ fn latex_sequent_calculus(
                     seq.push(p);
                     let seq = seq.extended_latex(Some(seqs.len() - 1));
                     if is_trivial {
-                        // if the sequent is trivial, set the Axiom tactic
+                        // if trivial, set the Axiom tactic
                         seq.tactic.set((0, "Axiom".into())).unwrap();
                     }
                     seqs.push(seq);
@@ -182,11 +182,11 @@ fn latex_sequent_calculus(
                 let seq1 = seq1.extended_latex(Some(seqs.len() - 1));
                 let seq2 = seq2.extended_latex(Some(seqs.len() - 1));
                 if is_trivial_q {
-                    // if the sequent is trivial, set the Axiom tactic
+                    // if trivial, set the Axiom tactic
                     seq1.tactic.set((0, "Axiom".into())).unwrap();
                 }
                 if is_trivial_p {
-                    // if the sequent is trivial, set the Axiom tactic
+                    // if trivial, set the Axiom tactic
                     seq2.tactic.set((0, "Axiom".into())).unwrap();
                 }
                 seqs.push(seq1);
@@ -204,7 +204,7 @@ fn latex_sequent_calculus(
                 seq.push(q);
                 let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
-                    // if the sequent is trivial, set the Axiom tactic
+                    // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
                 seqs.push(seq);
@@ -219,34 +219,29 @@ fn latex_sequent_calculus(
                 let q_l = q.extended(Left);
                 let q_r = q.extended(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
-                    Left => (p_l, q_l, p_r, q_r),
-                    Right => (p_l, q_r, q_l, p_r),
+                    Left => (p_r, q_r, p_l, q_l),
+                    Right => (q_l, p_r, p_l, q_r),
                 };
-                match (seq.is_trivial2(fml11, fml12), seq.is_trivial2(fml21, fml22)) {
-                    (true, true) => {
-                        // if the sequent is trivial, drop it
-                        seqs.pop().unwrap();
-                    }
-                    (true, false) => {
-                        // when the second is yet to be proved
-                        seq.push(fml21);
-                        seq.push(fml22);
-                    }
-                    (false, true) => {
-                        // when the first is yet to be proved
-                        seq.push(fml11);
-                        seq.push(fml12);
-                    }
-                    (false, false) => {
-                        // when both are yet to be proved
-                        let mut seq2 = seq.clone();
-                        seq.push(fml21);
-                        seq.push(fml22);
-                        seq2.push(fml11);
-                        seq2.push(fml12);
-                        seqs.push(seq2);
-                    }
+                let is_trivial_1 = seq.is_trivial2(fml11, fml12);
+                let is_trivial_2 = seq.is_trivial2(fml21, fml22);
+                let mut seq1 = seq.clone();
+                let mut seq2 = seq.clone();
+                seq1.push(fml11);
+                seq1.push(fml12);
+                seq2.push(fml21);
+                seq2.push(fml22);
+                let seq1 = seq1.extended_latex(Some(seqs.len() - 1));
+                let seq2 = seq2.extended_latex(Some(seqs.len() - 1));
+                if is_trivial_1 {
+                    // if trivial, set the Axiom tactic
+                    seq1.tactic.set((0, "Axiom".into())).unwrap();
                 }
+                if is_trivial_2 {
+                    // if trivial, set the Axiom tactic
+                    seq2.tactic.set((0, "Axiom".into())).unwrap();
+                }
+                seqs.push(seq1);
+                seqs.push(seq2);
             }
             (Pred(_, _), _) => return Ok(false),
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
