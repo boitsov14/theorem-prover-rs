@@ -1,14 +1,8 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
-
-impl<'a> SequentExtended<'a> {
-    #[inline(always)]
-    fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
-        fml.is_atom() && self.contains(&fml.opposite())
-    }
-}
+use crate::new_prover2::lang::{FormulaExtended, Info, SequentExtended, SequentExtendedLatex};
+use std::io::Write;
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
     let ant = &seq.ant;
@@ -28,7 +22,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
         }
         seq.push(fml);
     }
-    let seqs = &mut vec![seq];
+    let mut seqs = vec![seq];
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
         if cfg!(debug_assertions) {
