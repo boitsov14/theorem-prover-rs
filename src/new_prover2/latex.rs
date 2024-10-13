@@ -242,7 +242,14 @@ fn latex_sequent_calculus(
                 seqs.push(seq1);
                 seqs.push(seq2);
             }
-            (Pred(_, _), _) => return Ok(false),
+            (Pred(_, _), _) => {
+                // since formulas in 'seq' are ordered,
+                // if `fml` is predicate, no formulas can be processed
+                // thus, it is impossible to prove
+                // write all sequents
+                write_all_seqs(&mut seqs, names, file)?;
+                return Ok(false);
+            }
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
         }
     }
