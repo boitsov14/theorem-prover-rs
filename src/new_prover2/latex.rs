@@ -61,7 +61,7 @@ fn write_all_seqs(
     Ok(())
 }
 
-fn latex_sequent_calculus(
+pub(super) fn latex_sequent_calculus(
     seq: &Sequent,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
@@ -146,8 +146,10 @@ fn latex_sequent_calculus(
                 }
                 // set the tactic
                 tactic.set((l.len(), fml.get_label(*side))).unwrap();
+                let seq = seq.clone();
+                let side = *side;
                 for p in l.iter().rev() {
-                    let p = p.extended(*side);
+                    let p = p.extended(side);
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
