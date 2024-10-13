@@ -25,7 +25,8 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
         };
         // pop the last formula
         let Some(FormulaExtended { fml, side }) = seq.pop() else {
-            // if no formula to be processed, failed to prove
+            // if `seq` has no formula, it is impossible to prove
+            // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             return false;
         };
         match (fml, side) {

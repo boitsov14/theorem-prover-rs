@@ -68,7 +68,11 @@ fn latex_sequent_calculus(
 ) -> io::Result<bool> {
     let Some(seq) = seq.extended() else {
         // when trivial from the beginning
-        writeln!(file, r"\hypo{{{}}}", seq.display(names).to_latex())?;
+        writeln!(
+            file,
+            r"\infer{{1}}[\scriptsize Axiom]{{{}}}",
+            seq.display(names).to_latex()
+        )?;
         return Ok(true);
     };
     let mut seqs = vec![seq.extended_latex(None)];
@@ -76,19 +80,14 @@ fn latex_sequent_calculus(
         // write all proved sequents
         write_all_proved_seqs(&mut seqs, names, file)?;
         // get the last sequent
-        let Some(SequentExtendedLatex {
-            seq,
-            tactic,
-            processed_children_cnt,
-            parent_idx,
-        }) = seqs.last()
-        else {
+        let Some(SequentExtendedLatex { seq, tactic, .. }) = seqs.last() else {
             // if no sequent to be proved, completed the proof
             return Ok(true);
         };
         // get the last formula
         let Some(FormulaExtended { fml, side }) = seq.last() else {
-            // if no formula to be processed, failed to prove
+            // if `seq` has no formula, it is impossible to prove
+            // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents
             write_all_seqs(&mut seqs, names, file)?;
             return Ok(false);
