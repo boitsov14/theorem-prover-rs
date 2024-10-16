@@ -103,28 +103,6 @@ impl<'a> FormulaExtended<'a> {
     pub(super) fn is_atom(&self) -> bool {
         self.fml.is_atom()
     }
-    #[inline(always)]
-    // TODO: 2024/10/06 後で消す
-    pub(super) fn get_label(&self) -> String {
-        let FormulaExtended { fml, side } = self;
-        let fml_type = match fml {
-            Not(_) => r"$\lnot$",
-            And(l) => match l.as_slice() {
-                [] => r"$\top$",
-                _ => r"$\land$",
-            },
-            Or(l) => match l.as_slice() {
-                [] => r"$\bot$",
-                _ => r"$\lor$",
-            },
-            To(..) => r"$\rightarrow$",
-            Iff(..) => r"$\leftrightarrow$",
-            All(..) => r"$\forall$",
-            Ex(..) => r"$\exists$",
-            Pred(..) => unreachable!(),
-        };
-        format!("{fml_type}: {side:?}")
-    }
 }
 
 impl<'a> Sequent<'a> {
