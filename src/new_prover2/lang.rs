@@ -4,6 +4,7 @@ use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::hash::BuildHasherDefault;
+use std::ops::Deref;
 use std::{fs, io};
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
@@ -30,6 +31,13 @@ pub(super) struct FormulaExtended<'a> {
 #[derive(Clone, Debug, Default)]
 pub(super) struct SequentExtended<'a> {
     seq: FxIndexSet<FormulaExtended<'a>>,
+}
+
+impl<'a> Deref for SequentExtended<'a> {
+    type Target = FxIndexSet<FormulaExtended<'a>>;
+    fn deref(&self) -> &Self::Target {
+        &self.seq
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -106,6 +114,8 @@ impl<'a> FormulaExtended<'a> {
 }
 
 impl<'a> Sequent<'a> {
+    /// Convert Sequent to SequentExtended.
+    /// Returns `None` if the Sequent is trivial.
     pub(super) fn extended(&self) -> Option<SequentExtended> {
         let mut seq = SequentExtended::default();
         for fml in &self.ant {
