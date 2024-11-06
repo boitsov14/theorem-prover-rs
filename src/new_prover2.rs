@@ -1,5 +1,6 @@
 mod lang;
 mod latex;
+mod latex_tableau;
 mod prover;
 mod prover2;
 
