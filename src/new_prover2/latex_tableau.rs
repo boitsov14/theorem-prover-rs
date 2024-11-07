@@ -1,46 +1,54 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
-use crate::new_prover2::lang::FormulaExtended;
 use crate::new_prover2::lang::Side::{Left, Right};
+use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
 use std::cell::OnceCell;
 use std::io::Write;
 use std::{fs, io};
 
+// TODO: 2024/11/06 名前短くする
 #[derive(Clone, Debug)]
-struct FormulaExtendedLatex<'a> {
+struct SequentExtendedLatex2<'a> {
+    seq: SequentExtended<'a>,
     fml: FormulaExtended<'a>,
+    id: usize,
     tactic: OnceCell<(usize, String)>,
     processed_children_cnt: usize,
-    parent_idx: Option<usize>,
-    id: usize,
-    parent_id: Option<usize>,
+    parent: Option<Parent>,
 }
 
-impl<'a> FormulaExtended<'a> {
+#[derive(Clone, Debug)]
+struct Parent {
+    idx: usize,
+    from_id: usize,
+}
+
+// TODO: 2024/11/07 名前短くする
+impl<'a> SequentExtended<'a> {
     #[inline(always)]
-    fn extended_latex(
+    fn extended_latex2(
         self,
-        parent_idx: Option<usize>,
+        fml: FormulaExtended<'a>,
         id: usize,
-        parent_id: Option<usize>,
-    ) -> FormulaExtendedLatex<'a> {
-        FormulaExtendedLatex {
-            fml: self,
+        parent: Option<Parent>,
+    ) -> SequentExtendedLatex2<'a> {
+        SequentExtendedLatex2 {
+            seq: self,
+            fml,
+            id,
             tactic: OnceCell::new(),
             processed_children_cnt: 0,
-            parent_idx,
-            id,
-            parent_id,
+            parent,
         }
     }
 }
 
 fn write_all_proved_seqs(
-    seqs: &mut Vec<FormulaExtendedLatex>,
+    seqs: &mut Vec<SequentExtendedLatex2>,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<()> {
-    while let Some(FormulaExtendedLatex {
+    while let Some(SequentExtendedLatex2 {
         fml: seq,
         tactic,
         processed_children_cnt,
@@ -71,11 +79,11 @@ fn write_all_proved_seqs(
 }
 
 fn write_all_seqs(
-    seqs: &mut Vec<FormulaExtendedLatex>,
+    seqs: &mut Vec<SequentExtendedLatex2>,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<()> {
-    while let Some(FormulaExtendedLatex {
+    while let Some(SequentExtendedLatex2 {
         fml: seq, tactic, ..
     }) = seqs.pop()
     {
@@ -99,6 +107,18 @@ pub(super) fn latex_sequent_calculus(
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<bool> {
+    let mut id = 0;
+    let mut ind = 0;
+    for p in seq.ant {
+        writeln!(file, "[{}", p.display(names))?;
+        id += 1;
+        ind += 2;
+    }
+    for p in seq.suc {
+        writeln!(file, r"{}\lnot{}", " ".repeat(ind), p.display(names))?;
+        id += 1;
+        ind += 2;
+    }
     let Some(seq) = seq.extended() else {
         // when trivial from the beginning
         writeln!(
@@ -108,19 +128,19 @@ pub(super) fn latex_sequent_calculus(
         )?;
         return Ok(true);
     };
-    let mut id = 0;
-    let mut fmls = vec![];
+
+    let mut seqs = vec![];
     for fml in seq.iter() {
-        fmls.push(fml.extended_latex(None, id, None));
+        seqs.push(fml.extended_latex(None, id, None));
         id += 1;
     }
     'outer: loop {
         // write all proved sequents
-        write_all_proved_seqs(&mut fmls, names, file)?;
+        write_all_proved_seqs(&mut seqs, names, file)?;
         // get the last sequent
-        let Some(FormulaExtendedLatex {
-            fml: seq, tactic, ..
-        }) = fmls.last()
+        let Some(SequentExtendedLatex2 {
+            fml, seq, tactic, ..
+        }) = seqs.last()
         else {
             // if no sequent to be proved, completed the proof
             return Ok(true);
@@ -131,7 +151,7 @@ pub(super) fn latex_sequent_calculus(
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents
-            write_all_seqs(&mut fmls, names, file)?;
+            write_all_seqs(&mut seqs, names, file)?;
             return Ok(false);
         };
         match (fml, side) {
@@ -143,12 +163,12 @@ pub(super) fn latex_sequent_calculus(
                 let p = p.extended(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let seq = seq.extended_latex(Some(fmls.len() - 1));
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
-                fmls.push(seq);
+                seqs.push(seq);
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
@@ -163,12 +183,12 @@ pub(super) fn latex_sequent_calculus(
                     }
                     seq.push(p);
                 }
-                let seq = seq.extended_latex(Some(fmls.len() - 1));
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
-                fmls.push(seq);
+                seqs.push(seq);
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
@@ -181,12 +201,12 @@ pub(super) fn latex_sequent_calculus(
                     // ex. `p ∨ q ∨ r, p ⊢`
                     // ex. `⊢ p ∧ q ∧ r, p`
                     // drop `fml` and continue to the next sequent
-                    fmls.last_mut().unwrap().seq.pop();
+                    seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
                 // set the tactic
                 tactic.set((l.len(), fml.get_label(side))).unwrap();
-                let parent_idx = fmls.len() - 1;
+                let parent_idx = seqs.len() - 1;
                 for p in l.iter().rev() {
                     let p = p.extended(side);
                     let is_trivial = seq.is_trivial(p);
@@ -197,7 +217,7 @@ pub(super) fn latex_sequent_calculus(
                         // if trivial, set the Axiom tactic
                         seq.tactic.set((0, "Axiom".into())).unwrap();
                     }
-                    fmls.push(seq);
+                    seqs.push(seq);
                 }
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
@@ -207,7 +227,7 @@ pub(super) fn latex_sequent_calculus(
                     // when `fml` is redundant
                     // ex. `p → q, q ⊢`
                     // drop `fml` and continue to the next sequent
-                    fmls.last_mut().unwrap().seq.pop();
+                    seqs.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
                 // set the tactic
@@ -219,7 +239,7 @@ pub(super) fn latex_sequent_calculus(
                 let mut seq2 = seq;
                 seq1.push(q);
                 seq2.push(p);
-                let parent_idx = fmls.len() - 1;
+                let parent_idx = seqs.len() - 1;
                 let seq1 = seq1.extended_latex(Some(parent_idx));
                 let seq2 = seq2.extended_latex(Some(parent_idx));
                 if is_trivial_q {
@@ -230,8 +250,8 @@ pub(super) fn latex_sequent_calculus(
                     // if trivial, set the Axiom tactic
                     seq2.tactic.set((0, "Axiom".into())).unwrap();
                 }
-                fmls.push(seq1);
-                fmls.push(seq2);
+                seqs.push(seq1);
+                seqs.push(seq2);
             }
             // Convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
@@ -242,12 +262,12 @@ pub(super) fn latex_sequent_calculus(
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
-                let seq = seq.extended_latex(Some(fmls.len() - 1));
+                let seq = seq.extended_latex(Some(seqs.len() - 1));
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set((0, "Axiom".into())).unwrap();
                 }
-                fmls.push(seq);
+                seqs.push(seq);
             }
             // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
@@ -270,7 +290,7 @@ pub(super) fn latex_sequent_calculus(
                 seq1.push(fml12);
                 seq2.push(fml21);
                 seq2.push(fml22);
-                let parent_idx = fmls.len() - 1;
+                let parent_idx = seqs.len() - 1;
                 let seq1 = seq1.extended_latex(Some(parent_idx));
                 let seq2 = seq2.extended_latex(Some(parent_idx));
                 if is_trivial_1 {
@@ -281,15 +301,15 @@ pub(super) fn latex_sequent_calculus(
                     // if trivial, set the Axiom tactic
                     seq2.tactic.set((0, "Axiom".into())).unwrap();
                 }
-                fmls.push(seq1);
-                fmls.push(seq2);
+                seqs.push(seq1);
+                seqs.push(seq2);
             }
             (Pred(_, _), _) => {
                 // since formulas in 'seq' are ordered,
                 // if `fml` is predicate, no formulas can be processed
                 // thus, it is impossible to prove
                 // write all sequents
-                write_all_seqs(&mut fmls, names, file)?;
+                write_all_seqs(&mut seqs, names, file)?;
                 return Ok(false);
             }
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
