@@ -2,7 +2,9 @@ use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+use itertools::Itertools;
 use std::cell::OnceCell;
+use std::collections::HashMap;
 use std::io::Write;
 use std::{fs, io};
 
@@ -10,8 +12,8 @@ use std::{fs, io};
 #[derive(Clone, Debug)]
 struct SequentExtendedLatex2<'a> {
     seq: SequentExtended<'a>,
-    fml: FormulaExtended<'a>,
-    id: usize,
+    ids: HashMap<FormulaExtended<'a>, usize>,
+    fmls: Vec<FormulaExtended<'a>>,
     tactic: OnceCell<(usize, String)>,
     processed_children_cnt: usize,
     parent: Option<Parent>,
@@ -28,14 +30,14 @@ impl<'a> SequentExtended<'a> {
     #[inline(always)]
     fn extended_latex2(
         self,
-        fml: FormulaExtended<'a>,
-        id: usize,
+        ids: HashMap<FormulaExtended<'a>, usize>,
+        fmls: Vec<FormulaExtended<'a>>,
         parent: Option<Parent>,
     ) -> SequentExtendedLatex2<'a> {
         SequentExtendedLatex2 {
             seq: self,
-            fml,
-            id,
+            ids,
+            fmls,
             tactic: OnceCell::new(),
             processed_children_cnt: 0,
             parent,
@@ -49,7 +51,7 @@ fn write_all_proved_seqs(
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<()> {
     while let Some(SequentExtendedLatex2 {
-        fml: seq,
+        fmls: seq,
         tactic,
         processed_children_cnt,
         parent_idx,
@@ -84,7 +86,7 @@ fn write_all_seqs(
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<()> {
     while let Some(SequentExtendedLatex2 {
-        fml: seq, tactic, ..
+        fmls: seq, tactic, ..
     }) = seqs.pop()
     {
         if let Some((children_cnt, label)) = tactic.get() {
@@ -107,19 +109,8 @@ pub(super) fn latex_sequent_calculus(
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<bool> {
-    let mut id = 0;
-    let mut ind = 0;
-    for p in seq.ant {
-        writeln!(file, "[{}", p.display(names))?;
-        id += 1;
-        ind += 2;
-    }
-    for p in seq.suc {
-        writeln!(file, r"{}\lnot{}", " ".repeat(ind), p.display(names))?;
-        id += 1;
-        ind += 2;
-    }
     let Some(seq) = seq.extended() else {
+        // TODO: 2024/11/07
         // when trivial from the beginning
         writeln!(
             file,
@@ -128,18 +119,28 @@ pub(super) fn latex_sequent_calculus(
         )?;
         return Ok(true);
     };
-
+    let mut id = 0;
+    let mut ind = 0;
     let mut seqs = vec![];
+    let mut ids = HashMap::new();
     for fml in seq.iter() {
-        seqs.push(fml.extended_latex(None, id, None));
+        // TODO: 2024/11/07 fml.fmlという書き方は微妙
+        writeln!(file, "{}[{}", " ".repeat(ind), fml.fml.display(names))?;
+        ids.insert(*fml, id);
         id += 1;
+        ind += 2;
     }
+    seqs.push(seq.extended_latex2(ids, seq.iter().copied().collect_vec(), None));
+
     'outer: loop {
         // write all proved sequents
         write_all_proved_seqs(&mut seqs, names, file)?;
         // get the last sequent
         let Some(SequentExtendedLatex2 {
-            fml, seq, tactic, ..
+            fmls: fml,
+            seq,
+            tactic,
+            ..
         }) = seqs.last()
         else {
             // if no sequent to be proved, completed the proof
