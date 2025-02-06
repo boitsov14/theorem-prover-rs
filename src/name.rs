@@ -1,4 +1,4 @@
-use crate::lang::{Formula, Sequent, Term};
+use crate::lang::{Formula, SplitSequent, Term};
 use itertools::Itertools;
 use regex::Regex;
 use std::fmt;
@@ -206,7 +206,7 @@ impl Formula {
 }
 
 pub struct SequentDisplay<'a> {
-    sequent: &'a Sequent<'a>,
+    sequent: &'a SplitSequent<'a>,
     names: &'a Names,
 }
 
@@ -238,7 +238,7 @@ impl SequentDisplay<'_> {
     }
 }
 
-impl<'a> Sequent<'a> {
+impl<'a> SplitSequent<'a> {
     /// Returns a `SequentDisplay` used to display the sequent with the given names.
     pub fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
         SequentDisplay {

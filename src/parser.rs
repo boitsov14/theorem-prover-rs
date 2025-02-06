@@ -1,4 +1,4 @@
-use crate::lang::{Formula, SequentOwned, Term};
+use crate::lang::{Formula, OwnedSplitSequent, Term};
 use crate::name::Names;
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
@@ -83,7 +83,7 @@ pub(super) fn parse_sequent(
     names: &mut Names,
     modify_formula: bool,
     tptp: bool,
-) -> Result<SequentOwned, Error> {
+) -> Result<OwnedSplitSequent, Error> {
     let s = if tptp { modify_tptp(s) } else { s.to_string() };
     let s = modify_string(&s);
     check_parentheses(&s)?;
@@ -249,8 +249,8 @@ impl PFormula {
 }
 
 impl PSequent {
-    fn into_owned(self, names: &mut Names) -> SequentOwned {
-        SequentOwned {
+    fn into_owned(self, names: &mut Names) -> OwnedSplitSequent {
+        OwnedSplitSequent {
             ant: self
                 .ant
                 .into_iter()
@@ -472,7 +472,7 @@ impl Formula {
     }
 }
 
-impl SequentOwned {
+impl OwnedSplitSequent {
     /// Removes duplicate elements from `ant` and `suc`.
     fn unique(&mut self) {
         let mut new_ant = vec![];

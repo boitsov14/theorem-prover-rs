@@ -1,4 +1,4 @@
-use crate::lang::{Formula::*, Sequent};
+use crate::lang::{Formula::*, SplitSequent};
 use crate::name::Names;
 use crate::new_prover::lang::{
     Cost, FormulaExtended, SequentIdx,
@@ -161,7 +161,7 @@ impl<'a> SequentGrid<'a> {
     }
 }
 
-pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     let mut grid = SequentGrid {
         grid: vec![],
         idxs: vec![SequentIdx::new()],

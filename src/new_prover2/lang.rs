@@ -1,4 +1,4 @@
-use crate::lang::{Formula, Formula::*, Sequent};
+use crate::lang::{Formula, Formula::*, SplitSequent};
 use crate::new_prover2::lang::Side::{Left, Right};
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
@@ -29,19 +29,21 @@ pub(super) enum Cost {
     Quant,
 }
 
-/// formula with its occurrence side (left/right) in a sequent
+/// formula with side (left/right) in a sequent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) struct SidedFormula<'a> {
     pub(super) fml: &'a Formula,
     pub(super) side: Side,
 }
 
+/// sequent with an index set of sided formulas
 #[derive(Clone, Debug, Default)]
-pub(super) struct SequentExtended<'a> {
+pub(super) struct Sequent<'a> {
+    /// index set of sided formulas
     seq: FxIndexSet<SidedFormula<'a>>,
 }
 
-impl<'a> Deref for SequentExtended<'a> {
+impl<'a> Deref for Sequent<'a> {
     type Target = FxIndexSet<SidedFormula<'a>>;
     fn deref(&self) -> &Self::Target {
         &self.seq
@@ -50,7 +52,7 @@ impl<'a> Deref for SequentExtended<'a> {
 
 #[derive(Clone, Debug)]
 pub(super) struct SequentExtendedLatex<'a> {
-    pub(super) seq: SequentExtended<'a>,
+    pub(super) seq: Sequent<'a>,
     pub(super) tactic: OnceCell<(usize, String)>,
     pub(super) processed_children_cnt: usize,
     pub(super) parent_idx: Option<usize>,
@@ -121,11 +123,11 @@ impl<'a> SidedFormula<'a> {
     }
 }
 
-impl<'a> Sequent<'a> {
+impl<'a> SplitSequent<'a> {
     /// Convert Sequent to SequentExtended.
     /// Returns `None` if the Sequent is trivial.
-    pub(super) fn extended(&self) -> Option<SequentExtended> {
-        let mut seq = SequentExtended::default();
+    pub(super) fn extended(&self) -> Option<Sequent> {
+        let mut seq = Sequent::default();
         for fml in &self.ant {
             let fml = fml.extended(Left);
             if seq.is_trivial(fml) {
@@ -144,8 +146,8 @@ impl<'a> Sequent<'a> {
     }
 }
 
-impl<'a> SequentExtended<'a> {
-    pub(super) fn to_seq(&self) -> Sequent<'a> {
+impl<'a> Sequent<'a> {
+    pub(super) fn to_seq(&self) -> SplitSequent<'a> {
         use Side::*;
         let mut ant = Vec::with_capacity(self.seq.len());
         let mut suc = Vec::with_capacity(self.seq.len());
@@ -155,7 +157,7 @@ impl<'a> SequentExtended<'a> {
                 Right => suc.push(*fml),
             }
         }
-        Sequent { ant, suc }
+        SplitSequent { ant, suc }
     }
 
     #[inline(always)]

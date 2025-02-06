@@ -1,4 +1,4 @@
-use crate::lang::{Formula, Formula::*, Sequent as RawSequent, Term};
+use crate::lang::{Formula, Formula::*, SplitSequent as RawSequent, Term};
 use crate::name::Names;
 use crate::parser::parse_sequent;
 use crate::unification::{resolve_unifier, UnificationFailure, Unifier};

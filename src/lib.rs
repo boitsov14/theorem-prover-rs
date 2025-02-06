@@ -6,15 +6,15 @@ pub mod parser;
 pub mod prover;
 mod unification;
 
-use lang::Sequent;
-use lang::SequentOwned;
+use lang::OwnedSplitSequent;
+use lang::SplitSequent;
 use name::Names;
 use typed_arena::Arena;
 
 pub fn read_file_and_parse<'a>(
     path: &str,
-    arena: &'a Arena<SequentOwned>,
-) -> Vec<(Sequent<'a>, Names)> {
+    arena: &'a Arena<OwnedSplitSequent>,
+) -> Vec<(SplitSequent<'a>, Names)> {
     use crate::parser::parse_sequent;
     use std::fs;
 

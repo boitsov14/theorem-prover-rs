@@ -1,7 +1,7 @@
-use crate::lang::{Formula::*, Sequent};
+use crate::lang::{Formula::*, SplitSequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{SidedFormula, SequentExtended};
+use crate::new_prover2::lang::{Sequent, SidedFormula};
 use itertools::Itertools;
 use std::cell::OnceCell;
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ use std::{fs, io};
 // TODO: 2024/11/06 名前短くする
 #[derive(Clone, Debug)]
 struct SequentExtendedLatex2<'a> {
-    seq: SequentExtended<'a>,
+    seq: Sequent<'a>,
     ids: HashMap<SidedFormula<'a>, usize>,
     fmls: Vec<SidedFormula<'a>>,
     tactic: OnceCell<(usize, String)>,
@@ -26,7 +26,7 @@ struct Parent {
 }
 
 // TODO: 2024/11/07 名前短くする
-impl<'a> SequentExtended<'a> {
+impl<'a> Sequent<'a> {
     #[inline(always)]
     fn extended_latex2(
         self,
@@ -105,7 +105,7 @@ fn write_all_seqs(
 }
 
 pub(super) fn latex_sequent_calculus(
-    seq: &Sequent,
+    seq: &SplitSequent,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<bool> {

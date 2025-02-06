@@ -1,15 +1,15 @@
-use crate::lang::{Formula::*, Sequent};
+use crate::lang::{Formula::*, SplitSequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{SequentExtended, SidedFormula};
+use crate::new_prover2::lang::{Sequent, SidedFormula};
 
-fn log_seqs(seqs: &[SequentExtended], names: &Names) {
+fn log_seqs(seqs: &[Sequent], names: &Names) {
     for seq in seqs {
         println!("{}", seq.to_seq().display(names));
     }
 }
 
-pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     let Some(seq) = seq.extended() else {
         // when trivial from the beginning
         return true;

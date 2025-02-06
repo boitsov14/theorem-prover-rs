@@ -1,4 +1,4 @@
-use crate::lang::{Formula::*, Sequent};
+use crate::lang::{Formula::*, SplitSequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{SequentExtendedLatex, SidedFormula};
@@ -62,7 +62,7 @@ fn write_all_seqs(
 }
 
 pub(super) fn latex_sequent_calculus(
-    seq: &Sequent,
+    seq: &SplitSequent,
     names: &Names,
     file: &mut io::BufWriter<fs::File>,
 ) -> io::Result<bool> {

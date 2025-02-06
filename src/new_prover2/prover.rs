@@ -1,13 +1,13 @@
-use crate::lang::{Formula::*, Sequent};
+use crate::lang::{Formula::*, SplitSequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{SidedFormula, Info, SequentExtended, SequentExtendedLatex};
+use crate::new_prover2::lang::{Info, Sequent, SequentExtendedLatex, SidedFormula};
 use std::io::Write;
 
-pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
+pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     let ant = &seq.ant;
     let suc = &seq.suc;
-    let mut seq = SequentExtended::default();
+    let mut seq = Sequent::default();
     for fml in ant {
         let fml = fml.extended(Left);
         if seq.is_trivial(fml) {
