@@ -1,7 +1,7 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtendedLatex};
+use crate::new_prover2::lang::{SequentExtendedLatex, SidedFormula};
 use std::io::Write;
 use std::{fs, io};
 
@@ -86,7 +86,7 @@ pub(super) fn latex_sequent_calculus(
         };
         let mut seq = seq.clone();
         // get the last formula
-        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+        let Some(SidedFormula { fml, side }) = seq.pop() else {
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents

@@ -1,7 +1,7 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+use crate::new_prover2::lang::{SidedFormula, SequentExtended};
 use itertools::Itertools;
 use std::cell::OnceCell;
 use std::collections::HashMap;
@@ -12,8 +12,8 @@ use std::{fs, io};
 #[derive(Clone, Debug)]
 struct SequentExtendedLatex2<'a> {
     seq: SequentExtended<'a>,
-    ids: HashMap<FormulaExtended<'a>, usize>,
-    fmls: Vec<FormulaExtended<'a>>,
+    ids: HashMap<SidedFormula<'a>, usize>,
+    fmls: Vec<SidedFormula<'a>>,
     tactic: OnceCell<(usize, String)>,
     processed_children_cnt: usize,
     parent: Option<Parent>,
@@ -30,8 +30,8 @@ impl<'a> SequentExtended<'a> {
     #[inline(always)]
     fn extended_latex2(
         self,
-        ids: HashMap<FormulaExtended<'a>, usize>,
-        fmls: Vec<FormulaExtended<'a>>,
+        ids: HashMap<SidedFormula<'a>, usize>,
+        fmls: Vec<SidedFormula<'a>>,
         parent: Option<Parent>,
     ) -> SequentExtendedLatex2<'a> {
         SequentExtendedLatex2 {
@@ -148,7 +148,7 @@ pub(super) fn latex_sequent_calculus(
         };
         let mut seq = seq.clone();
         // get the last formula
-        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+        let Some(SidedFormula { fml, side }) = seq.pop() else {
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents

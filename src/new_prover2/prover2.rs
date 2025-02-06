@@ -1,7 +1,7 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, SequentExtended};
+use crate::new_prover2::lang::{SequentExtended, SidedFormula};
 
 fn log_seqs(seqs: &[SequentExtended], names: &Names) {
     for seq in seqs {
@@ -24,7 +24,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             return true;
         };
         // pop the last formula
-        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+        let Some(SidedFormula { fml, side }) = seq.pop() else {
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             return false;

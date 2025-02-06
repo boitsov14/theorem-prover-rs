@@ -1,7 +1,7 @@
 use crate::lang::{Formula::*, Sequent};
 use crate::name::Names;
 use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{FormulaExtended, Info, SequentExtended, SequentExtendedLatex};
+use crate::new_prover2::lang::{SidedFormula, Info, SequentExtended, SequentExtendedLatex};
 use std::io::Write;
 
 pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
@@ -32,7 +32,7 @@ pub fn prove_prop(seq: &Sequent, names: &Names) -> bool {
             println!("{}", seq.to_seq().display(names));
             println!();
         }
-        let Some(FormulaExtended { fml, side }) = seq.pop() else {
+        let Some(SidedFormula { fml, side }) = seq.pop() else {
             return false;
         };
         match (fml, side) {

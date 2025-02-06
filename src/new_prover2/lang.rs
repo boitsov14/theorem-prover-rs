@@ -9,32 +9,40 @@ use std::{fs, io};
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
+/// side in sequent calculus: antecedent ⊢ succedent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) enum Side {
+    /// antecedent
     Left,
+    /// succedent
     Right,
 }
 
+/// cost for propositional proof operations (ordered by priority)
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) enum Cost {
+    // lower cost for fewer branches
     Prop(usize),
+    // cannot be further simplified
     Atom,
+    // deferred because cost is used only for proving propositional logic
     Quant,
 }
 
+/// formula with its occurrence side (left/right) in a sequent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(super) struct FormulaExtended<'a> {
+pub(super) struct SidedFormula<'a> {
     pub(super) fml: &'a Formula,
     pub(super) side: Side,
 }
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct SequentExtended<'a> {
-    seq: FxIndexSet<FormulaExtended<'a>>,
+    seq: FxIndexSet<SidedFormula<'a>>,
 }
 
 impl<'a> Deref for SequentExtended<'a> {
-    type Target = FxIndexSet<FormulaExtended<'a>>;
+    type Target = FxIndexSet<SidedFormula<'a>>;
     fn deref(&self) -> &Self::Target {
         &self.seq
     }
@@ -65,8 +73,8 @@ impl Side {
 
 impl Formula {
     #[inline(always)]
-    pub(super) fn extended(&self, side: Side) -> FormulaExtended {
-        FormulaExtended { fml: self, side }
+    pub(super) fn extended(&self, side: Side) -> SidedFormula {
+        SidedFormula { fml: self, side }
     }
     #[inline(always)]
     pub(super) fn get_label(&self, side: Side) -> String {
@@ -90,7 +98,7 @@ impl Formula {
     }
 }
 
-impl<'a> FormulaExtended<'a> {
+impl<'a> SidedFormula<'a> {
     #[inline(always)]
     fn get_cost(&self) -> Cost {
         use Cost::*;
@@ -141,7 +149,7 @@ impl<'a> SequentExtended<'a> {
         use Side::*;
         let mut ant = Vec::with_capacity(self.seq.len());
         let mut suc = Vec::with_capacity(self.seq.len());
-        for FormulaExtended { fml, side } in &self.seq {
+        for SidedFormula { fml, side } in &self.seq {
             match side {
                 Left => ant.push(*fml),
                 Right => suc.push(*fml),
@@ -151,7 +159,7 @@ impl<'a> SequentExtended<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn push(&mut self, fml: FormulaExtended<'a>) {
+    pub(super) fn push(&mut self, fml: SidedFormula<'a>) {
         if self.seq.contains(&fml) {
             return;
         }
@@ -166,38 +174,38 @@ impl<'a> SequentExtended<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn pop(&mut self) -> Option<FormulaExtended<'a>> {
+    pub(super) fn pop(&mut self) -> Option<SidedFormula<'a>> {
         self.seq.pop()
     }
 
     #[inline(always)]
-    pub(super) fn last(&self) -> Option<&FormulaExtended<'a>> {
+    pub(super) fn last(&self) -> Option<&SidedFormula<'a>> {
         self.seq.last()
     }
 
     #[inline(always)]
-    pub(super) fn contains(&self, fml: &FormulaExtended<'a>) -> bool {
+    pub(super) fn contains(&self, fml: &SidedFormula<'a>) -> bool {
         self.seq.contains(fml)
     }
 
     #[inline(always)]
-    pub(super) fn is_trivial(&self, fml: FormulaExtended<'a>) -> bool {
+    pub(super) fn is_trivial(&self, fml: SidedFormula<'a>) -> bool {
         fml.is_atom() && self.contains(&fml.opposite())
     }
 
     #[inline(always)]
-    pub(super) fn is_trivial2(&self, fml1: FormulaExtended<'a>, fml2: FormulaExtended<'a>) -> bool {
+    pub(super) fn is_trivial2(&self, fml1: SidedFormula<'a>, fml2: SidedFormula<'a>) -> bool {
         if (fml1.is_atom() && self.contains(&fml1.opposite()))
             || (fml2.is_atom() && self.contains(&fml2.opposite()))
         {
             // trivial if either of them is trivial
             return true;
         }
-        let FormulaExtended {
+        let SidedFormula {
             fml: fml1,
             side: side1,
         } = fml1;
-        let FormulaExtended {
+        let SidedFormula {
             fml: fml2,
             side: side2,
         } = fml2;
