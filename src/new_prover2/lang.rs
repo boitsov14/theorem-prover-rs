@@ -5,7 +5,7 @@ use rustc_hash::FxHasher;
 use std::cell::OnceCell;
 use std::hash::BuildHasherDefault;
 use std::ops::Deref;
-use std::{fs, io};
+use std::{fmt, fs, io};
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
@@ -16,6 +16,15 @@ pub(super) enum Side {
     Left,
     /// succedent
     Right,
+}
+
+impl fmt::Display for Side {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Left => write!(f, "Left"),
+            Right => write!(f, "Right"),
+        }
+    }
 }
 
 /// cost for propositional proof operations (ordered by priority)
@@ -43,11 +52,50 @@ pub(super) struct Sequent<'a> {
     seq: FxIndexSet<SidedFormula<'a>>,
 }
 
+// TODO: 2025/02/07 Add Comment
 impl<'a> Deref for Sequent<'a> {
     type Target = FxIndexSet<SidedFormula<'a>>;
     fn deref(&self) -> &Self::Target {
         &self.seq
     }
+}
+
+#[derive(Clone, Debug)]
+pub(super) enum TacticKind {
+    Axiom,
+    Not(Side),
+    And(Side),
+    Or(Side),
+    To(Side),
+    Iff(Side),
+    All(Side),
+    Ex(Side),
+    True(Side),
+    False(Side),
+}
+
+impl fmt::Display for TacticKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TacticKind::*;
+        match self {
+            Axiom => write!(f, "Axiom"),
+            Not(side) => write!(f, r"$\lnot$: {side}"),
+            And(side) => write!(f, r"$\land$: {side}"),
+            Or(side) => write!(f, r"$\lor$: {side}"),
+            To(side) => write!(f, r"$\rightarrow$: {side}"),
+            Iff(side) => write!(f, r"$\leftrightarrow$: {side}"),
+            All(side) => write!(f, r"$\forall$: {side}"),
+            Ex(side) => write!(f, r"$\exists$: {side}"),
+            True(side) => write!(f, r"$\top$: {side}"),
+            False(side) => write!(f, r"$\bot$: {side}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct Tactic {
+    kind: TacticKind,
+    children_count: usize,
 }
 
 #[derive(Clone, Debug)]
