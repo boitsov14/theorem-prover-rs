@@ -8,7 +8,7 @@ use std::{fs, io};
 fn write_all_proved_seqs(
     seqs: &mut Vec<SequentExtendedLatex>,
     names: &Names,
-    file: &mut io::BufWriter<fs::File>,
+    buf: &mut Vec<u8>,
 ) -> io::Result<()> {
     while let Some(SequentExtendedLatex {
         seq,
@@ -26,7 +26,7 @@ fn write_all_proved_seqs(
             break;
         }
         writeln!(
-            file,
+            buf,
             r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
             seq.to_seq().display(names).to_latex()
         )?;
@@ -43,19 +43,19 @@ fn write_all_proved_seqs(
 fn write_all_seqs(
     seqs: &mut Vec<SequentExtendedLatex>,
     names: &Names,
-    file: &mut io::BufWriter<fs::File>,
+    buf: &mut Vec<u8>,
 ) -> io::Result<()> {
     while let Some(SequentExtendedLatex { seq, tactic, .. }) = seqs.pop() {
         if let Some((children_cnt, label)) = tactic.get() {
             // when has children
             writeln!(
-                file,
+                buf,
                 r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
                 seq.to_seq().display(names).to_latex()
             )?;
         } else {
             // when leaf
-            writeln!(file, r"\hypo{{{}}}", seq.to_seq().display(names).to_latex())?;
+            writeln!(buf, r"\hypo{{{}}}", seq.to_seq().display(names).to_latex())?;
         }
     }
     Ok(())
@@ -64,12 +64,12 @@ fn write_all_seqs(
 pub(super) fn latex_sequent_calculus(
     seq: &SplitSequent,
     names: &Names,
-    file: &mut io::BufWriter<fs::File>,
+    buf: &mut Vec<u8>,
 ) -> io::Result<bool> {
     let Some(seq) = seq.extended() else {
         // when trivial from the beginning
         writeln!(
-            file,
+            buf,
             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
             seq.display(names).to_latex()
         )?;
@@ -78,7 +78,7 @@ pub(super) fn latex_sequent_calculus(
     let mut seqs = vec![seq.extended_latex(None)];
     'outer: loop {
         // write all proved sequents
-        write_all_proved_seqs(&mut seqs, names, file)?;
+        write_all_proved_seqs(&mut seqs, names, buf)?;
         // get the last sequent
         let Some(SequentExtendedLatex { seq, tactic, .. }) = seqs.last() else {
             // if no sequent to be proved, completed the proof
@@ -90,7 +90,7 @@ pub(super) fn latex_sequent_calculus(
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents
-            write_all_seqs(&mut seqs, names, file)?;
+            write_all_seqs(&mut seqs, names, buf)?;
             return Ok(false);
         };
         match (fml, side) {
@@ -248,7 +248,7 @@ pub(super) fn latex_sequent_calculus(
                 // if `fml` is predicate, no formulas can be processed
                 // thus, it is impossible to prove
                 // write all sequents
-                write_all_seqs(&mut seqs, names, file)?;
+                write_all_seqs(&mut seqs, names, buf)?;
                 return Ok(false);
             }
             (Ex(_, _) | All(_, _), _) => unimplemented!(),

@@ -3,8 +3,13 @@ use itertools::Itertools;
 use regex::Regex;
 use std::fmt;
 
+/// A mapping between string names and their IDs.
+/// This struct implements string interning for better performance,
+/// enabling faster comparisons and memory efficiency.
 #[derive(Clone, Debug, Default)]
 pub struct Names {
+    /// Vector of interned strings where index is used as the ID.
+    /// This means the nth element corresponds to ID n.
     names: Vec<String>,
 }
 
@@ -14,14 +19,15 @@ impl Names {
         self.names.len()
     }
 
-    /// Retrieves the ID associated with a given name.
-    /// If the name is not found, it is added to the names.
+    /// Looks up the ID for a given name.
+    /// If the name is not found, adds it and returns its new ID.
     pub(super) fn get_id(&mut self, name: String) -> usize {
         self.names
             .iter()
             .position(|s| s == &name)
             .unwrap_or_else(|| {
                 self.names.push(name);
+                // return the last index
                 self.names.len() - 1
             })
     }

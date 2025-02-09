@@ -42,7 +42,14 @@ pub fn example_new2(s: &str) -> io::Result<()> {
 \begin{{document}}
 \begin{{prooftree}}",
     )?;
-    let result = latex_sequent_calculus(&seq, &names, &mut file)?;
+    let start_time = Instant::now();
+    const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
+    let result = latex_sequent_calculus(&seq, &names, &mut buf)?;
+    file.write_all(&buf)?;
+    let end_time = Instant::now();
+    let elapsed_time = end_time.duration_since(start_time);
+    println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
     writeln!(
         file,
         r"\end{{prooftree}}
