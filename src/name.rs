@@ -49,6 +49,10 @@ impl Names {
             .unwrap_or_else(|| format!("?_{id}"))
     }
 
+    fn get_name_ref(&self, id: usize) -> &str {
+        self.names.get(id).unwrap()
+    }
+
     /// Generates a fresh name and retrieves the ID associated with it.
     pub(super) fn gen_fresh_id(&mut self, id: usize) -> usize {
         self.get_id(self.gen_fresh_name(self.get_name(id)))
@@ -63,22 +67,25 @@ pub(super) struct TermDisplay<'a> {
 impl fmt::Display for TermDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Term::*;
-        write!(
-            f,
-            "{}",
-            match self.term {
-                Var(id) => self.names.get_name(*id),
-                Func(id, ts) if ts.is_empty() => self.names.get_name(*id),
-                Func(id, ts) => format!(
-                    "{}({})",
-                    self.names.get_name(*id),
-                    ts.iter()
-                        .map(|t| t.display(self.names).to_string())
-                        .collect_vec()
-                        .join(",")
-                ),
+        match self.term {
+            Var(id) => write!(f, "{}", self.names.get_name_ref(*id)),
+            Func(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id)),
+            Func(id, ts) => {
+                // write the function name followed by an opening bracket
+                write!(f, "{}(", self.names.get_name_ref(*id))?;
+                // iterate over the terms and display them
+                for (i, t) in ts.iter().enumerate() {
+                    // add comma before each term except the first one
+                    if i > 0 {
+                        write!(f, ",")?;
+                    }
+                    // recursively display the term
+                    write!(f, "{}", t.display(self.names))?;
+                }
+                // write the closing bracket
+                write!(f, ")")
             }
-        )
+        }
     }
 }
 
