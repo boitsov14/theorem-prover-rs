@@ -106,30 +106,29 @@ impl fmt::Display for FormulaDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Formula::*;
         match self.formula {
-            Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name(*id))?,
-            Pred(id, ts) => write!(
-                f,
-                "{}({})",
-                self.names.get_name(*id),
-                ts.iter()
-                    .map(|t| t.display(self.names).to_string())
-                    .collect_vec()
-                    .join(",")
-            )?,
+            Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id))?,
+            Pred(id, ts) => {
+                write!(f, "{}(", self.names.get_name_ref(*id))?;
+                for (i, t) in ts.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ",")?;
+                    }
+                    write!(f, "{}", t.display(self.names))?;
+                }
+                write!(f, ")")?;
+            }
             Not(p) => write!(f, "¬{}", p.display_inner(self.names))?,
             And(l) if l.is_empty() => write!(f, "⊤")?,
             And(l) => {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(
-                    f,
-                    "{}",
-                    l.iter()
-                        .map(|p| p.display_inner(self.names).to_string())
-                        .collect_vec()
-                        .join(" ∧ ")
-                )?;
+                for (i, p) in l.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ∧ ")?;
+                    }
+                    write!(f, "{}", p.display_inner(self.names))?;
+                }
                 if self.is_inner {
                     write!(f, ")")?;
                 }
@@ -139,14 +138,12 @@ impl fmt::Display for FormulaDisplay<'_> {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(
-                    f,
-                    "{}",
-                    l.iter()
-                        .map(|p| p.display_inner(self.names).to_string())
-                        .collect_vec()
-                        .join(" ∨ ")
-                )?;
+                for (i, p) in l.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ∨ ")?;
+                    }
+                    write!(f, "{}", p.display_inner(self.names))?;
+                }
                 if self.is_inner {
                     write!(f, ")")?;
                 }
@@ -179,22 +176,18 @@ impl fmt::Display for FormulaDisplay<'_> {
                     write!(f, ")")?;
                 }
             }
-            All(vs, p) => write!(
-                f,
-                "{}{}",
-                vs.iter()
-                    .map(|v| format!("∀{}", self.names.get_name(*v)))
-                    .collect::<String>(),
-                p.display_inner(self.names)
-            )?,
-            Ex(vs, p) => write!(
-                f,
-                "{}{}",
-                vs.iter()
-                    .map(|v| format!("∃{}", self.names.get_name(*v)))
-                    .collect::<String>(),
-                p.display_inner(self.names)
-            )?,
+            All(vs, p) => {
+                for v in vs {
+                    write!(f, "∀{}", self.names.get_name_ref(*v))?;
+                }
+                write!(f, "{}", p.display_inner(self.names))?;
+            }
+            Ex(vs, p) => {
+                for v in vs.iter() {
+                    write!(f, "∃{}", self.names.get_name(*v))?;
+                }
+                write!(f, "{}", p.display_inner(self.names))?;
+            }
         }
         Ok(())
     }
