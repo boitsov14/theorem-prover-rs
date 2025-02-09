@@ -20,7 +20,7 @@ pub fn example_new(s: &str) {
         }
     };
     let seq = seq.to_seq();
-    println!("{}", seq.display(&names));
+    // println!("{}", seq.display(&names));
 
     // prove
     let start_time = Instant::now();

@@ -40,14 +40,25 @@ pub(super) enum Cost {
 
 /// formula with side (left/right) in a sequent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(super) struct SidedFormula<'a> {
-    pub(super) fml: &'a Formula,
-    pub(super) side: Side,
+pub struct SidedFormula<'a> {
+    pub fml: &'a Formula,
+    pub side: Side,
+}
+
+impl SidedFormula<'_> {
+    #[inline(always)]
+    pub fn is_antecedent(&self) -> bool {
+        self.side == Left
+    }
+    #[inline(always)]
+    pub fn is_succedent(&self) -> bool {
+        self.side == Right
+    }
 }
 
 /// sequent with an index set of sided formulas
 #[derive(Clone, Debug, Default)]
-pub(super) struct Sequent<'a> {
+pub struct Sequent<'a> {
     /// index set of sided formulas
     seq: FxIndexSet<SidedFormula<'a>>,
 }

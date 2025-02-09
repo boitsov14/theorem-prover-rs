@@ -5,7 +5,11 @@ use theorem_prover_rs::new_prover2::example_new2;
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-    let s = "P and Q to Q and P";
+    // let s = "P and Q to Q and P";
+    // 0.80520004 ms to prove
+    // 547.71094 ms to print to file -> 10ms
+    // 1.6MB
+    let s = "(((((((((p6↔p7)↔p8)↔p9)↔p10)↔p11)↔p12)↔p13)↔p14)↔(p14↔(p13↔(p12↔(p11↔(p10↔(p9↔(p8↔(p7↔p6)))))))))";
     // let s = "P or Q to Q or P";
     // let s = "¬(P ∧ Q) ↔ (¬P ∨ ¬Q)";
     // let s = "all x P(x) to all y P(y)";

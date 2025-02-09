@@ -25,13 +25,13 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     let mut seqs = vec![seq];
     // TODO: 2024/08/25 popではなくlast_mutの使用を検討
     'outer: while let Some(mut seq) = seqs.pop() {
-        if cfg!(debug_assertions) {
-            for seq in seqs.iter() {
-                println!("{}", seq.to_seq().display(names));
-            }
-            println!("{}", seq.to_seq().display(names));
-            println!();
-        }
+        // if cfg!(debug_assertions) {
+        //     for seq in seqs.iter() {
+        //         println!("{}", seq.to_seq().display(names));
+        //     }
+        //     println!("{}", seq.to_seq().display(names));
+        //     println!();
+        // }
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             return false;
         };

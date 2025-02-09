@@ -4,9 +4,9 @@ use crate::new_prover2::lang::Side::{Left, Right};
 use crate::new_prover2::lang::{Sequent, SidedFormula};
 
 fn log_seqs(seqs: &[Sequent], names: &Names) {
-    for seq in seqs {
-        println!("{}", seq.to_seq().display(names));
-    }
+    // for seq in seqs {
+    //     println!("{}", seq.to_seq().display(names));
+    // }
 }
 
 pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {

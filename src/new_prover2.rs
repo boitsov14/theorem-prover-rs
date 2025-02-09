@@ -1,4 +1,4 @@
-mod lang;
+pub(crate) mod lang;
 mod latex;
 mod latex_tableau;
 mod prover;
@@ -25,7 +25,7 @@ pub fn example_new2(s: &str) -> io::Result<()> {
         }
     };
     let seq = seq.to_seq();
-    println!("{}", seq.display(&names));
+    // println!("{}", seq.display(&names));
 
     // prove
     let start_time = Instant::now();

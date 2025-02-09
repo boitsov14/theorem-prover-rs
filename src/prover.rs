@@ -327,14 +327,14 @@ impl<'a> ProofTree<'a> {
     ) -> io::Result<()> {
         if matches!(output, OutputType::Console) {
             for (seq, _) in seqs.iter().rev() {
-                writeln!(
-                    w,
-                    "{}",
-                    &seq.clone()
-                        .format_for_print(u, skolem_ids, fml_arena)
-                        .into_raw()
-                        .display(names)
-                )?;
+                // writeln!(
+                //     w,
+                //     "{}",
+                //     &seq.clone()
+                //         .format_for_print(u, skolem_ids, fml_arena)
+                //         .into_raw()
+                //         .display(names)
+                // )?;
             }
         }
         let (seq, _) = seqs.pop().unwrap();
@@ -347,14 +347,14 @@ impl<'a> ProofTree<'a> {
                         writeln!(w, "Axiom")?;
                     }
                     OutputType::Latex => {
-                        writeln!(
-                            w,
-                            r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                            seq.format_for_print(u, skolem_ids, fml_arena)
-                                .into_raw()
-                                .display(names)
-                                .to_latex()
-                        )?;
+                        // writeln!(
+                        //     w,
+                        //     r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                        //     seq.format_for_print(u, skolem_ids, fml_arena)
+                        //         .into_raw()
+                        //         .display(names)
+                        //         .to_latex()
+                        // )?;
                     }
                 }
             }
@@ -369,14 +369,14 @@ impl<'a> ProofTree<'a> {
                         writeln!(w, "UnProvable")?;
                     }
                     OutputType::Latex => {
-                        writeln!(
-                            w,
-                            r"\hypo{{{}}}",
-                            seq.format_for_print(u, skolem_ids, fml_arena)
-                                .into_raw()
-                                .display(names)
-                                .to_latex()
-                        )?;
+                        // writeln!(
+                        //     w,
+                        //     r"\hypo{{{}}}",
+                        //     seq.format_for_print(u, skolem_ids, fml_arena)
+                        //         .into_raw()
+                        //         .display(names)
+                        //         .to_latex()
+                        // )?;
                     }
                 },
             },
@@ -394,14 +394,14 @@ impl<'a> ProofTree<'a> {
                     proof.write_rec(seqs, fml_arena, new_id, names, skolem_ids, u, output, w)?;
                 }
                 if matches!(output, OutputType::Latex) {
-                    writeln!(
-                        w,
-                        r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
-                        seq.format_for_print(u, skolem_ids, fml_arena)
-                            .into_raw()
-                            .display(names)
-                            .to_latex()
-                    )?;
+                    // writeln!(
+                    //     w,
+                    //     r"\infer{{{len}}}[\scriptsize {label}]{{{}}}",
+                    //     seq.format_for_print(u, skolem_ids, fml_arena)
+                    //         .into_raw()
+                    //         .display(names)
+                    //         .to_latex()
+                    // )?;
                 }
             }
         }
@@ -804,7 +804,7 @@ pub fn example(s: &str) -> io::Result<()> {
         }
     };
     let seq = seq.to_seq();
-    println!("{}", seq.display(&names));
+    // println!("{}", seq.display(&names));
     let seq = seq.to_seq();
 
     // prove

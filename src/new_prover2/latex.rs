@@ -28,7 +28,7 @@ fn write_all_proved_seqs(
         writeln!(
             buf,
             r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
-            seq.to_seq().display(names).to_latex()
+            seq.display(names)
         )?;
         if let Some(parent_idx) = *parent_idx {
             // when not the root
@@ -51,11 +51,11 @@ fn write_all_seqs(
             writeln!(
                 buf,
                 r"\infer{{{children_cnt}}}[\scriptsize {label}]{{{}}}",
-                seq.to_seq().display(names).to_latex()
+                seq.display(names)
             )?;
         } else {
             // when leaf
-            writeln!(buf, r"\hypo{{{}}}", seq.to_seq().display(names).to_latex())?;
+            writeln!(buf, r"\hypo{{{}}}", seq.display(names))?;
         }
     }
     Ok(())
@@ -71,7 +71,9 @@ pub(super) fn latex_sequent_calculus(
         writeln!(
             buf,
             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-            seq.display(names).to_latex()
+            // seq.display(names).to_latex()
+            // TODO: 2025/02/09 FIX
+            "Oops"
         )?;
         return Ok(true);
     };
