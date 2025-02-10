@@ -1,7 +1,7 @@
-use crate::lang::{Formula::*, SplitSequent};
-use crate::name::Names;
-use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{Sequent, SidedFormula};
+use crate::{
+    lang::{Formula::*, Sequent, Side::*, SidedFormula, SplitSequent},
+    name::Names,
+};
 
 fn log_seqs(seqs: &[Sequent], names: &Names) {
     // for seq in seqs {

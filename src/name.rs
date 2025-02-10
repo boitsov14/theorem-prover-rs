@@ -1,6 +1,4 @@
-use crate::lang::{Formula, SplitSequent, Term};
-use crate::new_prover2::lang::{Sequent, SidedFormula};
-use itertools::Itertools;
+use crate::lang::{Formula, Sequent, SidedFormula, Term};
 use regex::Regex;
 use std::fmt;
 
@@ -231,11 +229,8 @@ impl fmt::Display for SequentDisplay<'_> {
             write!(f, "{}", fml.display(self.names))?;
         }
         write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in self
-            .sequent
-            .iter()
-            .filter(|p| p.is_succedent())
-            .enumerate()
+        for (i, SidedFormula { fml, .. }) in
+            self.sequent.iter().filter(|p| p.is_succedent()).enumerate()
         {
             if i > 0 {
                 write!(f, ", ")?;

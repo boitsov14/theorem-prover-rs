@@ -1,16 +1,15 @@
-pub(crate) mod lang;
-mod latex;
-mod latex_tableau;
+mod lang;
+mod latex_ebproof;
 mod prover;
-mod prover2;
 
-use crate::new_prover2::latex::latex_sequent_calculus;
-pub use prover2::prove_prop;
-use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write};
+use latex_ebproof::latex_sequent_calculus;
+use prover::prove_prop;
+use std::{
+    fs::File,
+    io::{self, BufWriter, Write},
+};
 
-pub fn example_new2(s: &str) -> io::Result<()> {
+pub fn example(s: &str) -> io::Result<()> {
     use crate::name::Names;
     use crate::parser::parse_sequent;
     use std::time::Instant;

@@ -1,10 +1,14 @@
-use crate::lang::{Formula, OwnedSplitSequent, Term};
-use crate::name::Names;
+use crate::{
+    lang::{Formula, OwnedSplitSequent, Term},
+    name::Names,
+};
 use itertools::Itertools;
 use maplit::{hashmap, hashset};
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::mem;
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
 

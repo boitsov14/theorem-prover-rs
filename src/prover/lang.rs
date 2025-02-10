@@ -1,75 +1,11 @@
-use crate::lang::{Formula, Formula::*, SplitSequent};
-use crate::new_prover2::lang::Side::{Left, Right};
-use indexmap::IndexSet;
-use rustc_hash::FxHasher;
-use std::cell::OnceCell;
-use std::hash::BuildHasherDefault;
-use std::ops::Deref;
-use std::{fmt, fs, io};
-
-type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
-
-/// side in sequent calculus: antecedent ⊢ succedent
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(super) enum Side {
-    /// antecedent
-    Left,
-    /// succedent
-    Right,
-}
-
-impl fmt::Display for Side {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Left => write!(f, "Left"),
-            Right => write!(f, "Right"),
-        }
-    }
-}
-
-/// cost for propositional proof operations (ordered by priority)
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(super) enum Cost {
-    // lower cost for fewer branches
-    Prop(usize),
-    // cannot be further simplified
-    Atom,
-    // deferred because cost is used only for proving propositional logic
-    Quant,
-}
-
-/// formula with side (left/right) in a sequent
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct SidedFormula<'a> {
-    pub fml: &'a Formula,
-    pub side: Side,
-}
-
-impl SidedFormula<'_> {
-    #[inline(always)]
-    pub fn is_antecedent(&self) -> bool {
-        self.side == Left
-    }
-    #[inline(always)]
-    pub fn is_succedent(&self) -> bool {
-        self.side == Right
-    }
-}
-
-/// sequent with an index set of sided formulas
-#[derive(Clone, Debug, Default)]
-pub struct Sequent<'a> {
-    /// index set of sided formulas
-    seq: FxIndexSet<SidedFormula<'a>>,
-}
-
-// TODO: 2025/02/07 Add Comment
-impl<'a> Deref for Sequent<'a> {
-    type Target = FxIndexSet<SidedFormula<'a>>;
-    fn deref(&self) -> &Self::Target {
-        &self.seq
-    }
-}
+use crate::lang::{
+    Cost,
+    Formula::{self, *},
+    Sequent,
+    Side::{self, Left, Right},
+    SidedFormula, SplitSequent,
+};
+use std::{cell::OnceCell, fmt, fs, io};
 
 #[derive(Clone, Debug)]
 pub(super) enum TacticKind {

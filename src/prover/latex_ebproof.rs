@@ -1,9 +1,13 @@
-use crate::lang::{Formula::*, SplitSequent};
-use crate::name::Names;
-use crate::new_prover2::lang::Side::{Left, Right};
-use crate::new_prover2::lang::{SequentExtendedLatex, SidedFormula};
-use std::io::Write;
-use std::{fs, io};
+use super::lang::SequentExtendedLatex;
+use crate::{
+    lang::{
+        Formula::*,
+        Side::{Left, Right},
+        SidedFormula, SplitSequent,
+    },
+    name::Names,
+};
+use std::io::{self, Write};
 
 fn write_all_proved_seqs(
     seqs: &mut Vec<SequentExtendedLatex>,

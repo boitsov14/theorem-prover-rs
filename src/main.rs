@@ -1,5 +1,10 @@
+mod lang;
+mod name;
+mod parser;
+mod prover;
+
 use mimalloc::MiMalloc;
-use theorem_prover_rs::new_prover2::example_new2;
+use prover::example;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -23,5 +28,5 @@ fn main() {
     // sort: 5274ms, un_sort: 1805ms -> 998ms
     // let s = "P(a) to all x(P(x) → P(f(x))) to P(f(f(f(f(f(f(f(f(f(a))))))))))";
 
-    example_new2(s).unwrap();
+    example(s).unwrap();
 }
