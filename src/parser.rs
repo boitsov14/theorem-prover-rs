@@ -14,7 +14,7 @@ use unicode_normalization::UnicodeNormalization;
 
 /// Parse error.
 #[derive(Error, Debug)]
-pub(super) enum Error {
+pub enum Error {
     /// Mismatched parentheses.
     #[error("Found {lp} left parentheses and {rp} right parentheses.")]
     Parentheses { lp: usize, rp: usize },
@@ -58,7 +58,7 @@ struct PSequent {
 }
 
 /// Parses a term.
-pub(super) fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
+pub fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
     let pterm = parser::term(&s).map_err(|e| Error::Peg { s, e })?;
@@ -66,11 +66,7 @@ pub(super) fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
 }
 
 /// Parses a formula.
-pub(super) fn parse_formula(
-    s: &str,
-    names: &mut Names,
-    modify_formula: bool,
-) -> Result<Formula, Error> {
+pub fn parse_formula(s: &str, names: &mut Names, modify_formula: bool) -> Result<Formula, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
     let pfml = parser::formula(&s).map_err(|e| Error::Peg { s, e })?;
@@ -82,7 +78,7 @@ pub(super) fn parse_formula(
 }
 
 /// Parses a sequent.
-pub(super) fn parse_sequent(
+pub fn parse_sequent(
     s: &str,
     names: &mut Names,
     modify_formula: bool,
@@ -148,7 +144,7 @@ peg::parser!( grammar parser() for str {
     use PTerm::*;
 
     /// Parses a term.
-    pub(super) rule term() -> PTerm = quiet!{
+    pub rule term() -> PTerm = quiet!{
         f:$func_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
         v:$var_id() { Var(v.to_string()) } /
         "(" t:term() ")" { t }
@@ -165,7 +161,7 @@ peg::parser!( grammar parser() for str {
     /// All infix operators are right-associative.
     ///
     /// The precedence of operators is as follows: ¬, ∀, ∃ > ∧ > ∨ > → > ↔.
-    pub(super) rule formula() -> PFormula = precedence!{
+    pub rule formula() -> PFormula = precedence!{
         p:@ _ iff() _ q:(@) { Iff(Box::new(p), Box::new(q)) }
         --
         p:@ _ to() _ q:(@) { To(Box::new(p), Box::new(q)) }
@@ -183,7 +179,7 @@ peg::parser!( grammar parser() for str {
     } / expected!("formula")
 
     /// Parses a sequent.
-    pub(super) rule sequent() -> PSequent =
+    pub rule sequent() -> PSequent =
         ant:(formula() ** (_ "," _)) _ turnstile() _ suc:(formula() ** (_ "," _)) { PSequent { ant, suc } } /
         p:formula() { PSequent { ant: vec![], suc: vec![p] } } /
         expected!("sequent")

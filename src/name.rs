@@ -14,13 +14,13 @@ pub struct Names {
 
 impl Names {
     /// The number of names.
-    pub(super) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.names.len()
     }
 
     /// Looks up the ID for a given name.
     /// If the name is not found, adds it and returns its new ID.
-    pub(super) fn get_id(&mut self, name: String) -> usize {
+    pub fn get_id(&mut self, name: String) -> usize {
         self.names
             .iter()
             .position(|s| s == &name)
@@ -41,7 +41,7 @@ impl Names {
 
     /// Retrieves the name associated with a given ID.
     /// If the name is not found, a placeholder name is returned.
-    pub(super) fn get_name(&self, id: usize) -> String {
+    pub fn get_name(&self, id: usize) -> String {
         self.names
             .get(id)
             .cloned()
@@ -53,12 +53,12 @@ impl Names {
     }
 
     /// Generates a fresh name and retrieves the ID associated with it.
-    pub(super) fn gen_fresh_id(&mut self, id: usize) -> usize {
+    pub fn gen_fresh_id(&mut self, id: usize) -> usize {
         self.get_id(self.gen_fresh_name(self.get_name(id)))
     }
 }
 
-pub(super) struct TermDisplay<'a> {
+pub struct TermDisplay<'a> {
     term: &'a Term,
     names: &'a Names,
 }
@@ -90,7 +90,7 @@ impl fmt::Display for TermDisplay<'_> {
 
 impl Term {
     /// Returns a `TermDisplay` used to display the term with the given names.
-    pub(super) fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
+    pub fn display<'a>(&'a self, names: &'a Names) -> TermDisplay<'a> {
         TermDisplay { term: self, names }
     }
 }
@@ -194,7 +194,7 @@ impl fmt::Display for FormulaDisplay<'_> {
 
 impl Formula {
     /// Returns a `FormulaDisplay` used to display the formula with the given names.
-    pub(super) fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
+    pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,
             names,
@@ -244,7 +244,7 @@ impl fmt::Display for SequentDisplay<'_> {
 impl SequentDisplay<'_> {
     // TODO: 2025/02/09 消す
     /// Returns the LaTeX representation of the sequent.
-    pub(super) fn _to_latex(&self) -> String {
+    pub fn _to_latex(&self) -> String {
         _to_latex(&self.to_string())
     }
 }

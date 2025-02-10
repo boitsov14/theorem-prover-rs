@@ -8,7 +8,7 @@ use crate::lang::{
 use std::{cell::OnceCell, fmt, fs, io};
 
 #[derive(Clone, Debug)]
-pub(super) enum TacticKind {
+pub enum TacticKind {
     Axiom,
     Not(Side),
     And(Side),
@@ -40,26 +40,26 @@ impl fmt::Display for TacticKind {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct Tactic {
+pub struct Tactic {
     kind: TacticKind,
     children_count: usize,
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct SequentExtendedLatex<'a> {
-    pub(super) seq: Sequent<'a>,
-    pub(super) tactic: OnceCell<(usize, String)>,
-    pub(super) processed_children_cnt: usize,
-    pub(super) parent_idx: Option<usize>,
+pub struct SequentExtendedLatex<'a> {
+    pub seq: Sequent<'a>,
+    pub tactic: OnceCell<(usize, String)>,
+    pub processed_children_cnt: usize,
+    pub parent_idx: Option<usize>,
 }
 
-pub(super) struct Info<'a> {
-    pub(super) file: &'a mut io::BufWriter<fs::File>,
+pub struct Info<'a> {
+    pub file: &'a mut io::BufWriter<fs::File>,
 }
 
 impl Side {
     #[inline(always)]
-    pub(super) fn opposite(self) -> Self {
+    pub fn opposite(self) -> Self {
         use Side::*;
         match self {
             Left => Right,
@@ -70,11 +70,11 @@ impl Side {
 
 impl Formula {
     #[inline(always)]
-    pub(super) fn extended(&self, side: Side) -> SidedFormula {
+    pub fn extended(&self, side: Side) -> SidedFormula {
         SidedFormula { fml: self, side }
     }
     #[inline(always)]
-    pub(super) fn get_label(&self, side: Side) -> String {
+    pub fn get_label(&self, side: Side) -> String {
         let fml = match self {
             Not(_) => r"$\lnot$",
             And(l) => match l.as_slice() {
@@ -109,11 +109,11 @@ impl<'a> SidedFormula<'a> {
         }
     }
     #[inline(always)]
-    pub(super) fn opposite(&self) -> Self {
+    pub fn opposite(&self) -> Self {
         self.fml.extended(self.side.opposite())
     }
     #[inline(always)]
-    pub(super) fn is_atom(&self) -> bool {
+    pub fn is_atom(&self) -> bool {
         self.fml.is_atom()
     }
 }
@@ -121,7 +121,7 @@ impl<'a> SidedFormula<'a> {
 impl<'a> SplitSequent<'a> {
     /// Convert Sequent to SequentExtended.
     /// Returns `None` if the Sequent is trivial.
-    pub(super) fn extended(&self) -> Option<Sequent> {
+    pub fn extended(&self) -> Option<Sequent> {
         let mut seq = Sequent::default();
         for fml in &self.ant {
             let fml = fml.extended(Left);
@@ -142,7 +142,7 @@ impl<'a> SplitSequent<'a> {
 }
 
 impl<'a> Sequent<'a> {
-    pub(super) fn to_seq(&self) -> SplitSequent<'a> {
+    pub fn to_seq(&self) -> SplitSequent<'a> {
         use Side::*;
         let mut ant = Vec::with_capacity(self.seq.len());
         let mut suc = Vec::with_capacity(self.seq.len());
@@ -156,7 +156,7 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn push(&mut self, fml: SidedFormula<'a>) {
+    pub fn push(&mut self, fml: SidedFormula<'a>) {
         if self.seq.contains(&fml) {
             return;
         }
@@ -171,27 +171,27 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn pop(&mut self) -> Option<SidedFormula<'a>> {
+    pub fn pop(&mut self) -> Option<SidedFormula<'a>> {
         self.seq.pop()
     }
 
     #[inline(always)]
-    pub(super) fn last(&self) -> Option<&SidedFormula<'a>> {
+    pub fn last(&self) -> Option<&SidedFormula<'a>> {
         self.seq.last()
     }
 
     #[inline(always)]
-    pub(super) fn contains(&self, fml: &SidedFormula<'a>) -> bool {
+    pub fn contains(&self, fml: &SidedFormula<'a>) -> bool {
         self.seq.contains(fml)
     }
 
     #[inline(always)]
-    pub(super) fn is_trivial(&self, fml: SidedFormula<'a>) -> bool {
+    pub fn is_trivial(&self, fml: SidedFormula<'a>) -> bool {
         fml.is_atom() && self.contains(&fml.opposite())
     }
 
     #[inline(always)]
-    pub(super) fn is_trivial2(&self, fml1: SidedFormula<'a>, fml2: SidedFormula<'a>) -> bool {
+    pub fn is_trivial2(&self, fml1: SidedFormula<'a>, fml2: SidedFormula<'a>) -> bool {
         if (fml1.is_atom() && self.contains(&fml1.opposite()))
             || (fml2.is_atom() && self.contains(&fml2.opposite()))
         {
@@ -211,7 +211,7 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(always)]
-    pub(super) fn extended_latex(self, parent_idx: Option<usize>) -> SequentExtendedLatex<'a> {
+    pub fn extended_latex(self, parent_idx: Option<usize>) -> SequentExtendedLatex<'a> {
         SequentExtendedLatex {
             seq: self,
             tactic: OnceCell::new(),

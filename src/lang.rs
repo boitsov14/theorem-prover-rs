@@ -4,13 +4,13 @@ use std::{collections::HashMap, fmt, hash::BuildHasherDefault, ops::Deref};
 use Side::*;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(super) enum Term {
+pub enum Term {
     Var(usize),
     Func(usize, Vec<Term>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(super) enum Formula {
+pub enum Formula {
     Pred(usize, Vec<Term>),
     Not(Box<Formula>),
     And(Vec<Formula>),
@@ -25,7 +25,7 @@ type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// side in sequent calculus: antecedent ⊢ succedent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(super) enum Side {
+pub enum Side {
     /// antecedent
     Left,
     /// succedent
@@ -43,7 +43,7 @@ impl fmt::Display for Side {
 
 /// cost for propositional proof operations (ordered by priority)
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(super) enum Cost {
+pub enum Cost {
     // lower cost for fewer branches
     Prop(usize),
     // cannot be further simplified
@@ -90,23 +90,23 @@ impl<'a> Deref for Sequent<'a> {
 #[derive(Clone, Debug)]
 pub struct SplitSequent<'a> {
     /// antecedents: formulas on the left side of the sequent
-    pub(super) ant: Vec<&'a Formula>,
+    pub ant: Vec<&'a Formula>,
     /// succedents: formulas on the right side of the sequent
-    pub(super) suc: Vec<&'a Formula>,
+    pub suc: Vec<&'a Formula>,
 }
 
 /// owned version of split sequent with owned formulas
 #[derive(Clone, Debug)]
 pub struct OwnedSplitSequent {
     /// antecedents: formulas on the left side of the sequent
-    pub(super) ant: Vec<Formula>,
+    pub ant: Vec<Formula>,
     /// succedents: formulas on the right side of the sequent
-    pub(super) suc: Vec<Formula>,
+    pub suc: Vec<Formula>,
 }
 
 impl Term {
     /// Visits and applies a function to the term and its subterms recursively.
-    pub(super) fn visit<F>(&self, f: &mut F)
+    pub fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
@@ -118,7 +118,7 @@ impl Term {
     }
 
     /// Visits and applies a function to the term and its subterms recursively, allowing mutation of the term.
-    pub(super) fn visit_mut<F>(&mut self, f: &mut F)
+    pub fn visit_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {
@@ -141,7 +141,7 @@ impl Term {
     }
 
     /// Substitutes variables with terms.
-    pub(super) fn subst_map(&mut self, map: &HashMap<usize, Self>) {
+    pub fn subst_map(&mut self, map: &HashMap<usize, Self>) {
         self.visit_mut(&mut |v| {
             let Self::Var(id) = v else { return };
             let Some(t) = map.get(id) else { return };
@@ -152,7 +152,7 @@ impl Term {
 
 impl Formula {
     /// Returns `true` if the formula is an atom.
-    pub(super) fn is_atom(&self) -> bool {
+    pub fn is_atom(&self) -> bool {
         matches!(self, Self::Pred(..))
     }
 
@@ -179,7 +179,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to the children of the formula, allowing mutation of the formula.
-    pub(super) fn visit_children_mut<F>(&mut self, mut f: F)
+    pub fn visit_children_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut Self),
     {
@@ -201,7 +201,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to the formula and its subformulas recursively.
-    pub(super) fn visit<F>(&self, f: &mut F)
+    pub fn visit<F>(&self, f: &mut F)
     where
         F: FnMut(&Self),
     {
@@ -210,7 +210,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to the formula and its subformulas recursively, allowing mutation of the formula.
-    pub(super) fn visit_mut<F>(&mut self, f: &mut F)
+    pub fn visit_mut<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Self),
     {
@@ -219,7 +219,7 @@ impl Formula {
     }
 
     /// Visits and applies a function to all terms in the formula.
-    pub(super) fn visit_terms<F>(&self, mut f: F)
+    pub fn visit_terms<F>(&self, mut f: F)
     where
         F: FnMut(&Term),
     {
@@ -243,14 +243,14 @@ impl Formula {
     /// Substitutes a variable with a new term.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
-    pub(super) fn subst(&mut self, var: usize, new_term: &Term) {
+    pub fn subst(&mut self, var: usize, new_term: &Term) {
         self.visit_terms_mut(|t| t.subst(var, new_term));
     }
 
     /// Substitutes variables with terms.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
-    pub(super) fn subst_map(&mut self, map: &HashMap<usize, Term>) {
+    pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
         self.visit_terms_mut(|t| t.subst_map(map));
     }
 }
@@ -263,7 +263,7 @@ impl Default for Formula {
 }
 
 impl OwnedSplitSequent {
-    pub(super) fn to_seq(&self) -> SplitSequent {
+    pub fn to_seq(&self) -> SplitSequent {
         SplitSequent {
             ant: self.ant.iter().collect(),
             suc: self.suc.iter().collect(),

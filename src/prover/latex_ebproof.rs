@@ -65,7 +65,7 @@ fn write_all_seqs(
     Ok(())
 }
 
-pub(super) fn latex_sequent_calculus(
+pub fn latex_sequent_calculus(
     seq: &SplitSequent,
     names: &Names,
     buf: &mut Vec<u8>,
