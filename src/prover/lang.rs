@@ -1,5 +1,5 @@
 use crate::lang::{
-    Cost,
+    Cost::{self, *},
     Formula::{self, *},
     Sequent,
     Side::{self, Left, Right},
@@ -60,7 +60,6 @@ pub struct Info<'a> {
 impl Side {
     #[inline(always)]
     pub fn opposite(self) -> Self {
-        use Side::*;
         match self {
             Left => Right,
             Right => Left,
@@ -98,8 +97,6 @@ impl Formula {
 impl<'a> SidedFormula<'a> {
     #[inline(always)]
     fn get_cost(&self) -> Cost {
-        use Cost::*;
-        use Side::*;
         match (self.fml, self.side) {
             (Pred(..), _) => Atom,
             (And(_) | Ex(..), Left) | (Or(_) | To(..) | All(..), Right) | (Not(_), _) => Prop(1),
@@ -143,7 +140,6 @@ impl<'a> SplitSequent<'a> {
 
 impl<'a> Sequent<'a> {
     pub fn to_seq(&self) -> SplitSequent<'a> {
-        use Side::*;
         let mut ant = Vec::with_capacity(self.seq.len());
         let mut suc = Vec::with_capacity(self.seq.len());
         for SidedFormula { fml, side } in &self.seq {

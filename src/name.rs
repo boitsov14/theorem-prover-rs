@@ -1,4 +1,8 @@
-use crate::lang::{Formula, Sequent, SidedFormula, Term};
+use crate::lang::{
+    Formula::{self, *},
+    Sequent, SidedFormula,
+    Term::{self, *},
+};
 use regex::Regex;
 use std::fmt;
 
@@ -65,7 +69,6 @@ pub struct TermDisplay<'a> {
 
 impl fmt::Display for TermDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Term::*;
         match self.term {
             Var(id) => write!(f, "{}", self.names.get_name_ref(*id)),
             Func(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id)),
@@ -103,7 +106,6 @@ pub struct FormulaDisplay<'a> {
 
 impl fmt::Display for FormulaDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Formula::*;
         match self.formula {
             Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id))?,
             Pred(id, ts) => {

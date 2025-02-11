@@ -3,11 +3,11 @@ use crate::{
     name::Names,
 };
 
-fn log_seqs(seqs: &[Sequent], names: &Names) {
-    // for seq in seqs {
-    //     println!("{}", seq.to_seq().display(names));
-    // }
-}
+// fn log_seqs(seqs: &[Sequent], names: &Names) {
+//     for seq in seqs {
+//         println!("{}", seq.to_seq().display(names));
+//     }
+// }
 
 pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     let Some(seq) = seq.extended() else {
@@ -16,8 +16,8 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
     };
     let mut seqs = vec![seq];
     'outer: loop {
-        #[cfg(debug_assertions)]
-        log_seqs(&seqs, names);
+        // #[cfg(debug_assertions)]
+        // log_seqs(&seqs, names);
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
             // if no sequent to be proved, completed the proof

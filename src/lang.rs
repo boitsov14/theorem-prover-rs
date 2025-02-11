@@ -1,6 +1,7 @@
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 use std::{collections::HashMap, fmt, hash::BuildHasherDefault, ops::Deref};
+use Formula::*;
 use Side::*;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -161,7 +162,6 @@ impl Formula {
     where
         F: FnMut(&Self),
     {
-        use Formula::*;
         match self {
             Pred(..) => {}
             Not(p) => f(p),
@@ -183,7 +183,6 @@ impl Formula {
     where
         F: FnMut(&mut Self),
     {
-        use Formula::*;
         match self {
             Pred(..) => {}
             Not(p) => f(p),

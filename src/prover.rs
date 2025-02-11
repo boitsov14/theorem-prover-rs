@@ -2,18 +2,16 @@ mod lang;
 mod latex_ebproof;
 mod prover;
 
+use crate::{name::Names, parser::parse_sequent};
 use latex_ebproof::latex_sequent_calculus;
 use prover::prove_prop;
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
+    time::Instant,
 };
 
 pub fn example(s: &str) -> io::Result<()> {
-    use crate::name::Names;
-    use crate::parser::parse_sequent;
-    use std::time::Instant;
-
     // parse
     let mut names = Names::default();
     let seq = match parse_sequent(s, &mut names, true, false) {
