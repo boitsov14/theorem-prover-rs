@@ -11,15 +11,34 @@ use std::{cell::OnceCell, fmt};
 pub enum Tactic {
     Axiom,
     Not { side: Side },
-    And { side: Side, children_count: usize },
-    Or { side: Side, children_count: usize },
+    And { side: Side, children_cnt: usize },
+    Or { side: Side, children_cnt: usize },
     To { side: Side },
     Iff { side: Side },
     All { side: Side },
     Ex { side: Side },
-    // TODO: 2025/02/12 Add Comment
+    // TODO: 2025/02/12 Add Comment why
     True,
     False,
+}
+
+impl Tactic {
+    #[inline(always)]
+    pub fn children_cnt(&self) -> usize {
+        use Tactic::*;
+        match self {
+            Axiom => 0,
+            Not { .. } => 1,
+            And { children_cnt, .. } => *children_cnt,
+            Or { children_cnt, .. } => *children_cnt,
+            To { .. } => 2,
+            Iff { .. } => 2,
+            All { .. } => 1,
+            Ex { .. } => 1,
+            True => 0,
+            False => 0,
+        }
+    }
 }
 
 impl fmt::Display for Tactic {
