@@ -5,44 +5,39 @@ use crate::lang::{
     Side::{self, Left, Right},
     SidedFormula, SplitSequent,
 };
-use std::{cell::OnceCell, fmt, fs, io};
+use std::{cell::OnceCell, fmt};
 
 #[derive(Clone, Debug)]
-pub enum TacticKind {
+pub enum Tactic {
     Axiom,
-    Not(Side),
-    And(Side),
-    Or(Side),
-    To(Side),
-    Iff(Side),
-    All(Side),
-    Ex(Side),
-    True(Side),
-    False(Side),
+    Not { side: Side },
+    And { side: Side, children_count: usize },
+    Or { side: Side, children_count: usize },
+    To { side: Side },
+    Iff { side: Side },
+    All { side: Side },
+    Ex { side: Side },
+    // TODO: 2025/02/12 Add Comment
+    True,
+    False,
 }
 
-impl fmt::Display for TacticKind {
+impl fmt::Display for Tactic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use TacticKind::*;
+        use Tactic::*;
         match self {
             Axiom => write!(f, "Axiom"),
-            Not(side) => write!(f, r"$\lnot$: {side}"),
-            And(side) => write!(f, r"$\land$: {side}"),
-            Or(side) => write!(f, r"$\lor$: {side}"),
-            To(side) => write!(f, r"$\rightarrow$: {side}"),
-            Iff(side) => write!(f, r"$\leftrightarrow$: {side}"),
-            All(side) => write!(f, r"$\forall$: {side}"),
-            Ex(side) => write!(f, r"$\exists$: {side}"),
-            True(side) => write!(f, r"$\top$: {side}"),
-            False(side) => write!(f, r"$\bot$: {side}"),
+            Not { side } => write!(f, r"$\lnot$: {side}"),
+            And { side, .. } => write!(f, r"$\land$: {side}"),
+            Or { side, .. } => write!(f, r"$\lor$: {side}"),
+            To { side } => write!(f, r"$\rightarrow$: {side}"),
+            Iff { side } => write!(f, r"$\leftrightarrow$: {side}"),
+            All { side } => write!(f, r"$\forall$: {side}"),
+            Ex { side } => write!(f, r"$\exists$: {side}"),
+            True => write!(f, r"$\top$: {Right}"),
+            False => write!(f, r"$\bot$: {Left}"),
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct Tactic {
-    kind: TacticKind,
-    children_count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -51,10 +46,6 @@ pub struct SequentExtendedLatex<'a> {
     pub tactic: OnceCell<(usize, String)>,
     pub processed_children_cnt: usize,
     pub parent_idx: Option<usize>,
-}
-
-pub struct Info<'a> {
-    pub file: &'a mut io::BufWriter<fs::File>,
 }
 
 impl Side {
