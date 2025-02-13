@@ -157,6 +157,7 @@ pub fn latex_sequent_calculus(
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'outer;
                 }
+                // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
                 let init = match side {
                     Right => Tactic::And {

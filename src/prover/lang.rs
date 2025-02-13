@@ -17,9 +17,6 @@ pub enum Tactic {
     Iff { side: Side },
     All { side: Side },
     Ex { side: Side },
-    // TODO: 2025/02/12 Add Comment why
-    True,
-    False,
 }
 
 impl Tactic {
@@ -28,15 +25,9 @@ impl Tactic {
         use Tactic::*;
         match self {
             Axiom => 0,
-            Not { .. } => 1,
-            And { children_cnt, .. } => *children_cnt,
-            Or { children_cnt, .. } => *children_cnt,
-            To { .. } => 2,
-            Iff { .. } => 2,
-            All { .. } => 1,
-            Ex { .. } => 1,
-            True => 0,
-            False => 0,
+            Not { .. } | All { .. } | Ex { .. } => 1,
+            And { children_cnt, .. } | Or { children_cnt, .. } => *children_cnt,
+            To { .. } | Iff { .. } => 2,
         }
     }
 }
@@ -53,8 +44,6 @@ impl fmt::Display for Tactic {
             Iff { side } => write!(f, r"$\leftrightarrow$: {side}"),
             All { side } => write!(f, r"$\forall$: {side}"),
             Ex { side } => write!(f, r"$\exists$: {side}"),
-            True => write!(f, r"$\top$: {Right}"),
-            False => write!(f, r"$\bot$: {Left}"),
         }
     }
 }
@@ -68,6 +57,7 @@ pub struct ProofNode<'a> {
 }
 
 impl Side {
+    #[must_use]
     #[inline(always)]
     pub fn opposite(self) -> Self {
         match self {
@@ -82,29 +72,9 @@ impl Formula {
     pub fn extended(&self, side: Side) -> SidedFormula {
         SidedFormula { fml: self, side }
     }
-    #[inline(always)]
-    pub fn get_label(&self, side: Side) -> String {
-        let fml = match self {
-            Not(_) => r"$\lnot$",
-            And(l) => match l.as_slice() {
-                [] => r"$\top$",
-                _ => r"$\land$",
-            },
-            Or(l) => match l.as_slice() {
-                [] => r"$\bot$",
-                _ => r"$\lor$",
-            },
-            To(..) => r"$\rightarrow$",
-            Iff(..) => r"$\leftrightarrow$",
-            All(..) => r"$\forall$",
-            Ex(..) => r"$\exists$",
-            Pred(..) => unreachable!(),
-        };
-        format!("{fml}: {side:?}")
-    }
 }
 
-impl<'a> SidedFormula<'a> {
+impl SidedFormula<'_> {
     #[inline(always)]
     fn get_cost(&self) -> Cost {
         match (self.fml, self.side) {
@@ -115,6 +85,7 @@ impl<'a> SidedFormula<'a> {
             (All(..), Left) | (Ex(..), Right) => Quant,
         }
     }
+    #[must_use]
     #[inline(always)]
     pub fn opposite(&self) -> Self {
         self.fml.extended(self.side.opposite())
@@ -125,7 +96,7 @@ impl<'a> SidedFormula<'a> {
     }
 }
 
-impl<'a> SplitSequent<'a> {
+impl SplitSequent<'_> {
     /// Convert Sequent to SequentExtended.
     /// Returns `None` if the Sequent is trivial.
     pub fn extended(&self) -> Option<Sequent> {
@@ -149,18 +120,6 @@ impl<'a> SplitSequent<'a> {
 }
 
 impl<'a> Sequent<'a> {
-    pub fn to_seq(&self) -> SplitSequent<'a> {
-        let mut ant = Vec::with_capacity(self.seq.len());
-        let mut suc = Vec::with_capacity(self.seq.len());
-        for SidedFormula { fml, side } in &self.seq {
-            match side {
-                Left => ant.push(*fml),
-                Right => suc.push(*fml),
-            }
-        }
-        SplitSequent { ant, suc }
-    }
-
     #[inline(always)]
     pub fn push(&mut self, fml: SidedFormula<'a>) {
         if self.seq.contains(&fml) {
@@ -179,11 +138,6 @@ impl<'a> Sequent<'a> {
     #[inline(always)]
     pub fn pop(&mut self) -> Option<SidedFormula<'a>> {
         self.seq.pop()
-    }
-
-    #[inline(always)]
-    pub fn last(&self) -> Option<&SidedFormula<'a>> {
-        self.seq.last()
     }
 
     #[inline(always)]

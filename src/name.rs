@@ -17,11 +17,6 @@ pub struct Names {
 }
 
 impl Names {
-    /// The number of names.
-    pub fn len(&self) -> usize {
-        self.names.len()
-    }
-
     /// Looks up the ID for a given name.
     /// If the name is not found, adds it and returns its new ID.
     pub fn get_id(&mut self, name: String) -> usize {
@@ -184,7 +179,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 write!(f, "{}", p.display_inner(self.names))?;
             }
             Ex(vs, p) => {
-                for v in vs.iter() {
+                for v in vs {
                     write!(f, r"\exists {}", self.names.get_name(*v))?;
                 }
                 write!(f, "{}", p.display_inner(self.names))?;
