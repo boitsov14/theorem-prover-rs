@@ -239,10 +239,22 @@ impl fmt::Display for SequentDisplay<'_> {
 }
 
 impl SequentDisplay<'_> {
-    // TODO: 2025/02/09 消す
-    /// Returns the LaTeX representation of the sequent.
-    pub fn _to_latex(&self) -> String {
-        _to_latex(&self.to_string())
+    /// Returns the unicode representation of the sequent
+    /// by converting LaTeX commands to symbols
+    pub fn to_unicode(&self) -> String {
+        self.to_string()
+            .replace(r"\top", "⊤")
+            .replace(r"\bot", "⊥")
+            .replace(r"\lnot ", "¬")
+            .replace(r"\land", "∧")
+            .replace(r"\lor", "∨")
+            .replace(r"\rightarrow", "→")
+            .replace(r"\leftrightarrow", "↔")
+            .replace(r"\forall ", "∀")
+            .replace(r"\exists ", "∃")
+            .replace(r"&\vdash", "⊢")
+            // TODO: 2025/02/13 これは必要か
+            .replace(r"\_", "_")
     }
 }
 
@@ -254,27 +266,6 @@ impl<'a> Sequent<'a> {
             names,
         }
     }
-}
-
-// TODO: 2025/02/09 消す
-fn _to_latex(s: &str) -> String {
-    let s = s
-        .replace("⊤", r"\top")
-        .replace("⊥", r"\bot")
-        .replace('¬', r"\lnot ")
-        .replace('∧', r"\land")
-        .replace('∨', r"\lor")
-        .replace('→', r"\rightarrow")
-        .replace('↔', r"\leftrightarrow")
-        .replace('∀', r"\forall ")
-        .replace('∃', r"\exists ")
-        .replace('⊢', r"&\vdash")
-        .replace('_', r"\_");
-
-    Regex::new(r"v\\_(\d+)")
-        .unwrap()
-        .replace_all(&s, "v_{$1}")
-        .to_string()
 }
 
 #[cfg(test)]
