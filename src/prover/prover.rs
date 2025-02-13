@@ -1,5 +1,5 @@
 use crate::{
-    lang::{Formula::*, Sequent, Side::*, SidedFormula, SplitSequent},
+    lang::{Formula::*, Side::*, SidedFormula, SplitSequent},
     name::Names,
 };
 

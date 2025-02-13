@@ -1,6 +1,7 @@
-mod lang;
-mod latex_ebproof;
-mod prover;
+// TODO: 2025/02/12 make it private? or flatten folder structure
+pub mod lang;
+pub mod latex_ebproof;
+pub mod prover;
 
 use crate::{name::Names, parser::parse_sequent};
 use latex_ebproof::latex_sequent_calculus;

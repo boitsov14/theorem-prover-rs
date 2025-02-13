@@ -60,10 +60,10 @@ impl fmt::Display for Tactic {
 }
 
 #[derive(Clone, Debug)]
-pub struct SequentExtendedLatex<'a> {
+pub struct ProofNode<'a> {
     pub seq: Sequent<'a>,
-    pub tactic: OnceCell<(usize, String)>,
-    pub processed_children_cnt: usize,
+    pub tactic: OnceCell<Tactic>,
+    pub proved_children_cnt: usize,
     pub parent_idx: Option<usize>,
 }
 
@@ -217,11 +217,11 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(always)]
-    pub fn extended_latex(self, parent_idx: Option<usize>) -> SequentExtendedLatex<'a> {
-        SequentExtendedLatex {
+    pub fn extended_latex(self, parent_idx: Option<usize>) -> ProofNode<'a> {
+        ProofNode {
             seq: self,
             tactic: OnceCell::new(),
-            processed_children_cnt: 0,
+            proved_children_cnt: 0,
             parent_idx,
         }
     }
