@@ -120,6 +120,24 @@ impl SplitSequent<'_> {
 }
 
 impl<'a> Sequent<'a> {
+    pub fn init(SplitSequent { ant, suc }: &SplitSequent<'a>) -> Self {
+        let mut seq = Self::default();
+        for fml in ant {
+            seq.push(fml.extended(Left));
+        }
+        for fml in suc {
+            seq.push(fml.extended(Right));
+        }
+        seq
+    }
+
+    pub fn is_initially_trivial(&self) -> bool {
+        self.seq
+            .iter()
+            .filter(|fml| fml.is_atom())
+            .any(|fml| self.contains(&fml.opposite()))
+    }
+
     #[inline(always)]
     pub fn push(&mut self, fml: SidedFormula<'a>) {
         if self.seq.contains(&fml) {

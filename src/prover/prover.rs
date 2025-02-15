@@ -26,7 +26,9 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
         // pop the last formula
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             // if `seq` has no formula, it is impossible to prove
-            // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
+            // this could happen:
+            // ex. `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
+            // all goes to `⊢` eventually
             return false;
         };
         match (fml, side) {
@@ -43,6 +45,8 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
+            // Convert `true ⊢` to `⊢`
+            // Convert `⊢ false` to `⊢`
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
                     let p = p.extended(side);
@@ -56,6 +60,7 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
+            // Drop `true ⊢` and `false ⊢`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.extended(side))
