@@ -1,3 +1,4 @@
+/*
 mod intern;
 mod lang;
 mod parser;
@@ -10,7 +11,7 @@ use typed_arena::Arena;
 
 pub use prover::prove_prop;
 
-pub fn read_file_and_parse<'a>(
+pub fn parse<'a>(
     path: &str,
     arena: &'a Arena<OwnedSplitSequent>,
 ) -> Vec<(SplitSequent<'a>, Names)> {
@@ -29,3 +30,4 @@ pub fn read_file_and_parse<'a>(
         })
         .collect()
 }
+*/
