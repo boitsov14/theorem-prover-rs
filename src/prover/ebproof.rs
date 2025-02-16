@@ -5,11 +5,11 @@ use super::sequent::{
 };
 use crate::{intern::Names, lang::Formula::*};
 use std::{
+    cell::OnceCell,
+    fmt,
     fs::File,
     io::{self, BufWriter, Write},
 };
-
-use std::{cell::OnceCell, fmt};
 
 #[derive(Clone, Debug)]
 pub enum Tactic {
