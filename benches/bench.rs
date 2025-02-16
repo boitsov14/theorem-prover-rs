@@ -1,4 +1,3 @@
-/*
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use mimalloc::MiMalloc;
 use theorem_prover_rs::{prover::prover::prove_prop, read_file_and_parse};
@@ -24,4 +23,3 @@ fn hard_props(c: &mut Criterion) {
 
 criterion_group!(benches, hard_props,);
 criterion_main!(benches);
-*/
