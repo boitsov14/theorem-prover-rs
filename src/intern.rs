@@ -208,7 +208,7 @@ impl Formula {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{parse_formula, parse_sequent, parse_term};
+    use crate::parser::{parse_formula, parse_term};
     use test_case::case;
 
     #[case("x")]
