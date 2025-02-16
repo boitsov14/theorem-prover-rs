@@ -10,11 +10,11 @@ fn log_seqs(seqs: &[Sequent], names: &Names) {
     }
 }
 
-pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
-    let Some(seq) = seq.extended() else {
+pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
+    if seq.is_initially_trivial() {
         // when trivial from the beginning
         return true;
-    };
+    }
     let mut seqs = vec![seq];
     'outer: loop {
         #[cfg(debug_assertions)]

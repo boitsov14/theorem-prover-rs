@@ -19,18 +19,9 @@ pub enum Formula {
     Ex(Vec<usize>, Box<Formula>),
 }
 
-/// sequent with separate vectors for antecedent and succedent
-#[derive(Clone, Debug)]
-pub struct SplitSequent<'a> {
-    /// antecedents: formulas on the left side of the sequent
-    pub ant: Vec<&'a Formula>,
-    /// succedents: formulas on the right side of the sequent
-    pub suc: Vec<&'a Formula>,
-}
-
 /// owned version of split sequent with owned formulas
 #[derive(Clone, Debug)]
-pub struct OwnedSplitSequent {
+pub struct SplitSequent {
     /// antecedents: formulas on the left side of the sequent
     pub ant: Vec<Formula>,
     /// succedents: formulas on the right side of the sequent
@@ -190,15 +181,6 @@ impl Default for Formula {
     /// Returns `True`.
     fn default() -> Self {
         Self::And(vec![])
-    }
-}
-
-impl OwnedSplitSequent {
-    pub fn to_seq(&self) -> SplitSequent {
-        SplitSequent {
-            ant: self.ant.iter().collect(),
-            suc: self.suc.iter().collect(),
-        }
     }
 }
 

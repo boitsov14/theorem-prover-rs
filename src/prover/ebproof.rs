@@ -3,10 +3,7 @@ use super::sequent::{
     Side::{self, Left, Right},
     SidedFormula,
 };
-use crate::{
-    intern::Names,
-    lang::{Formula::*, SplitSequent},
-};
+use crate::{intern::Names, lang::Formula::*};
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
@@ -129,7 +126,7 @@ fn write_all_seqs(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) 
     Ok(())
 }
 
-pub fn ebproof(seq: &SplitSequent, names: &Names) -> io::Result<()> {
+pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
     let mut file = BufWriter::new(File::create("out.tex")?);
     writeln!(
         file,
@@ -150,18 +147,16 @@ pub fn ebproof(seq: &SplitSequent, names: &Names) -> io::Result<()> {
     Ok(())
 }
 
-pub fn ebproof_core(seq: &SplitSequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
-    let Some(seq) = seq.extended() else {
+pub fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+    if seq.is_initially_trivial() {
         // when trivial from the beginning
         writeln!(
             buf,
             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-            // seq.display(names).to_latex()
-            // TODO: 2025/02/09 FIX
-            "Oops"
+            seq.display(names)
         )?;
         return Ok(());
-    };
+    }
     let mut nodes = vec![seq.extended_latex(None)];
     'outer: loop {
         // write all proved sequents

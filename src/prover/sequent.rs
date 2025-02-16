@@ -116,31 +116,8 @@ impl SidedFormula<'_> {
     }
 }
 
-impl SplitSequent<'_> {
-    /// Convert Sequent to SequentExtended.
-    /// Returns `None` if the Sequent is trivial.
-    pub fn extended(&self) -> Option<Sequent> {
-        let mut seq = Sequent::default();
-        for fml in &self.ant {
-            let fml = fml.with_side(Left);
-            if seq.is_trivial(fml) {
-                return None;
-            }
-            seq.push(fml);
-        }
-        for fml in &self.suc {
-            let fml = fml.with_side(Right);
-            if seq.is_trivial(fml) {
-                return None;
-            }
-            seq.push(fml);
-        }
-        Some(seq)
-    }
-}
-
 impl<'a> Sequent<'a> {
-    pub fn init(SplitSequent { ant, suc }: &SplitSequent<'a>) -> Self {
+    pub fn init(SplitSequent { ant, suc }: &'a SplitSequent) -> Self {
         let mut seq = Self::default();
         for fml in ant {
             seq.push(fml.with_side(Left));
