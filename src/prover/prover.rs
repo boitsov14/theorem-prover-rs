@@ -35,7 +35,7 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
-                let p = p.extended(side.opposite());
+                let p = p.with_side(side.opposite());
                 if seq.is_trivial(p) {
                     // if trivial, drop it and continue to the next sequent
                     seqs.pop().unwrap();
@@ -49,7 +49,7 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             // Convert `⊢ false` to `⊢`
             (And(l), Left) | (Or(l), Right) => {
                 for p in l {
-                    let p = p.extended(side);
+                    let p = p.with_side(side);
                     if seq.is_trivial(p) {
                         // if trivial, drop it and continue to the next sequent
                         seqs.pop().unwrap();
@@ -63,7 +63,7 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             // Drop `true ⊢` and `false ⊢`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
-                    .map(|p| p.extended(side))
+                    .map(|p| p.with_side(side))
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when `fml` is redundant
@@ -72,7 +72,7 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
-                let mut l = l.iter().map(|p| p.extended(side)).rev().peekable();
+                let mut l = l.iter().map(|p| p.with_side(side)).rev().peekable();
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
@@ -117,14 +117,14 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
-                let q = q.extended(Left);
+                let q = q.with_side(Left);
                 if q.is_atom() && seq.contains(&q) {
                     // when `fml` is redundant
                     // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
-                let p = p.extended(Right);
+                let p = p.with_side(Right);
                 match (seq.is_trivial(p), seq.is_trivial(q)) {
                     (true, true) => {
                         // if trivial, drop it and continue to the next sequent
@@ -150,8 +150,8 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             }
             // Convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
-                let p = p.extended(Left);
-                let q = q.extended(Right);
+                let p = p.with_side(Left);
+                let q = q.with_side(Right);
                 if seq.is_trivial2(p, q) {
                     // if trivial, drop it and continue to the next sequent
                     seqs.pop().unwrap();
@@ -163,10 +163,10 @@ pub fn prove_prop(seq: &SplitSequent, names: &Names) -> bool {
             // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
-                let p_l = p.extended(Left);
-                let p_r = p.extended(Right);
-                let q_l = q.extended(Left);
-                let q_r = q.extended(Right);
+                let p_l = p.with_side(Left);
+                let p_r = p.with_side(Right);
+                let q_l = q.with_side(Left);
+                let q_r = q.with_side(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
                     Left => (p_r, q_r, p_l, q_l),
                     Right => (q_l, p_r, p_l, q_r),

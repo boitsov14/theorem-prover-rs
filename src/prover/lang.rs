@@ -69,7 +69,7 @@ impl Side {
 
 impl Formula {
     #[inline(always)]
-    pub fn extended(&self, side: Side) -> SidedFormula {
+    pub fn with_side(&self, side: Side) -> SidedFormula {
         SidedFormula { fml: self, side }
     }
 }
@@ -88,7 +88,7 @@ impl SidedFormula<'_> {
     #[must_use]
     #[inline(always)]
     pub fn opposite(&self) -> Self {
-        self.fml.extended(self.side.opposite())
+        self.fml.with_side(self.side.opposite())
     }
     #[inline(always)]
     pub fn is_atom(&self) -> bool {
@@ -102,14 +102,14 @@ impl SplitSequent<'_> {
     pub fn extended(&self) -> Option<Sequent> {
         let mut seq = Sequent::default();
         for fml in &self.ant {
-            let fml = fml.extended(Left);
+            let fml = fml.with_side(Left);
             if seq.is_trivial(fml) {
                 return None;
             }
             seq.push(fml);
         }
         for fml in &self.suc {
-            let fml = fml.extended(Right);
+            let fml = fml.with_side(Right);
             if seq.is_trivial(fml) {
                 return None;
             }
@@ -123,10 +123,10 @@ impl<'a> Sequent<'a> {
     pub fn init(SplitSequent { ant, suc }: &SplitSequent<'a>) -> Self {
         let mut seq = Self::default();
         for fml in ant {
-            seq.push(fml.extended(Left));
+            seq.push(fml.with_side(Left));
         }
         for fml in suc {
-            seq.push(fml.extended(Right));
+            seq.push(fml.with_side(Right));
         }
         seq
     }

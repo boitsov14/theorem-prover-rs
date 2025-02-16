@@ -103,7 +103,7 @@ pub fn latex_sequent_calculus(
             (Not(p), _) => {
                 // set the tactic
                 tactic.set(Tactic::Not { side }).unwrap();
-                let p = p.extended(side.opposite());
+                let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
                 let seq = seq.extended_latex(Some(nodes.len() - 1));
@@ -130,7 +130,7 @@ pub fn latex_sequent_calculus(
                 tactic.set(init).unwrap();
                 let mut is_trivial = false;
                 for p in l {
-                    let p = p.extended(side);
+                    let p = p.with_side(side);
                     if seq.is_trivial(p) {
                         is_trivial = true;
                     }
@@ -147,7 +147,7 @@ pub fn latex_sequent_calculus(
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
-                    .map(|p| p.extended(side))
+                    .map(|p| p.with_side(side))
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
                     // when `fml` is redundant
@@ -172,7 +172,7 @@ pub fn latex_sequent_calculus(
                 tactic.set(init).unwrap();
                 let parent_idx = nodes.len() - 1;
                 for p in l.iter().rev() {
-                    let p = p.extended(side);
+                    let p = p.with_side(side);
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
@@ -186,7 +186,7 @@ pub fn latex_sequent_calculus(
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
-                let q = q.extended(Left);
+                let q = q.with_side(Left);
                 if q.is_atom() && seq.contains(&q) {
                     // when `fml` is redundant
                     // ex. `p → q, q ⊢`
@@ -196,7 +196,7 @@ pub fn latex_sequent_calculus(
                 }
                 // set the tactic
                 tactic.set(Tactic::To { side }).unwrap();
-                let p = p.extended(Right);
+                let p = p.with_side(Right);
                 let is_trivial_q = seq.is_trivial(q);
                 let is_trivial_p = seq.is_trivial(p);
                 let mut seq1 = seq.clone();
@@ -221,8 +221,8 @@ pub fn latex_sequent_calculus(
             (To(p, q), Right) => {
                 // set the tactic
                 tactic.set(Tactic::To { side }).unwrap();
-                let p = p.extended(Left);
-                let q = q.extended(Right);
+                let p = p.with_side(Left);
+                let q = q.with_side(Right);
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
@@ -238,10 +238,10 @@ pub fn latex_sequent_calculus(
             (Iff(p, q), side) => {
                 // set the tactic
                 tactic.set(Tactic::Iff { side }).unwrap();
-                let p_l = p.extended(Left);
-                let p_r = p.extended(Right);
-                let q_l = q.extended(Left);
-                let q_r = q.extended(Right);
+                let p_l = p.with_side(Left);
+                let p_r = p.with_side(Right);
+                let q_l = q.with_side(Left);
+                let q_r = q.with_side(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
                     Left => (p_r, q_r, p_l, q_l),
                     Right => (q_l, p_r, p_l, q_r),
