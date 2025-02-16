@@ -9,7 +9,7 @@ use lang::OwnedSplitSequent;
 use lang::SplitSequent;
 use typed_arena::Arena;
 
-pub use prover::prove_prop;
+pub use prover::prove_prop; // pub to use in bench
 
 pub fn parse<'a>(
     path: &str,

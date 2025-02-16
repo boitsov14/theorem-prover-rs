@@ -3,7 +3,7 @@ mod ebproof;
 mod sequent;
 
 use crate::{intern::Names, parser::parse_sequent};
-pub use core::prove_prop;
+pub use core::prove_prop; // pub to use in bench
 use ebproof::ebproof;
 use sequent::Sequent;
 use std::{io, time::Instant};
