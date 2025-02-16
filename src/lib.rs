@@ -1,12 +1,14 @@
-pub mod lang;
-pub mod name;
-pub mod parser;
-pub mod prover;
+mod intern;
+mod lang;
+mod parser;
+mod prover;
 
+use intern::Names;
 use lang::OwnedSplitSequent;
 use lang::SplitSequent;
-use name::Names;
 use typed_arena::Arena;
+
+pub use prover::prove_prop;
 
 pub fn read_file_and_parse<'a>(
     path: &str,

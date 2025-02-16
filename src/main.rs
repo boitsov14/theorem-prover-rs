@@ -1,5 +1,5 @@
+mod intern;
 mod lang;
-mod name;
 mod parser;
 mod prover;
 

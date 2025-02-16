@@ -1,6 +1,7 @@
+use super::sequent::{Sequent, Side::*, SidedFormula};
 use crate::{
-    lang::{Formula::*, Sequent, Side::*, SidedFormula, SplitSequent},
-    name::Names,
+    intern::Names,
+    lang::{Formula::*, SplitSequent},
 };
 
 fn log_seqs(seqs: &[Sequent], names: &Names) {

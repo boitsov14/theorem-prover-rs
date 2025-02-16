@@ -1,13 +1,79 @@
-use super::lang::{ProofNode, Tactic};
-use crate::{
-    lang::{
-        Formula::*,
-        Side::{Left, Right},
-        SidedFormula, SplitSequent,
-    },
-    name::Names,
+use super::sequent::{
+    Sequent,
+    Side::{self, Left, Right},
+    SidedFormula,
 };
-use std::io::{self, Write};
+use crate::{
+    intern::Names,
+    lang::{Formula::*, SplitSequent},
+};
+use std::{
+    fs::File,
+    io::{self, BufWriter, Write},
+};
+
+use std::{cell::OnceCell, fmt};
+
+#[derive(Clone, Debug)]
+pub enum Tactic {
+    Axiom,
+    Not { side: Side },
+    And { side: Side, children_cnt: usize },
+    Or { side: Side, children_cnt: usize },
+    To { side: Side },
+    Iff { side: Side },
+    All { side: Side },
+    Ex { side: Side },
+}
+
+impl Tactic {
+    #[inline(always)]
+    pub fn children_cnt(&self) -> usize {
+        use Tactic::*;
+        match self {
+            Axiom => 0,
+            Not { .. } | All { .. } | Ex { .. } => 1,
+            And { children_cnt, .. } | Or { children_cnt, .. } => *children_cnt,
+            To { .. } | Iff { .. } => 2,
+        }
+    }
+}
+
+impl fmt::Display for Tactic {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Tactic::*;
+        match self {
+            Axiom => write!(f, "Axiom"),
+            Not { side } => write!(f, r"$\lnot$: {side}"),
+            And { side, .. } => write!(f, r"$\land$: {side}"),
+            Or { side, .. } => write!(f, r"$\lor$: {side}"),
+            To { side } => write!(f, r"$\rightarrow$: {side}"),
+            Iff { side } => write!(f, r"$\leftrightarrow$: {side}"),
+            All { side } => write!(f, r"$\forall$: {side}"),
+            Ex { side } => write!(f, r"$\exists$: {side}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofNode<'a> {
+    pub seq: Sequent<'a>,
+    pub tactic: OnceCell<Tactic>,
+    pub proved_children_cnt: usize,
+    pub parent_idx: Option<usize>,
+}
+
+impl<'a> Sequent<'a> {
+    #[inline(always)]
+    pub fn extended_latex(self, parent_idx: Option<usize>) -> ProofNode<'a> {
+        ProofNode {
+            seq: self,
+            tactic: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx,
+        }
+    }
+}
 
 fn write_all_proved_seqs(
     nodes: &mut Vec<ProofNode>,
@@ -63,11 +129,28 @@ fn write_all_seqs(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) 
     Ok(())
 }
 
-pub fn latex_sequent_calculus(
-    seq: &SplitSequent,
-    names: &Names,
-    buf: &mut Vec<u8>,
-) -> io::Result<bool> {
+pub fn ebproof(seq: &SplitSequent, names: &Names) -> io::Result<()> {
+    let mut file = BufWriter::new(File::create("out.tex")?);
+    writeln!(
+        file,
+        r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}
+\usepackage{{ebproof}}
+\begin{{document}}
+\begin{{prooftree}}",
+    )?;
+    const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
+    ebproof_core(seq, names, &mut buf)?;
+    file.write_all(&buf)?;
+    writeln!(
+        file,
+        r"\end{{prooftree}}
+\end{{document}}",
+    )?;
+    Ok(())
+}
+
+pub fn ebproof_core(seq: &SplitSequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     let Some(seq) = seq.extended() else {
         // when trivial from the beginning
         writeln!(
@@ -77,7 +160,7 @@ pub fn latex_sequent_calculus(
             // TODO: 2025/02/09 FIX
             "Oops"
         )?;
-        return Ok(true);
+        return Ok(());
     };
     let mut nodes = vec![seq.extended_latex(None)];
     'outer: loop {
@@ -86,7 +169,7 @@ pub fn latex_sequent_calculus(
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return Ok(true);
+            return Ok(());
         };
         let mut seq = seq.clone();
         // get the last formula
@@ -95,7 +178,7 @@ pub fn latex_sequent_calculus(
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all sequents
             write_all_seqs(&mut nodes, names, buf)?;
-            return Ok(false);
+            return Ok(());
         };
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
@@ -274,7 +357,7 @@ pub fn latex_sequent_calculus(
                 // thus, it is impossible to prove
                 // write all sequents
                 write_all_seqs(&mut nodes, names, buf)?;
-                return Ok(false);
+                return Ok(());
             }
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
         }

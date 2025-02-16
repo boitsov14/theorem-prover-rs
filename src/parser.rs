@@ -1,6 +1,6 @@
 use crate::{
+    intern::Names,
     lang::{Formula, OwnedSplitSequent, Term},
-    name::Names,
 };
 use itertools::Itertools;
 use maplit::{hashmap, hashset};

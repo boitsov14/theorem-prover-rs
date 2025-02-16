@@ -1,9 +1,7 @@
 use crate::lang::{
     Formula::{self, *},
-    Sequent, SidedFormula,
     Term::{self, *},
 };
-use regex::Regex;
 use std::fmt;
 
 /// A mapping between string names and their IDs.
@@ -207,67 +205,6 @@ impl Formula {
     }
 }
 
-pub struct SequentDisplay<'a> {
-    sequent: &'a Sequent<'a>,
-    names: &'a Names,
-}
-
-impl fmt::Display for SequentDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, SidedFormula { fml, .. }) in self
-            .sequent
-            .iter()
-            .filter(|p| p.is_antecedent())
-            .enumerate()
-        {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            write!(f, "{}", fml.display(self.names))?;
-        }
-        write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in
-            self.sequent.iter().filter(|p| p.is_succedent()).enumerate()
-        {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            write!(f, "{}", fml.display(self.names))?;
-        }
-        Ok(())
-    }
-}
-
-impl SequentDisplay<'_> {
-    /// Returns the unicode representation of the sequent
-    /// by converting LaTeX commands to symbols
-    pub fn to_unicode(&self) -> String {
-        self.to_string()
-            .replace(r"\top", "⊤")
-            .replace(r"\bot", "⊥")
-            .replace(r"\lnot ", "¬")
-            .replace(r"\land", "∧")
-            .replace(r"\lor", "∨")
-            .replace(r"\rightarrow", "→")
-            .replace(r"\leftrightarrow", "↔")
-            .replace(r"\forall ", "∀")
-            .replace(r"\exists ", "∃")
-            .replace(r"&\vdash", "⊢")
-            // TODO: 2025/02/13 これは必要か
-            .replace(r"\_", "_")
-    }
-}
-
-impl<'a> Sequent<'a> {
-    /// Returns a `SequentDisplay` used to display the sequent with the given names.
-    pub fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
-        SequentDisplay {
-            sequent: self,
-            names,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,14 +238,5 @@ mod tests {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, true).unwrap();
         assert_eq!(fml.display(&names).to_string(), s);
-    }
-
-    #[case("P ⊢ Q")]
-    #[case("P, Q, R ⊢ S, T, U")]
-    #[case(" ⊢ ")]
-    fn sequent_display(s: &str) {
-        let mut names = Names::default();
-        let seq = parse_sequent(s, &mut names, true, false).unwrap();
-        // assert_eq!(seq.to_seq().display(&names).to_string(), s);
     }
 }
