@@ -11,6 +11,8 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
+const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
+
 #[derive(Clone, Debug)]
 enum Tactic {
     Axiom,
@@ -62,7 +64,7 @@ struct ProofNode<'a> {
 
 impl<'a> ProofNode<'a> {
     #[inline(always)]
-    fn init(seq: Sequent<'a>) -> Self {
+    fn root(seq: Sequent<'a>) -> Self {
         Self {
             seq,
             tactic: OnceCell::new(),
@@ -147,7 +149,6 @@ pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
 \begin{{document}}
 \begin{{prooftree}}",
     )?;
-    const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     ebproof_core(seq, names, &mut buf)?;
     file.write_all(&buf)?;
@@ -169,7 +170,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
         )?;
         return Ok(());
     }
-    let mut nodes = vec![ProofNode::init(seq)];
+    let mut nodes = vec![ProofNode::root(seq)];
     'outer: loop {
         // write all proved sequents
         write_all_proved_seqs(&mut nodes, names, buf)?;
