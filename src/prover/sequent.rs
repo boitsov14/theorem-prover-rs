@@ -49,23 +49,12 @@ pub struct SidedFormula<'a> {
     pub side: Side,
 }
 
-impl SidedFormula<'_> {
-    #[inline(always)]
-    pub fn is_antecedent(&self) -> bool {
-        self.side == Left
-    }
-    #[inline(always)]
-    pub fn is_succedent(&self) -> bool {
-        self.side == Right
-    }
-}
-
 /// sequent with an index set of sided formulas
 #[derive(Clone, Debug, Default)]
 pub struct Sequent<'a> {
     /// index set of sided formulas
     // TODO: 2025/02/10 make private
-    pub seq: FxIndexSet<SidedFormula<'a>>,
+    seq: FxIndexSet<SidedFormula<'a>>,
 }
 
 // TODO: 2025/02/07 Add Comment
@@ -105,11 +94,13 @@ impl SidedFormula<'_> {
             (All(..), Left) | (Ex(..), Right) => Quant,
         }
     }
+
     #[must_use]
     #[inline(always)]
-    pub fn opposite(&self) -> Self {
+    fn opposite(&self) -> Self {
         self.fml.with_side(self.side.opposite())
     }
+
     #[inline(always)]
     pub fn is_atom(&self) -> bool {
         self.fml.is_atom()
@@ -187,17 +178,13 @@ impl<'a> Sequent<'a> {
 }
 
 pub struct SequentDisplay<'a> {
-    sequent: &'a Sequent<'a>,
+    seq: &'a Sequent<'a>,
     names: &'a Names,
 }
 
 impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, SidedFormula { fml, .. }) in self
-            .sequent
-            .iter()
-            .filter(|p| p.is_antecedent())
-            .enumerate()
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Left).enumerate()
         {
             if i > 0 {
                 write!(f, ", ")?;
@@ -205,8 +192,7 @@ impl fmt::Display for SequentDisplay<'_> {
             write!(f, "{}", fml.display(self.names))?;
         }
         write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in
-            self.sequent.iter().filter(|p| p.is_succedent()).enumerate()
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate()
         {
             if i > 0 {
                 write!(f, ", ")?;
@@ -240,10 +226,7 @@ impl SequentDisplay<'_> {
 impl<'a> Sequent<'a> {
     /// Returns a `SequentDisplay` used to display the sequent with the given names.
     pub fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
-        SequentDisplay {
-            sequent: self,
-            names,
-        }
+        SequentDisplay { seq: self, names }
     }
 }
 

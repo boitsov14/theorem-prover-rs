@@ -8,7 +8,7 @@ use ebproof::ebproof;
 use sequent::Sequent;
 use std::{io, time::Instant};
 
-pub fn example(s: &str) -> io::Result<()> {
+pub fn prove(s: &str) -> io::Result<()> {
     // parse
     let mut names = Names::default();
     let seq = match parse_sequent(s, &mut names, true, false) {
