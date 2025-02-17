@@ -60,14 +60,26 @@ struct ProofNode<'a> {
     parent_idx: Option<usize>,
 }
 
+impl<'a> ProofNode<'a> {
+    #[inline(always)]
+    fn init(seq: Sequent<'a>) -> Self {
+        Self {
+            seq,
+            tactic: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx: None,
+        }
+    }
+}
+
 impl<'a> Sequent<'a> {
     #[inline(always)]
-    fn extended_latex(self, parent_idx: Option<usize>) -> ProofNode<'a> {
+    fn with_parent(self, parent_idx: usize) -> ProofNode<'a> {
         ProofNode {
             seq: self,
             tactic: OnceCell::new(),
             proved_children_cnt: 0,
-            parent_idx,
+            parent_idx: Some(parent_idx),
         }
     }
 }
@@ -157,7 +169,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
         )?;
         return Ok(());
     }
-    let mut nodes = vec![seq.extended_latex(None)];
+    let mut nodes = vec![ProofNode::init(seq)];
     'outer: loop {
         // write all proved sequents
         write_all_proved_seqs(&mut nodes, names, buf)?;
@@ -184,7 +196,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let seq = seq.extended_latex(Some(nodes.len() - 1));
+                let seq = seq.with_parent(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -214,7 +226,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                     }
                     seq.push(p);
                 }
-                let seq = seq.extended_latex(Some(nodes.len() - 1));
+                let seq = seq.with_parent(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -254,7 +266,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let seq = seq.extended_latex(Some(parent_idx));
+                    let seq = seq.with_parent(parent_idx);
                     if is_trivial {
                         // if trivial, set the Axiom tactic
                         seq.tactic.set(Tactic::Axiom).unwrap();
@@ -282,8 +294,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 seq1.push(q);
                 seq2.push(p);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.extended_latex(Some(parent_idx));
-                let seq2 = seq2.extended_latex(Some(parent_idx));
+                let seq1 = seq1.with_parent(parent_idx);
+                let seq2 = seq2.with_parent(parent_idx);
                 if is_trivial_q {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();
@@ -304,7 +316,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
-                let seq = seq.extended_latex(Some(nodes.len() - 1));
+                let seq = seq.with_parent(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -333,8 +345,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.extended_latex(Some(parent_idx));
-                let seq2 = seq2.extended_latex(Some(parent_idx));
+                let seq1 = seq1.with_parent(parent_idx);
+                let seq2 = seq2.with_parent(parent_idx);
                 if is_trivial_1 {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();
