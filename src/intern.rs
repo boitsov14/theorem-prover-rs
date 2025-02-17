@@ -2,7 +2,7 @@ use crate::lang::{
     Formula::{self, *},
     Term::{self, *},
 };
-use std::fmt;
+use std::{fmt, ops::Index};
 
 /// A mapping between string names and their IDs.
 /// This struct implements string interning for better performance,
@@ -28,30 +28,23 @@ impl Names {
             })
     }
 
+    // TODO: 2025/02/17 コメント修正
+    // 必ず既存のIDが既に存在している場合にのみ使うようにする旨コメントを追加
+    /// Generates a fresh name and retrieves the ID associated with it.
     /// Generates a fresh name by appending a single quote (') to the given name.
-    fn gen_fresh_name(&self, mut name: String) -> String {
+    pub fn gen_fresh_id(&mut self, id: usize) -> usize {
+        let mut name = self[id].clone();
         while self.names.contains(&name) {
             name.push('\'');
         }
-        name
+        self.get_id(name)
     }
+}
 
-    /// Retrieves the name associated with a given ID.
-    /// If the name is not found, a placeholder name is returned.
-    pub fn get_name(&self, id: usize) -> String {
-        self.names
-            .get(id)
-            .cloned()
-            .unwrap_or_else(|| format!("?_{id}"))
-    }
-
-    fn get_name_ref(&self, id: usize) -> &str {
-        self.names.get(id).unwrap()
-    }
-
-    /// Generates a fresh name and retrieves the ID associated with it.
-    pub fn gen_fresh_id(&mut self, id: usize) -> usize {
-        self.get_id(self.gen_fresh_name(self.get_name(id)))
+impl Index<usize> for Names {
+    type Output = String;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.names[index]
     }
 }
 
@@ -63,11 +56,11 @@ pub struct TermDisplay<'a> {
 impl fmt::Display for TermDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.term {
-            Var(id) => write!(f, "{}", self.names.get_name_ref(*id)),
-            Func(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id)),
+            Var(id) => write!(f, "{}", self.names[*id]),
+            Func(id, ts) if ts.is_empty() => write!(f, "{}", self.names[*id]),
             Func(id, ts) => {
                 // write the function name followed by an opening bracket
-                write!(f, "{}(", self.names.get_name_ref(*id))?;
+                write!(f, "{}(", self.names[*id])?;
                 // iterate over the terms and display them
                 for (i, t) in ts.iter().enumerate() {
                     // add comma before each term except the first one
@@ -100,9 +93,9 @@ pub struct FormulaDisplay<'a> {
 impl fmt::Display for FormulaDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.formula {
-            Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names.get_name_ref(*id))?,
+            Pred(id, ts) if ts.is_empty() => write!(f, "{}", self.names[*id])?,
             Pred(id, ts) => {
-                write!(f, "{}(", self.names.get_name_ref(*id))?;
+                write!(f, "{}(", self.names[*id])?;
                 for (i, t) in ts.iter().enumerate() {
                     if i > 0 {
                         write!(f, ",")?;
@@ -172,13 +165,13 @@ impl fmt::Display for FormulaDisplay<'_> {
             }
             All(vs, p) => {
                 for v in vs {
-                    write!(f, r"\forall {}", self.names.get_name_ref(*v))?;
+                    write!(f, r"\forall {}", self.names[*v])?;
                 }
                 write!(f, "{}", p.display_inner(self.names))?;
             }
             Ex(vs, p) => {
                 for v in vs {
-                    write!(f, r"\exists {}", self.names.get_name(*v))?;
+                    write!(f, r"\exists {}", self.names[*v])?;
                 }
                 write!(f, "{}", p.display_inner(self.names))?;
             }
