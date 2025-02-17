@@ -12,7 +12,7 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
-pub enum Tactic {
+enum Tactic {
     Axiom,
     Not { side: Side },
     And { side: Side, children_cnt: usize },
@@ -25,7 +25,7 @@ pub enum Tactic {
 
 impl Tactic {
     #[inline(always)]
-    pub fn children_cnt(&self) -> usize {
+    fn children_cnt(&self) -> usize {
         use Tactic::*;
         match self {
             Axiom => 0,
@@ -53,16 +53,16 @@ impl fmt::Display for Tactic {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProofNode<'a> {
-    pub seq: Sequent<'a>,
-    pub tactic: OnceCell<Tactic>,
-    pub proved_children_cnt: usize,
-    pub parent_idx: Option<usize>,
+struct ProofNode<'a> {
+    seq: Sequent<'a>,
+    tactic: OnceCell<Tactic>,
+    proved_children_cnt: usize,
+    parent_idx: Option<usize>,
 }
 
 impl<'a> Sequent<'a> {
     #[inline(always)]
-    pub fn extended_latex(self, parent_idx: Option<usize>) -> ProofNode<'a> {
+    fn extended_latex(self, parent_idx: Option<usize>) -> ProofNode<'a> {
         ProofNode {
             seq: self,
             tactic: OnceCell::new(),
@@ -147,7 +147,7 @@ pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
     Ok(())
 }
 
-pub fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     if seq.is_initially_trivial() {
         // when trivial from the beginning
         writeln!(
