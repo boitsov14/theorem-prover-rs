@@ -127,10 +127,17 @@ fn flush_proved_nodes(
     Ok(())
 }
 
-fn write_all_seqs(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+/// Writes all remaining nodes to the LaTeX buffer.
+/// When proof construction fails (e.g., when encountering atomic formulas,
+/// which cannot be processed further), this function writes the current state of the
+/// proof tree to give users insight into where and why the proof attempt failed.
+/// - Non-leaf nodes: Written as inference rules
+/// - Leaf nodes: Written as hypotheses
+fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
         if let Some(tactic) = tactic.get() {
-            // when has children
+            // when it has children
+            // write the inference rule
             writeln!(
                 buf,
                 r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
@@ -138,7 +145,8 @@ fn write_all_seqs(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) 
                 seq.display(names)
             )?;
         } else {
-            // when leaf
+            // when it is leaf
+            // write the sequent as a hypothesis
             writeln!(buf, r"\hypo{{{}}}", seq.display(names))?;
         }
     }
@@ -189,8 +197,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
-            // write all sequents
-            write_all_seqs(&mut nodes, names, buf)?;
+            // write all remaining nodes
+            flush_all_nodes(&mut nodes, names, buf)?;
             return Ok(());
         };
         match (fml, side) {
@@ -368,8 +376,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 // since formulas in 'seq' are ordered,
                 // if `fml` is predicate, no formulas can be processed
                 // thus, it is impossible to prove
-                // write all sequents
-                write_all_seqs(&mut nodes, names, buf)?;
+                // write all remaining nodes
+                flush_all_nodes(&mut nodes, names, buf)?;
                 return Ok(());
             }
             (Ex(_, _) | All(_, _), _) => unimplemented!(),
