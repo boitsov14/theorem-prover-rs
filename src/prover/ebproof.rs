@@ -86,7 +86,10 @@ impl<'a> Sequent<'a> {
     }
 }
 
-fn write_all_proved_seqs(
+/// Writes all proved nodes to the LaTeX buffer.
+/// - Processes only when all their children are proved
+/// - Automatically increments parent nodes' count of proved children
+fn flush_proved_nodes(
     nodes: &mut Vec<ProofNode>,
     names: &Names,
     buf: &mut Vec<u8>,
@@ -99,13 +102,14 @@ fn write_all_proved_seqs(
     }) = nodes.last()
     {
         let Some(tactic) = tactic.get() else {
-            // when tactic is not yet initialized
+            // tactic not initialized yet
             break;
         };
         if *proved_children_cnt < tactic.children_cnt() {
-            // when not all children are processed
+            // some children are not yet proved
             break;
         }
+        // write the inference rule
         writeln!(
             buf,
             r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
@@ -113,10 +117,11 @@ fn write_all_proved_seqs(
             seq.display(names)
         )?;
         if let Some(parent_idx) = *parent_idx {
-            // when not the root
-            // increment the processed children count of the parent
+            // if has a parent
+            // increment parent's proved children count
             nodes[parent_idx].proved_children_cnt += 1;
         }
+        // remove the written node
         nodes.pop().unwrap();
     }
     Ok(())
@@ -172,8 +177,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
     }
     let mut nodes = vec![ProofNode::root(seq)];
     'outer: loop {
-        // write all proved sequents
-        write_all_proved_seqs(&mut nodes, names, buf)?;
+        // write all proved nodes
+        flush_proved_nodes(&mut nodes, names, buf)?;
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
