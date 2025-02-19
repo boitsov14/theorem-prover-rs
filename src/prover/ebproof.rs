@@ -153,8 +153,11 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
     Ok(())
 }
 
+/// Generates a LaTeX proof tree using the ebproof package.
 pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
-    let mut file = BufWriter::new(File::create("out.tex")?);
+    // Create output LaTeX file
+    let mut file = File::create("out.tex")?;
+    // Write LaTeX preamble
     writeln!(
         file,
         r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}
@@ -162,9 +165,11 @@ pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
 \begin{{document}}
 \begin{{prooftree}}",
     )?;
+    // Buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     ebproof_core(seq, names, &mut buf)?;
     file.write_all(&buf)?;
+    // Write LaTeX closing
     writeln!(
         file,
         r"\end{{prooftree}}
