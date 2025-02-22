@@ -38,33 +38,34 @@ pub fn prove(s: &str) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "unstable", test))]
 mod bench {
-    extern crate test;
-
     use super::*;
     use crate::lang::SplitSequent;
+    use divan::Bencher;
     use std::fs;
     use typed_arena::Arena;
 
-    fn parse<'a>(path: &str, arena: &'a Arena<SplitSequent>) -> Vec<(Sequent<'a>, Names)> {
+    fn parse_nth<'a>(
+        path: &str,
+        arena: &'a Arena<SplitSequent>,
+        n: usize,
+    ) -> Option<(Sequent<'a>, Names)> {
         fs::read_to_string(path)
             .unwrap()
             .lines()
             .filter(|s| !s.is_empty() && !s.starts_with('#'))
+            .nth(n)
             .map(|s| {
                 let mut names = Names::default();
                 let seq = arena.alloc(parse_sequent(s, &mut names, true, false).unwrap());
                 (Sequent::init(seq), names)
             })
-            .collect()
     }
 
-    #[bench]
-    fn bench_0(b: &mut test::Bencher) {
+    #[divan::bench(args = [0,1,2,3])]
+    fn bench_props(bencher: Bencher, n: usize) {
         let arena = Arena::new();
-        let (seq, names) = &parse("examples/hard-props.txt", &arena)[0];
-        println!("{}", &seq.display(&names).to_unicode()[..100]);
-        b.iter(|| prove_prop(seq.clone(), &names));
+        let (seq, names) = parse_nth("examples/hard-props.txt", &arena, n).unwrap();
+        bencher.bench_local(|| prove_prop(seq.clone(), &names));
     }
 }

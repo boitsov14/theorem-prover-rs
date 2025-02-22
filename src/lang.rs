@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use Formula::*;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {

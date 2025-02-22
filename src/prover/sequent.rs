@@ -5,11 +5,11 @@ use crate::{
         SplitSequent,
     },
 };
+use Cost::*;
+use Side::*;
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 use std::{fmt, hash::BuildHasherDefault, ops::Deref};
-use Cost::*;
-use Side::*;
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
