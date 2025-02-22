@@ -178,6 +178,7 @@ pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
     Ok(())
 }
 
+/// Core implementation for generating LaTeX proof trees.
 fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     if seq.is_initially_trivial() {
         // when trivial from the beginning

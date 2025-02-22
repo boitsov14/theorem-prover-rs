@@ -1,3 +1,6 @@
+#![cfg_attr(feature = "unstable", feature(test))]
+// #![feature(test)]
+
 mod intern;
 mod lang;
 mod parser;
