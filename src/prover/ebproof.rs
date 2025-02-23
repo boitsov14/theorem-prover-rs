@@ -8,7 +8,7 @@ use std::{
     cell::OnceCell,
     fmt,
     fs::File,
-    io::{self, BufWriter, Write},
+    io::{self, Write},
 };
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
@@ -31,9 +31,9 @@ impl Tactic {
         use Tactic::*;
         match self {
             Axiom => 0,
-            Not { .. } | All { .. } | Ex { .. } => 1,
+            Not { .. } | All { .. } | Ex { .. } | To { side: Right } => 1,
             And { children_cnt, .. } | Or { children_cnt, .. } => *children_cnt,
-            To { .. } | Iff { .. } => 2,
+            To { side: Left } | Iff { .. } => 2,
         }
     }
 }
