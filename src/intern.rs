@@ -43,6 +43,7 @@ impl Names {
 
 impl Index<usize> for Names {
     type Output = String;
+
     fn index(&self, index: usize) -> &Self::Output {
         &self.names[index]
     }
@@ -189,6 +190,7 @@ impl Formula {
             is_inner: false,
         }
     }
+
     fn display_inner<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
         FormulaDisplay {
             formula: self,

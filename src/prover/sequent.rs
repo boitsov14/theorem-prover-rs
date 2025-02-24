@@ -60,6 +60,7 @@ pub struct Sequent<'a> {
 // TODO: 2025/02/07 Add Comment
 impl<'a> Deref for Sequent<'a> {
     type Target = FxIndexSet<SidedFormula<'a>>;
+
     fn deref(&self) -> &Self::Target {
         &self.seq
     }
