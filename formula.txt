@@ -1,0 +1,14 @@
+P to P
+# P and Q to Q and P
+# P or Q to Q or P
+# ¬(P ∧ Q) ↔ (¬P ∨ ¬Q)
+# all x P(x) to all y P(y)
+# ex x P(x) to ex y P(y)
+# all x P(x) to ex y P(y)
+# ex x P(x) to all y P(y)
+# P(a) to all x(P(x) → P(f(x))) to P(f(a))
+# P(a) to all x(P(x) → P(f(x))) to P(f(f(a)))
+# P(a) to all x(P(x) → P(f(x))) to P(f(f(f(f(f(f(f(f(f(f(a)))))))))))
+# ∃x∀yP(x,y) → ∀y∃xP(x,y)
+# sort: 5274ms, un_sort: 1805ms -> 998ms
+# P(a) to all x(P(x) → P(f(x))) to P(f(f(f(f(f(f(f(f(f(a))))))))))
