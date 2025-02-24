@@ -7,6 +7,8 @@ use clap::Parser;
 use itertools::Itertools;
 use mimalloc::MiMalloc;
 use prover::prove;
+#[cfg(not(windows))]
+use rlimit::{Resource, setrlimit};
 use std::{fs, path::PathBuf};
 
 #[global_allocator]
@@ -36,6 +38,12 @@ pub fn main_prover() {
 
     if let Some(memory) = config.memory {
         println!("Memory limit: {memory} bytes");
+        #[cfg(not(windows))]
+        if let Err(e) = setrlimit(Resource::AS, memory, 2 * memory) {
+            eprintln!("Warning: Failed to set memory limit: {e}");
+        }
+        #[cfg(windows)]
+        println!("Warning: Memory limit is not supported on Windows");
     }
     if config.ebproof {
         println!("Using ebproof format");
@@ -45,6 +53,7 @@ pub fn main_prover() {
     }
 
     // read formula from file
+    // but ignore lines starting with #
     let s = fs::read_to_string(PathBuf::from(&config.out).join("formula.txt"))
         .expect("Failed to read formula.txt")
         .lines()
