@@ -1,0 +1,10 @@
+# See https://rust-lang.github.io/rustfmt
+
+# stable
+newline_style = "Windows"
+use_field_init_shorthand = true
+
+# nightly
+group_imports = "One"
+imports_granularity = "Crate"
+imports_layout = "HorizontalVertical"
