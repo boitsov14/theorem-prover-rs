@@ -378,7 +378,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 nodes.push(seq1);
                 nodes.push(seq2);
             }
-            (Pred(_, _), _) => {
+            (Pred(..), _) => {
                 // since formulas in 'seq' are ordered,
                 // if `fml` is predicate, no formulas can be processed
                 // thus, it is impossible to prove
@@ -386,7 +386,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 flush_all_nodes(&mut nodes, names, buf)?;
                 return Ok(());
             }
-            (Ex(_, _) | All(_, _), _) => unimplemented!(),
+            (Ex(..) | All(..), _) => unimplemented!(),
         }
     }
 }

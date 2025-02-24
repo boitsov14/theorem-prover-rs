@@ -9,3 +9,4 @@ group_imports = "One"
 imports_granularity = "Crate"
 imports_layout = "HorizontalVertical"
 reorder_impl_items = true
+condense_wildcard_suffixes = true

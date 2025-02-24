@@ -198,8 +198,8 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             // since formulas in 'seq' are ordered,
             // if `fml` is predicate, no formulas can be processed
             // thus, it is impossible to prove
-            (Pred(_, _), _) => return false,
-            (Ex(_, _) | All(_, _), _) => unimplemented!(),
+            (Pred(..), _) => return false,
+            (Ex(..) | All(..), _) => unimplemented!(),
         }
     }
 }
