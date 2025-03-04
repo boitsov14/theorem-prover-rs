@@ -7,8 +7,6 @@ use clap::Parser;
 use itertools::Itertools;
 use mimalloc::MiMalloc;
 use prover::prove;
-#[cfg(not(windows))]
-use rlimit::{Resource, setrlimit};
 use std::{fs, path::PathBuf};
 
 #[global_allocator]
@@ -18,7 +16,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 struct Config {
     /// Memory usage limit in bytes
     #[arg(long)]
-    memory: Option<usize>,
+    memory: Option<u64>,
 
     /// Output LaTeX in ebproof format
     #[arg(long)]
@@ -33,17 +31,30 @@ struct Config {
     out: String,
 }
 
+#[cfg(not(windows))]
+fn set_memory_limit(limit: u64) {
+    use rlimit::{Resource, getrlimit, setrlimit};
+    if let Err(e) = setrlimit(Resource::AS, limit, 2 * limit) {
+        eprintln!("Warning: Failed to set memory limit: {e}");
+    } else {
+        if let Ok((soft, hard)) = getrlimit(Resource::AS) {
+            println!("Memory limit: ({soft}, {hard}) bytes");
+        } else {
+            eprintln!("Warning: Failed to get memory limit");
+        }
+    }
+}
+
+#[cfg(windows)]
+fn set_memory_limit(_limit: u64) {
+    println!("Warning: Memory limit is not supported on Windows");
+}
+
 pub fn main_prover() {
     let config = Config::parse();
 
     if let Some(memory) = config.memory {
-        println!("Memory limit: {memory} bytes");
-        #[cfg(not(windows))]
-        if let Err(e) = setrlimit(Resource::AS, memory, 2 * memory) {
-            eprintln!("Warning: Failed to set memory limit: {e}");
-        }
-        #[cfg(windows)]
-        println!("Warning: Memory limit is not supported on Windows");
+        set_memory_limit(memory);
     }
     if config.ebproof {
         println!("Using ebproof format");

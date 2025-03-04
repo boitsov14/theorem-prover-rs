@@ -38,6 +38,7 @@ pub fn prove(s: &str) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "bench")]
 mod bench {
     use super::*;
     use crate::lang::SplitSequent;
