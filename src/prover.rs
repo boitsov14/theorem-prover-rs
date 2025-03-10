@@ -39,6 +39,7 @@ pub fn prove(s: &str) -> io::Result<()> {
 }
 
 #[cfg(feature = "bench")]
+#[divan::bench_group(max_time = 3)]
 mod bench {
     use super::*;
     use crate::lang::SplitSequent;
@@ -62,25 +63,18 @@ mod bench {
                 (Sequent::init(seq), names)
             })
     }
-    #[divan::bench(
-        max_time = 3,
-        min_time = 3,
-        args = [0,1,2,3],
-    )]
+
+    #[divan::bench(args = [0,1,2,3])]
     fn bench_props(bencher: Bencher, n: usize) {
         let arena = Arena::new();
         let (seq, names) = parse_nth("examples/hard-props.txt", &arena, n).unwrap();
-        bencher.bench_local(|| prove_prop(seq.clone(), &names));
+        bencher.bench(|| prove_prop(seq.clone(), &names));
     }
 
-    #[divan::bench(
-        max_time = 3,
-        min_time = 3,
-        args = [0,1,2,3],
-    )]
+    #[divan::bench(args = [0,1,2,3])]
     fn bench_ebproof(bencher: Bencher, n: usize) {
         let arena = Arena::new();
         let (seq, names) = parse_nth("examples/large-latex.txt", &arena, n).unwrap();
-        bencher.bench_local(|| ebproof(seq.clone(), &names));
+        bencher.bench(|| ebproof(seq.clone(), &names));
     }
 }
