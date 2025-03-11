@@ -68,13 +68,13 @@ mod bench {
     fn bench_props(bencher: Bencher, n: usize) {
         let arena = Arena::new();
         let (seq, names) = parse_nth("examples/hard-props.txt", &arena, n).unwrap();
-        bencher.bench(|| prove_prop(seq.clone(), &names));
+        bencher.bench_local(|| prove_prop(seq.clone(), &names));
     }
 
     #[divan::bench(args = [0,1,2,3])]
     fn bench_ebproof(bencher: Bencher, n: usize) {
         let arena = Arena::new();
         let (seq, names) = parse_nth("examples/large-latex.txt", &arena, n).unwrap();
-        bencher.bench(|| ebproof(seq.clone(), &names));
+        bencher.bench_local(|| ebproof(seq.clone(), &names));
     }
 }
