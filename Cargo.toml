@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.32", features = ["derive"] }
 divan = { version = "0.1.17", optional = true }
-indexmap = "2.7.1"
+flexi_logger = "0.29.8"
+indexmap = "2.8.0"
 itertools = "0.14.0"
+log = "0.4.26"
 maplit = "1.0.2"
 mimalloc = { version = "0.1.43", default-features = false }
 peg = "0.8.5"
