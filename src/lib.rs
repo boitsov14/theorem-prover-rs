@@ -26,6 +26,10 @@ struct Config {
     #[arg(long)]
     forest: bool,
 
+    /// Enable trace level logging
+    #[arg(long)]
+    trace: bool,
+
     /// Output directory path
     #[arg(long, default_value = "")]
     out: String,
@@ -50,17 +54,38 @@ fn set_memory_limit(_limit: u64) {
     println!("Warning: Memory limit is not supported on Windows");
 }
 
+fn init_logger(trace: bool) {
+    let config = if trace {
+        "config/log4rs_trace.yaml"
+    } else {
+        "config/log4rs.yaml"
+    };
+    log4rs::init_file(config, Default::default()).unwrap();
+
+    log::error!("Error message");
+    log::warn!("Warning message");
+    log::info!("Info message");
+    log::debug!("Debug message");
+    log::trace!("Trace message");
+
+    for _ in 0..20 {
+        log::trace!("Hi");
+    }
+}
+
 pub fn main_prover() {
     let config = Config::parse();
+
+    init_logger(config.trace);
 
     if let Some(memory) = config.memory {
         set_memory_limit(memory);
     }
     if config.ebproof {
-        println!("Using ebproof format");
+        log::trace!("Using ebproof format");
     }
     if config.forest {
-        println!("Using forest format");
+        log::trace!("Using forest format");
     }
 
     // read formula from file

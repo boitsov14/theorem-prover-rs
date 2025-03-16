@@ -1,0 +1,21 @@
+# Main config for standard logging mode
+appenders:
+  # Standard log file config
+  log_file:
+    # File appender writes logs to a file
+    kind: file
+    # Path to the log file
+    path: "prover.log"
+    # Format config - {m} = message content, {n} = newline
+    encoder:
+      pattern: "{m}{n}"
+    # Overwrite existing file instead of appending
+    append: false
+
+# Root logger config
+root:
+  # Log level threshold - only info and higher levels will be logged
+  level: info
+  # List of appenders to use
+  appenders:
+    - log_file

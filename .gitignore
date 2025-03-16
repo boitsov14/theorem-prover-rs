@@ -2,3 +2,4 @@
 /target
 callgrind.out.*
 *.tex
+*.log

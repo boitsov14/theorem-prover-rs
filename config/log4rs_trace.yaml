@@ -1,0 +1,50 @@
+# Enhanced config for verbose mode with trace level logging
+appenders:
+  # Standard log file config
+  log_file:
+    # File appender writes logs to a file
+    kind: file
+    # Path to the log file
+    path: "prover.log"
+    # Format config - {m} = message content, {n} = newline
+    encoder:
+      pattern: "{m}{n}"
+    # Overwrite existing file instead of appending
+    append: false
+    # Only include info level and above
+    filters:
+      - kind: threshold
+        level: info
+
+  # Trace log file with rotation policy
+  trace_file:
+    # Rolling file appender handles file rotation based on policies
+    kind: rolling_file
+    # Path to the trace log file
+    path: "prover-trace.log"
+    # Format config - {m} = message content, {n} = newline
+    encoder:
+      pattern: "{m}{n}"
+    # Overwrite existing file instead of appending
+    append: false
+    # File rotation policy
+    policy:
+      # Compound policy combines trigger and roller
+      kind: compound
+      # Size-based trigger policy
+      trigger:
+        # Trigger rotation when file size exceeds 1MB
+        kind: size
+        limit: 1MB
+      # Delete roller simply deletes old log files
+      roller:
+        kind: delete
+
+# Root logger config
+root:
+  # Log level threshold - trace allows all log levels
+  level: trace
+  # List of appenders to use
+  appenders:
+    - log_file
+    - trace_file
