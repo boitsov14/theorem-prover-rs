@@ -22,9 +22,9 @@ appenders:
     kind: rolling_file
     # Path to the trace log file
     path: "prover-trace.log"
-    # Format config - {m} = message content, {n} = newline
+    # Format config - {f} = filename, {L} = line number, {m} = message content, {n} = newline
     encoder:
-      pattern: "{m}{n}"
+      pattern: "[{f}:{L}] {m}{n}"
     # Overwrite existing file instead of appending
     append: false
     # File rotation policy
