@@ -29,8 +29,6 @@ appenders:
     append: false
     # File rotation policy
     policy:
-      # Compound policy combines trigger and roller
-      kind: compound
       # Size-based trigger policy
       trigger:
         # Trigger rotation when file size exceeds 1MB
