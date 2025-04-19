@@ -47,9 +47,9 @@ fn set_memory_limit(_limit: u64) {
 
 fn init_logger(trace: bool) {
     let config = if trace {
-        "config/log4rs-trace.yaml"
+        "logger/trace.yaml"
     } else {
-        "config/log4rs.yaml"
+        "logger/info.yaml"
     };
     log4rs::init_file(config, Default::default()).unwrap();
 
