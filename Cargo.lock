@@ -891,6 +891,7 @@ dependencies = [
  "regex",
  "rlimit",
  "rustc-hash",
+ "serde_yaml",
  "test-case",
  "thiserror 2.0.12",
  "typed-arena",

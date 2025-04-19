@@ -1,6 +1,7 @@
 use crate::prover::prove;
 use clap::Parser;
 use itertools::Itertools;
+use serde_yaml;
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
@@ -47,11 +48,12 @@ fn set_memory_limit(_limit: u64) {
 
 fn init_logger(trace: bool) {
     let config = if trace {
-        "logger/trace.yaml"
+        include_str!("../logger/trace.yaml")
     } else {
-        "logger/info.yaml"
+        include_str!("../logger/info.yaml")
     };
-    log4rs::init_file(config, Default::default()).unwrap();
+    let config = serde_yaml::from_str(config).unwrap();
+    log4rs::init_raw_config(config).unwrap();
 
     log::error!("Error message");
     log::warn!("Warning message");
