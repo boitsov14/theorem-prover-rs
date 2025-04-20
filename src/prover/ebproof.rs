@@ -109,6 +109,11 @@ fn flush_proved_nodes(
             // some children are not yet proved
             break;
         }
+        // check if the buffer size exceeds the limit
+        if buf.len() > MAX_FILE_SIZE {
+            // terminate the entire process immediately
+            panic!("File size exceeded the limit.");
+        }
         // write the inference rule
         writeln!(
             buf,
@@ -135,6 +140,11 @@ fn flush_proved_nodes(
 /// - Leaf nodes: Written as hypotheses
 fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
+        // check if the buffer size exceeds the limit
+        if buf.len() > MAX_FILE_SIZE {
+            // terminate the entire process immediately
+            panic!("File size exceeded the limit.");
+        }
         if let Some(tactic) = tactic.get() {
             // when it has children
             // write the inference rule
