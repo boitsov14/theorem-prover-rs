@@ -164,9 +164,9 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
 }
 
 /// Generates a LaTeX proof tree using the ebproof package.
-pub fn ebproof(seq: Sequent, names: &Names) -> io::Result<()> {
+pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     // Create output LaTeX file
-    let mut file = File::create("out.tex")?;
+    let mut file = File::create(format!("{out}/out.tex"))?;
     // Write LaTeX preamble
     writeln!(
         file,

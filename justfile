@@ -8,7 +8,7 @@ update:
     cargo install-update -a
 
 # Format code
-format:
+fmt:
     cargo +nightly fmt
 
 # Lint code

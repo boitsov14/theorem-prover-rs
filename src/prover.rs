@@ -2,13 +2,13 @@ mod core;
 mod ebproof;
 mod sequent;
 
-use crate::{intern::Names, parser::parse_sequent};
+use crate::{cli::Config, intern::Names, parser::parse_sequent};
 use core::prove_prop;
 use ebproof::ebproof;
 use sequent::Sequent;
 use std::{io, time::Instant};
 
-pub fn prove(s: &str) -> io::Result<()> {
+pub fn prove(s: &str, config: &Config) -> io::Result<()> {
     // parse
     let mut names = Names::default();
     let seq = match parse_sequent(s, &mut names, true, false) {
@@ -30,11 +30,14 @@ pub fn prove(s: &str) -> io::Result<()> {
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
     // ebproof
-    let start_time = Instant::now();
-    ebproof(seq, &names)?;
-    let end_time = Instant::now();
-    let elapsed_time = end_time.duration_since(start_time);
-    println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+    if config.ebproof {
+        let start_time = Instant::now();
+        ebproof(seq, &names, &config.out)?;
+        let end_time = Instant::now();
+        let elapsed_time = end_time.duration_since(start_time);
+        println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+    }
+
     Ok(())
 }
 
@@ -75,6 +78,6 @@ mod bench {
     fn bench_ebproof(bencher: Bencher, n: usize) {
         let arena = Arena::new();
         let (seq, names) = parse_nth("examples/large-latex.txt", &arena, n).unwrap();
-        bencher.bench_local(|| ebproof(seq.clone(), &names));
+        bencher.bench_local(|| ebproof(seq.clone(), &names, ""));
     }
 }

@@ -5,18 +5,18 @@ use serde_yaml;
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
-struct Config {
+pub struct Config {
     /// Memory usage limit in bytes
     #[arg(long)]
     memory: Option<u64>,
 
     /// Output LaTeX in ebproof format
     #[arg(long)]
-    ebproof: bool,
+    pub ebproof: bool,
 
     /// Output LaTeX in forest format  
     #[arg(long)]
-    forest: bool,
+    pub forest: bool,
 
     /// Enable trace level logging
     #[arg(long)]
@@ -24,7 +24,7 @@ struct Config {
 
     /// Output directory path
     #[arg(long, default_value = "")]
-    out: String,
+    pub out: String,
 }
 
 #[cfg(not(windows))]
@@ -89,5 +89,5 @@ pub fn cli() {
         .filter(|l| !l.trim_start().starts_with('#'))
         .join("\n");
 
-    prove(&s).unwrap();
+    prove(&s, &config).unwrap();
 }
