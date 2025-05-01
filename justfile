@@ -25,8 +25,8 @@ test:
     cargo test -- --nocapture
 
 # Run benchmarks
-bench filter='':
-    cargo bench --features bench {{ if filter != "" { "-- \"" + filter + "\"" } else { "" } }}
+bench FILTER='':
+    cargo bench --features bench -- {{FILTER}}
 
 # Add dependency to Cargo.toml
 add package:
