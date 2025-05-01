@@ -9,6 +9,7 @@ use std::{
     fmt,
     fs::File,
     io::{self, Write},
+    path::PathBuf,
 };
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
@@ -166,7 +167,7 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
 /// Generates a LaTeX proof tree using the ebproof package.
 pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     // Create output LaTeX file
-    let mut file = File::create(format!("{out}/out.tex"))?;
+    let mut file = File::create(PathBuf::from(out).join("ebproof.tex"))?;
     // Write LaTeX preamble
     writeln!(
         file,
