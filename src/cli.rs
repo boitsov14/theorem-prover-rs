@@ -23,30 +23,18 @@ pub struct CliOptions {
     pub out: String,
 }
 
-fn init_logger(trace: bool) {
-    let config = if trace {
+pub fn cli() {
+    // parse command line arguments
+    let options = CliOptions::parse();
+
+    // initialize logger
+    let s = if options.trace {
         include_str!("../logger/trace.yaml")
     } else {
         include_str!("../logger/info.yaml")
     };
-    let config = serde_yaml::from_str(config).unwrap();
-    log4rs::init_raw_config(config).unwrap();
-
-    log::error!("Error message");
-    log::warn!("Warning message");
-    log::info!("Info message");
-    log::debug!("Debug message");
-    log::trace!("Trace message");
-
-    for _ in 0..20 {
-        log::trace!("Hi");
-    }
-}
-
-pub fn cli() {
-    let options = CliOptions::parse();
-
-    init_logger(options.trace);
+    let logger_config = serde_yaml::from_str(s).unwrap();
+    log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {
         log::trace!("Using ebproof format");
