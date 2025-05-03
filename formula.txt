@@ -1,5 +1,5 @@
-P to P
-# P and Q to Q and P
+# P to P
+P and Q to Q and P
 # P or Q to Q or P
 # ¬(P ∧ Q) ↔ (¬P ∨ ¬Q)
 # all x P(x) to all y P(y)

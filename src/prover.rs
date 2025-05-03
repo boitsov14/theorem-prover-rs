@@ -14,20 +14,20 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     let seq = match parse_sequent(s, &mut names, true, false) {
         Ok(seq) => seq,
         Err(e) => {
-            println!("{e}");
+            log::info!("{e}");
             return Ok(());
         }
     };
     let seq = Sequent::init(&seq);
-    println!("{}", seq.display(&names));
+    log::info!("Parsed sequent: {}", seq.display(&names).to_unicode());
 
     // prove
     let start_time = Instant::now();
     let result = prove_prop(seq.clone(), &names);
     let end_time = Instant::now();
-    println!(">> {result:?}");
+    log::info!("Result: {result}");
     let elapsed_time = end_time.duration_since(start_time);
-    println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+    log::info!("Proof time: {} ms", elapsed_time.as_secs_f32() * 1000.0);
 
     // ebproof
     if options.ebproof {
@@ -35,7 +35,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         ebproof(seq, &names, &options.out)?;
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
-        println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
+        log::info!("Ebproof time: {} ms", elapsed_time.as_secs_f32() * 1000.0);
     }
 
     Ok(())
