@@ -5,7 +5,7 @@ use serde_yaml;
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
-pub struct Config {
+pub struct CliOptions {
     /// Output LaTeX in ebproof format
     #[arg(long)]
     pub ebproof: bool,
@@ -44,24 +44,24 @@ fn init_logger(trace: bool) {
 }
 
 pub fn cli() {
-    let config = Config::parse();
+    let options = CliOptions::parse();
 
-    init_logger(config.trace);
+    init_logger(options.trace);
 
-    if config.ebproof {
+    if options.ebproof {
         log::trace!("Using ebproof format");
     }
-    if config.forest {
+    if options.forest {
         log::trace!("Using forest format");
     }
 
     // read formula from file
     // but ignore lines starting with #
-    let s = fs::read_to_string(PathBuf::from(&config.out).join("formula.txt"))
+    let s = fs::read_to_string(PathBuf::from(&options.out).join("formula.txt"))
         .expect("Failed to read formula.txt")
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join("\n");
 
-    prove(&s, &config).unwrap();
+    prove(&s, &options).unwrap();
 }

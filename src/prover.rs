@@ -2,13 +2,13 @@ mod core;
 mod ebproof;
 mod sequent;
 
-use crate::{cli::Config, intern::Names, parser::parse_sequent};
+use crate::{cli::CliOptions, intern::Names, parser::parse_sequent};
 use core::prove_prop;
 use ebproof::ebproof;
 use sequent::Sequent;
 use std::{io, time::Instant};
 
-pub fn prove(s: &str, config: &Config) -> io::Result<()> {
+pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     // parse
     let mut names = Names::default();
     let seq = match parse_sequent(s, &mut names, true, false) {
@@ -30,9 +30,9 @@ pub fn prove(s: &str, config: &Config) -> io::Result<()> {
     println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
 
     // ebproof
-    if config.ebproof {
+    if options.ebproof {
         let start_time = Instant::now();
-        ebproof(seq, &names, &config.out)?;
+        ebproof(seq, &names, &options.out)?;
         let end_time = Instant::now();
         let elapsed_time = end_time.duration_since(start_time);
         println!("{} ms", elapsed_time.as_secs_f32() * 1000.0);
