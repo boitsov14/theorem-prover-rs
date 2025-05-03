@@ -6,10 +6,6 @@ use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
 pub struct Config {
-    /// Memory usage limit in bytes
-    #[arg(long)]
-    memory: Option<u64>,
-
     /// Output LaTeX in ebproof format
     #[arg(long)]
     pub ebproof: bool,
@@ -25,25 +21,6 @@ pub struct Config {
     /// Output directory path
     #[arg(long, default_value = "")]
     pub out: String,
-}
-
-#[cfg(not(windows))]
-fn set_memory_limit(limit: u64) {
-    use rlimit::{Resource, getrlimit, setrlimit};
-    if let Err(e) = setrlimit(Resource::AS, limit, 2 * limit) {
-        eprintln!("Warning: Failed to set memory limit: {e}");
-    } else {
-        if let Ok((soft, hard)) = getrlimit(Resource::AS) {
-            println!("Memory limit: ({soft}, {hard}) bytes");
-        } else {
-            eprintln!("Warning: Failed to get memory limit");
-        }
-    }
-}
-
-#[cfg(windows)]
-fn set_memory_limit(_limit: u64) {
-    println!("Warning: Memory limit is not supported on Windows");
 }
 
 fn init_logger(trace: bool) {
@@ -71,9 +48,6 @@ pub fn cli() {
 
     init_logger(config.trace);
 
-    if let Some(memory) = config.memory {
-        set_memory_limit(memory);
-    }
     if config.ebproof {
         log::trace!("Using ebproof format");
     }
