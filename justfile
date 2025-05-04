@@ -20,6 +20,10 @@ lint:
 run *ARGS:
     cargo run -- {{ARGS}}
 
+# Run the project with arguments in release mode
+run-release *ARGS:
+    cargo run --release -- {{ARGS}}
+
 # Run tests
 test:
     cargo test -- --nocapture
@@ -31,6 +35,10 @@ bench FILTER='':
 # Add dependency to Cargo.toml
 add package:
     cargo add {{package}}
+
+# Add dependency to Cargo.toml with specific features
+add-features package +FEATURES:
+    cargo add {{package}} --features {{FEATURES}}
 
 # Install binary package globally
 # Requires cargo-binstall
