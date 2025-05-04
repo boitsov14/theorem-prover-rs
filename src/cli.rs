@@ -49,7 +49,8 @@ pub fn cli() {
         .expect("Failed to read formula.txt")
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
-        .join("\n");
+        .join(" ");
+    log::info!("Input formula: {s}");
 
     prove(&s, &options).unwrap();
 }

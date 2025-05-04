@@ -113,6 +113,7 @@ fn flush_proved_nodes(
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             // terminate the entire process immediately
+            log::error!("Failed: File size exceeded the limit.");
             panic!("File size exceeded the limit.");
         }
         // write the inference rule
@@ -144,6 +145,7 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             // terminate the entire process immediately
+            log::error!("Failed: File size exceeded the limit.");
             panic!("File size exceeded the limit.");
         }
         if let Some(tactic) = tactic.get() {
