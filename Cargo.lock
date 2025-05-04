@@ -853,6 +853,8 @@ dependencies = [
  "peg",
  "regex",
  "rustc-hash",
+ "serde",
+ "serde_json",
  "serde_yaml",
  "test-case",
  "thiserror 2.0.12",
