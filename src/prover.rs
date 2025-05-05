@@ -32,7 +32,6 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     // parse
     log::info!("Parsing...");
     let mut names = Names::default();
-    // TODO: 2025/05/04 let else?
     let seq = match parse_sequent(s, &mut names, true, false) {
         Ok(seq) => seq,
         Err(e) => {
@@ -53,8 +52,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     let end_time = Instant::now();
     log::info!("Result: {provability}");
     result.provability = Some(provability.to_string());
-    let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-    // TODO: 2025/05/04 有効数字2桁とかにする？
+    let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
     log::info!("Proof time: {proof_time} ms");
     result.proof_time = Some(format!("{proof_time} ms"));
     write_json(&result)?;
@@ -65,7 +63,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         let start_time = Instant::now();
         ebproof(seq, &names, &options.out)?;
         let end_time = Instant::now();
-        let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
         log::info!("Ebproof time: {ebproof_time} ms");
         result.ebproof_time = Some(format!("{ebproof_time} ms"));
         write_json(&result)?;
