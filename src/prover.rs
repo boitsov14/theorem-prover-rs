@@ -10,27 +10,25 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::{fs::File, io, path::PathBuf, time::Instant};
 
-// TODO: 2025/05/04 resultの名前検討
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Default)]
-struct ProofResult {
+struct Result {
     sequent: Option<String>,
-    result: Option<String>,
+    provability: Option<String>,
     proof_time: Option<String>,
     ebproof_time: Option<String>,
 }
 
 pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     // set up result
-    let mut proof_result = ProofResult::default();
-    let write_json = |result: &ProofResult| -> io::Result<()> {
+    let mut result = Result::default();
+    let write_json = |result: &Result| -> io::Result<()> {
         let path = PathBuf::from(&options.out).join("result.json");
         let file = File::create(path)?;
-        // TODO: 2025/05/04 proof_result直はだめ？
         serde_json::to_writer_pretty(file, result)?;
         Ok(())
     };
-    write_json(&proof_result)?;
+    write_json(&result)?;
     // parse
     log::info!("Parsing...");
     let mut names = Names::default();
@@ -45,21 +43,21 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     let seq = Sequent::init(&seq);
     // log the parsed sequent
     log::info!("Parsed sequent: {}", seq.display(&names).to_unicode());
-    proof_result.sequent = Some(seq.display(&names).to_string());
-    write_json(&proof_result)?;
+    result.sequent = Some(seq.display(&names).to_string());
+    write_json(&result)?;
 
     // prove
     log::info!("Proving...");
     let start_time = Instant::now();
-    let result = prove_prop(seq.clone(), &names);
+    let provability = prove_prop(seq.clone(), &names);
     let end_time = Instant::now();
-    log::info!("Result: {result}");
-    proof_result.result = Some(result.to_string());
-    let elapsed_time = end_time.duration_since(start_time);
+    log::info!("Result: {provability}");
+    result.provability = Some(provability.to_string());
+    let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
     // TODO: 2025/05/04 有効数字2桁とかにする？
-    log::info!("Proof time: {} ms", elapsed_time.as_secs_f32() * 1000.0);
-    proof_result.proof_time = Some(format!("{} ms", elapsed_time.as_secs_f32() * 1000.0));
-    write_json(&proof_result)?;
+    log::info!("Proof time: {proof_time} ms");
+    result.proof_time = Some(format!("{proof_time} ms"));
+    write_json(&result)?;
 
     // ebproof
     if options.ebproof {
@@ -67,10 +65,10 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         let start_time = Instant::now();
         ebproof(seq, &names, &options.out)?;
         let end_time = Instant::now();
-        let elapsed_time = end_time.duration_since(start_time);
-        log::info!("Ebproof time: {} ms", elapsed_time.as_secs_f32() * 1000.0);
-        proof_result.ebproof_time = Some(format!("{} ms", elapsed_time.as_secs_f32() * 1000.0));
-        write_json(&proof_result)?;
+        let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        log::info!("Ebproof time: {ebproof_time} ms");
+        result.ebproof_time = Some(format!("{ebproof_time} ms"));
+        write_json(&result)?;
     }
 
     Ok(())
