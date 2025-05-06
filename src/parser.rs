@@ -25,10 +25,7 @@ pub enum Error {
  | {}^___
  | 
  = expected {}", " ".repeat(e.location.column - 1), e.expected)]
-    Peg {
-        s: String,
-        e: peg::error::ParseError<peg::str::LineCol>,
-    },
+    Peg { s: String, e: peg::error::ParseError<peg::str::LineCol> },
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -109,11 +106,7 @@ fn modify_string(s: &str) -> String {
 fn check_parentheses(s: &str) -> Result<(), Error> {
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
-    if lp == rp {
-        Ok(())
-    } else {
-        Err(Error::Parentheses { lp, rp })
-    }
+    if lp == rp { Ok(()) } else { Err(Error::Parentheses { lp, rp }) }
 }
 
 /// Modifies the TPTP format.
@@ -623,39 +616,15 @@ mod tests {
         );
         assert_eq!(
             pseq("P, Q ⊢ R, S"),
-            PSequent {
-                ant: vec![pfml("P"), pfml("Q")],
-                suc: vec![pfml("R"), pfml("S")]
-            }
+            PSequent { ant: vec![pfml("P"), pfml("Q")], suc: vec![pfml("R"), pfml("S")] }
         );
         assert_eq!(
             pseq("P ⊢ Q"),
-            PSequent {
-                ant: vec![pfml("P")],
-                suc: vec![pfml("Q")]
-            }
+            PSequent { ant: vec![pfml("P")], suc: vec![pfml("Q")] }
         );
-        assert_eq!(
-            pseq("P ⊢"),
-            PSequent {
-                ant: vec![pfml("P")],
-                suc: vec![]
-            }
-        );
-        assert_eq!(
-            pseq("⊢ P"),
-            PSequent {
-                ant: vec![],
-                suc: vec![pfml("P")]
-            }
-        );
-        assert_eq!(
-            pseq("⊢"),
-            PSequent {
-                ant: vec![],
-                suc: vec![]
-            }
-        );
+        assert_eq!(pseq("P ⊢"), PSequent { ant: vec![pfml("P")], suc: vec![] });
+        assert_eq!(pseq("⊢ P"), PSequent { ant: vec![], suc: vec![pfml("P")] });
+        assert_eq!(pseq("⊢"), PSequent { ant: vec![], suc: vec![] });
         assert_eq!(
             pseq("P ∧ Q, R ∨ S, ∀xP(x) ⊢ ∃yQ(y), ¬R, ∃z∀wS(z,w)"),
             PSequent {
@@ -663,19 +632,10 @@ mod tests {
                 suc: vec![pfml("∃yQ(y)"), pfml("¬R"), pfml("∃z∀wS(z,w)")]
             }
         );
-        assert_eq!(
-            pseq("P"),
-            PSequent {
-                ant: vec![],
-                suc: vec![pfml("P")]
-            }
-        );
+        assert_eq!(pseq("P"), PSequent { ant: vec![], suc: vec![pfml("P")] });
         assert_eq!(
             pseq("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)"),
-            PSequent {
-                ant: vec![],
-                suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")]
-            }
+            PSequent { ant: vec![], suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")] }
         );
     }
 

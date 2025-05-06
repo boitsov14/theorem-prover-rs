@@ -165,14 +165,8 @@ impl<'a> Sequent<'a> {
             // trivial if either of them is trivial
             return true;
         }
-        let SidedFormula {
-            fml: fml1,
-            side: side1,
-        } = fml1;
-        let SidedFormula {
-            fml: fml2,
-            side: side2,
-        } = fml2;
+        let SidedFormula { fml: fml1, side: side1 } = fml1;
+        let SidedFormula { fml: fml2, side: side2 } = fml2;
         // trivial if same formula with different side
         fml1 == fml2 && side1 != side2
     }

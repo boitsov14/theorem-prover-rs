@@ -67,12 +67,7 @@ struct ProofNode<'a> {
 impl<'a> ProofNode<'a> {
     #[inline(always)]
     fn root(seq: Sequent<'a>) -> Self {
-        Self {
-            seq,
-            tactic: OnceCell::new(),
-            proved_children_cnt: 0,
-            parent_idx: None,
-        }
+        Self { seq, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: None }
     }
 }
 
@@ -96,13 +91,7 @@ fn flush_proved_nodes(
     names: &Names,
     buf: &mut Vec<u8>,
 ) -> io::Result<()> {
-    while let Some(ProofNode {
-        seq,
-        tactic,
-        proved_children_cnt,
-        parent_idx,
-    }) = nodes.last()
-    {
+    while let Some(ProofNode { seq, tactic, proved_children_cnt, parent_idx }) = nodes.last() {
         let Some(tactic) = tactic.get() else {
             // tactic not initialized yet
             break;
@@ -243,14 +232,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             (And(l), Left) | (Or(l), Right) => {
                 // set the tactic
                 let init = match side {
-                    Left => Tactic::And {
-                        side,
-                        children_cnt: 1,
-                    },
-                    Right => Tactic::Or {
-                        side,
-                        children_cnt: 1,
-                    },
+                    Left => Tactic::And { side, children_cnt: 1 },
+                    Right => Tactic::Or { side, children_cnt: 1 },
                 };
                 tactic.set(init).unwrap();
                 let mut is_trivial = false;
@@ -285,14 +268,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
                 let init = match side {
-                    Right => Tactic::And {
-                        side,
-                        children_cnt: l.len(),
-                    },
-                    Left => Tactic::Or {
-                        side,
-                        children_cnt: l.len(),
-                    },
+                    Right => Tactic::And { side, children_cnt: l.len() },
+                    Left => Tactic::Or { side, children_cnt: l.len() },
                 };
                 tactic.set(init).unwrap();
                 let parent_idx = nodes.len() - 1;
