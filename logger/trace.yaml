@@ -24,7 +24,8 @@ appenders:
     path: "prover-trace.log"
     # Format config - {f} = filename, {L} = line number, {m} = message content, {n} = newline
     encoder:
-      pattern: "[{f}:{L}] {m}{n}"
+      # pattern: "[{f}:{L}] {m}{n}"
+      pattern: "{m}{n}"
     # Overwrite existing file instead of appending
     append: false
     # File rotation policy

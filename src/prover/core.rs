@@ -1,24 +1,25 @@
 use super::sequent::{Sequent, Side::*, SidedFormula};
 use crate::{intern::Names, lang::Formula::*};
-
-fn log_seqs(seqs: &[Sequent], names: &Names) {
-    for seq in seqs {
-        println!("{}", seq.display(names).to_unicode());
-    }
-}
+use log::trace;
 
 pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
     if seq.is_initially_trivial() {
-        // when trivial from the beginning
+        trace!(
+            "Trivial from the beginning: {}",
+            seq.display(names).to_unicode()
+        );
+        // ex. p, q ⊢ r, p
         return true;
     }
     let mut seqs = vec![seq];
     'outer: loop {
-        #[cfg(debug_assertions)]
-        log_seqs(&seqs, names);
+        trace!("Current remaining sequents:");
+        for seq in &seqs {
+            trace!("{}", seq.display(names).to_unicode());
+        }
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
-            // if no sequent to be proved, completed the proof
+            trace!("All sequents are proved.");
             return true;
         };
         // pop the last formula

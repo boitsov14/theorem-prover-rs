@@ -4,6 +4,7 @@ use super::sequent::{
     SidedFormula,
 };
 use crate::{intern::Names, lang::Formula::*};
+use log::error;
 use std::{
     cell::OnceCell,
     fmt,
@@ -113,7 +114,7 @@ fn flush_proved_nodes(
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             // terminate the entire process immediately
-            log::error!("Failed: File size exceeded the limit.");
+            error!("Failed: File size exceeded the limit.");
             panic!("File size exceeded the limit.");
         }
         // write the inference rule
@@ -145,7 +146,7 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             // terminate the entire process immediately
-            log::error!("Failed: File size exceeded the limit.");
+            error!("Failed: File size exceeded the limit.");
             panic!("File size exceeded the limit.");
         }
         if let Some(tactic) = tactic.get() {
@@ -194,7 +195,8 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
 /// Core implementation for generating LaTeX proof trees.
 fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     if seq.is_initially_trivial() {
-        // when trivial from the beginning
+        // trivial from the beginning
+        // ex. p, q ⊢ r, p
         writeln!(
             buf,
             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
