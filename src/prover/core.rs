@@ -4,10 +4,7 @@ use log::trace;
 
 pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
     if seq.is_initially_trivial() {
-        trace!(
-            "Trivial from the beginning: {}",
-            seq.display(names).to_unicode()
-        );
+        trace!("Trivial from the beginning: {}", seq.display(names).to_unicode());
         // ex. p, q ⊢ r, p
         return true;
     }

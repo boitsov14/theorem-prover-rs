@@ -4,8 +4,7 @@
 newline_style = "Windows"
 use_field_init_shorthand = true
 use_small_heuristics = "Max"
-chain_width = 60 # Default
-fn_call_width = 60 # Default
+chain_width = 60                # Default
 
 # nightly
 group_imports = "One"

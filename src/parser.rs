@@ -227,14 +227,12 @@ impl PFormula {
             Self::Not(p) => Formula::Not(Box::new(p.into_formula(names))),
             Self::And(p, q) => Formula::And(vec![p.into_formula(names), q.into_formula(names)]),
             Self::Or(p, q) => Formula::Or(vec![p.into_formula(names), q.into_formula(names)]),
-            Self::To(p, q) => Formula::To(
-                Box::new(p.into_formula(names)),
-                Box::new(q.into_formula(names)),
-            ),
-            Self::Iff(p, q) => Formula::Iff(
-                Box::new(p.into_formula(names)),
-                Box::new(q.into_formula(names)),
-            ),
+            Self::To(p, q) => {
+                Formula::To(Box::new(p.into_formula(names)), Box::new(q.into_formula(names)))
+            }
+            Self::Iff(p, q) => {
+                Formula::Iff(Box::new(p.into_formula(names)), Box::new(q.into_formula(names)))
+            }
             Self::All(s, p) => Formula::All(vec![names.get_id(s)], Box::new(p.into_formula(names))),
             Self::Ex(s, p) => Formula::Ex(vec![names.get_id(s)], Box::new(p.into_formula(names))),
         }
@@ -530,37 +528,25 @@ mod tests {
         assert_eq!(pfml("∀xP(x)"), All("x".into(), Box::new(pfml("P(x)"))));
         assert_eq!(
             pfml("∀x,yP(x,y)"),
-            All(
-                "x".into(),
-                Box::new(All("y".into(), Box::new(pfml("P(x,y)"))))
-            )
+            All("x".into(), Box::new(All("y".into(), Box::new(pfml("P(x,y)")))))
         );
         assert_eq!(
             pfml("∀x,y,zP(x,y,z)"),
             All(
                 "x".into(),
-                Box::new(All(
-                    "y".into(),
-                    Box::new(All("z".into(), Box::new(pfml("P(x,y,z)"))))
-                ))
+                Box::new(All("y".into(), Box::new(All("z".into(), Box::new(pfml("P(x,y,z)"))))))
             )
         );
         assert_eq!(pfml("∃xP(x)"), Ex("x".into(), Box::new(pfml("P(x)"))));
         assert_eq!(
             pfml("∃x,yP(x,y)"),
-            Ex(
-                "x".into(),
-                Box::new(Ex("y".into(), Box::new(pfml("P(x,y)"))))
-            )
+            Ex("x".into(), Box::new(Ex("y".into(), Box::new(pfml("P(x,y)")))))
         );
         assert_eq!(
             pfml("∃x,y,zP(x,y,z)"),
             Ex(
                 "x".into(),
-                Box::new(Ex(
-                    "y".into(),
-                    Box::new(Ex("z".into(), Box::new(pfml("P(x,y,z)"))))
-                ))
+                Box::new(Ex("y".into(), Box::new(Ex("z".into(), Box::new(pfml("P(x,y,z)"))))))
             )
         );
     }
@@ -570,10 +556,7 @@ mod tests {
         use PFormula::*;
         assert_eq!(
             pfml("P → Q → R"),
-            To(
-                Box::new(pfml("P")),
-                Box::new(To(Box::new(pfml("Q")), Box::new(pfml("R"))))
-            )
+            To(Box::new(pfml("P")), Box::new(To(Box::new(pfml("Q")), Box::new(pfml("R")))))
         );
     }
 
@@ -597,10 +580,7 @@ mod tests {
             pfml("∀xP(x) → ∃yQ(y) → R"),
             To(
                 Box::new(All("x".into(), Box::new(pfml("P(x)")))),
-                Box::new(To(
-                    Box::new(Ex("y".into(), Box::new(pfml("Q(y)")))),
-                    Box::new(pfml("R"))
-                ))
+                Box::new(To(Box::new(Ex("y".into(), Box::new(pfml("Q(y)")))), Box::new(pfml("R"))))
             )
         );
     }
@@ -618,10 +598,7 @@ mod tests {
             pseq("P, Q ⊢ R, S"),
             PSequent { ant: vec![pfml("P"), pfml("Q")], suc: vec![pfml("R"), pfml("S")] }
         );
-        assert_eq!(
-            pseq("P ⊢ Q"),
-            PSequent { ant: vec![pfml("P")], suc: vec![pfml("Q")] }
-        );
+        assert_eq!(pseq("P ⊢ Q"), PSequent { ant: vec![pfml("P")], suc: vec![pfml("Q")] });
         assert_eq!(pseq("P ⊢"), PSequent { ant: vec![pfml("P")], suc: vec![] });
         assert_eq!(pseq("⊢ P"), PSequent { ant: vec![], suc: vec![pfml("P")] });
         assert_eq!(pseq("⊢"), PSequent { ant: vec![], suc: vec![] });
@@ -811,10 +788,7 @@ mod tests {
         assert_eq!(
             fml,
             And(vec![
-                Pred(
-                    names.get_id("P".into()),
-                    vec![Func(names.get_id("x".into()), vec![])]
-                ),
+                Pred(names.get_id("P".into()), vec![Func(names.get_id("x".into()), vec![])]),
                 All(
                     vec![names.get_id("y".into())],
                     Box::new(Pred(

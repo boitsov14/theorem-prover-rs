@@ -215,12 +215,7 @@ mod tests {
         let mut term = parse_term(term, &mut names).unwrap();
         let map = map
             .iter()
-            .map(|(k, v)| {
-                (
-                    names.get_id((*k).into()),
-                    parse_term(v, &mut names).unwrap(),
-                )
-            })
+            .map(|(k, v)| (names.get_id((*k).into()), parse_term(v, &mut names).unwrap()))
             .collect();
         term.subst_map(&map);
         term.display(&names).to_string()
@@ -257,12 +252,7 @@ mod tests {
         let mut fml = parse_formula(fml, &mut names, false).unwrap();
         let map = map
             .iter()
-            .map(|(k, v)| {
-                (
-                    names.get_id((*k).into()),
-                    parse_term(v, &mut names).unwrap(),
-                )
-            })
+            .map(|(k, v)| (names.get_id((*k).into()), parse_term(v, &mut names).unwrap()))
             .collect();
         fml.subst_map(&map);
         fml.display(&names).to_string()

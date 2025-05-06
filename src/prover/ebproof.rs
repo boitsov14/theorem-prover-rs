@@ -186,11 +186,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
-        writeln!(
-            buf,
-            r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-            seq.display(names)
-        )?;
+        writeln!(buf, r"\infer{{0}}[\scriptsize Axiom]{{{}}}", seq.display(names))?;
         return Ok(());
     }
     let mut nodes = vec![ProofNode::root(seq)];
