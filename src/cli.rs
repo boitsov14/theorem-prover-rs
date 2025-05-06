@@ -1,6 +1,7 @@
 use crate::prover::prove;
 use clap::Parser;
 use itertools::Itertools;
+use log::{info, trace};
 use serde_yaml;
 use std::{fs, path::PathBuf};
 
@@ -37,10 +38,10 @@ pub fn cli() {
     log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {
-        log::trace!("Using ebproof format");
+        trace!("Using ebproof format");
     }
     if options.forest {
-        log::trace!("Using forest format");
+        trace!("Using forest format");
     }
 
     // read formula from file
@@ -50,7 +51,7 @@ pub fn cli() {
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join(" ");
-    log::info!("Input formula: {s}");
+    info!("Input formula: {s}");
 
     prove(&s, &options).unwrap();
 }

@@ -5,6 +5,7 @@ mod sequent;
 use crate::{cli::CliOptions, intern::Names, parser::parse_sequent};
 use core::prove_prop;
 use ebproof::ebproof;
+use log::info;
 use sequent::Sequent;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -30,41 +31,41 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     };
     write_json(&result)?;
     // parse
-    log::info!("Parsing...");
+    info!("Parsing...");
     let mut names = Names::default();
     let seq = match parse_sequent(s, &mut names, true, false) {
         Ok(seq) => seq,
         Err(e) => {
-            log::info!("Failed: {e}");
+            info!("Failed: {e}");
             return Ok(());
         }
     };
     let seq = Sequent::init(&seq);
     // log the parsed sequent
-    log::info!("Parsed sequent: {}", seq.display(&names).to_unicode());
+    info!("Parsed sequent: {}", seq.display(&names).to_unicode());
     result.sequent = Some(seq.display(&names).to_string());
     write_json(&result)?;
 
     // prove
-    log::info!("Proving...");
+    info!("Proving...");
     let start_time = Instant::now();
     let provability = prove_prop(seq.clone(), &names);
     let end_time = Instant::now();
-    log::info!("Result: {provability}");
+    info!("Result: {provability}");
     result.provability = Some(provability.to_string());
     let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
-    log::info!("Proof time: {proof_time} ms");
+    info!("Proof time: {proof_time} ms");
     result.proof_time = Some(format!("{proof_time} ms"));
     write_json(&result)?;
 
     // ebproof
     if options.ebproof {
-        log::info!("Generating ebproof...");
+        info!("Generating ebproof...");
         let start_time = Instant::now();
         ebproof(seq, &names, &options.out)?;
         let end_time = Instant::now();
         let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
-        log::info!("Ebproof time: {ebproof_time} ms");
+        info!("Ebproof time: {ebproof_time} ms");
         result.ebproof_time = Some(format!("{ebproof_time} ms"));
         write_json(&result)?;
     }
