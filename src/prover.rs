@@ -82,11 +82,7 @@ mod bench {
     use std::fs;
     use typed_arena::Arena;
 
-    fn parse_nth<'a>(
-        path: &str,
-        arena: &'a Arena<SplitSequent>,
-        n: usize,
-    ) -> Option<(Sequent<'a>, Names)> {
+    fn parse_nth<'a>(path: &str, arena: &'a Arena<SplitSequent>, n: usize) -> Option<(Sequent<'a>, Names)> {
         fs::read_to_string(path)
             .unwrap()
             .lines()

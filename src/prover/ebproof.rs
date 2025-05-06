@@ -74,23 +74,14 @@ impl<'a> ProofNode<'a> {
 impl<'a> Sequent<'a> {
     #[inline(always)]
     fn with_parent(self, parent_idx: usize) -> ProofNode<'a> {
-        ProofNode {
-            seq: self,
-            tactic: OnceCell::new(),
-            proved_children_cnt: 0,
-            parent_idx: Some(parent_idx),
-        }
+        ProofNode { seq: self, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: Some(parent_idx) }
     }
 }
 
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes(
-    nodes: &mut Vec<ProofNode>,
-    names: &Names,
-    buf: &mut Vec<u8>,
-) -> io::Result<()> {
+fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     while let Some(ProofNode { seq, tactic, proved_children_cnt, parent_idx }) = nodes.last() {
         let Some(tactic) = tactic.get() else {
             // tactic not initialized yet
@@ -107,12 +98,7 @@ fn flush_proved_nodes(
             panic!("File size exceeded the limit.");
         }
         // write the inference rule
-        writeln!(
-            buf,
-            r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
-            tactic.children_cnt(),
-            seq.display(names)
-        )?;
+        writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
         if let Some(parent_idx) = *parent_idx {
             // if has a parent
             // increment parent's proved children count
@@ -141,12 +127,7 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
         if let Some(tactic) = tactic.get() {
             // when it has children
             // write the inference rule
-            writeln!(
-                buf,
-                r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
-                tactic.children_cnt(),
-                seq.display(names)
-            )?;
+            writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
         } else {
             // when it is leaf
             // write the sequent as a hypothesis

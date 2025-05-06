@@ -140,12 +140,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(
-                    f,
-                    r"{} \rightarrow {}",
-                    p.display_inner(self.names),
-                    q.display_inner(self.names)
-                )?;
+                write!(f, r"{} \rightarrow {}", p.display_inner(self.names), q.display_inner(self.names))?;
                 if self.is_inner {
                     write!(f, ")")?;
                 }
@@ -154,12 +149,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(
-                    f,
-                    r"{} \leftrightarrow {}",
-                    p.display_inner(self.names),
-                    q.display_inner(self.names)
-                )?;
+                write!(f, r"{} \leftrightarrow {}", p.display_inner(self.names), q.display_inner(self.names))?;
                 if self.is_inner {
                     write!(f, ")")?;
                 }
