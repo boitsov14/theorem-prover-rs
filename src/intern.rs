@@ -182,6 +182,31 @@ impl Formula {
     }
 }
 
+impl FormulaDisplay<'_> {
+    /// Returns the unicode representation of the formula
+    /// by converting LaTeX commands to symbols
+    pub fn to_unicode(&self) -> String {
+        to_unicode(&self.to_string())
+    }
+}
+
+/// Returns the unicode representation
+/// by converting LaTeX commands to symbols
+pub fn to_unicode(s: &str) -> String {
+    s.replace(r"\top", "⊤")
+        .replace(r"\bot", "⊥")
+        .replace(r"\lnot ", "¬")
+        .replace(r"\land", "∧")
+        .replace(r"\lor", "∨")
+        .replace(r"\rightarrow", "→")
+        .replace(r"\leftrightarrow", "↔")
+        .replace(r"\forall ", "∀")
+        .replace(r"\exists ", "∃")
+        .replace(r"&\vdash", "⊢")
+    // TODO: 2025/02/13 これは必要か
+    // .replace(r"\_", "_")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

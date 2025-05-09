@@ -1,5 +1,5 @@
 use crate::{
-    intern::Names,
+    intern::{Names, to_unicode},
     lang::{
         Formula::{self, *},
         SplitSequent,
@@ -198,19 +198,7 @@ impl SequentDisplay<'_> {
     /// Returns the unicode representation of the sequent
     /// by converting LaTeX commands to symbols
     pub fn to_unicode(&self) -> String {
-        self.to_string()
-            .replace(r"\top", "⊤")
-            .replace(r"\bot", "⊥")
-            .replace(r"\lnot ", "¬")
-            .replace(r"\land", "∧")
-            .replace(r"\lor", "∨")
-            .replace(r"\rightarrow", "→")
-            .replace(r"\leftrightarrow", "↔")
-            .replace(r"\forall ", "∀")
-            .replace(r"\exists ", "∃")
-            .replace(r"&\vdash", "⊢")
-            // TODO: 2025/02/13 これは必要か
-            .replace(r"\_", "_")
+        to_unicode(&self.to_string())
     }
 }
 

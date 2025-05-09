@@ -47,7 +47,7 @@ pub fn cli() {
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join(" ");
-    info!("Input formula: {s}");
+    info!("Input: {s}");
 
     prove(&s, &options).unwrap();
 }
