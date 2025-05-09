@@ -10,8 +10,8 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
     }
     let mut seqs = vec![seq];
     'outer: loop {
-        trace!("Current remaining sequents:");
-        for seq in &seqs {
+        trace!("Remainder:");
+        for seq in seqs.iter().rev() {
             trace!("{}", seq.display(names).to_unicode());
         }
         // get the last sequent
@@ -21,19 +21,20 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
         };
         // pop the last formula
         let Some(SidedFormula { fml, side }) = seq.pop() else {
-            // if `seq` has no formula, it is impossible to prove
-            // this could happen:
-            // ex. `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
-            // all goes to `⊢` eventually
+            trace!("Unprovable: No formula in the sequent.");
+            // all the following examples go to `⊢` eventually
+            // `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
             return false;
         };
+        trace!(">> {}", fml.display(names).to_unicode());
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
                 let p = p.with_side(side.opposite());
                 if seq.is_trivial(p) {
-                    // if trivial, drop it and continue to the next sequent
+                    trace!("Trivial");
+                    // drop it and continue to the next sequent
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
@@ -47,7 +48,8 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 for p in l {
                     let p = p.with_side(side);
                     if seq.is_trivial(p) {
-                        // if trivial, drop it and continue to the next sequent
+                        trace!("Trivial");
+                        // drop it and continue to the next sequent
                         seqs.pop().unwrap();
                         continue 'outer;
                     }
@@ -62,7 +64,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     .map(|p| p.with_side(side))
                     .any(|p| p.is_atom() && seq.contains(&p))
                 {
-                    // when `fml` is redundant
+                    trace!("The formula is redundant.");
                     // ex. `p ∨ q ∨ r, p ⊢`
                     // ex. `⊢ p ∧ q ∧ r, p`
                     // `fml` is already popped out, so nothing to do.
