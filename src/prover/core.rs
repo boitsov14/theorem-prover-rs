@@ -96,7 +96,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     } else {
                         // If not the last element, clone current seq for the next fml
                         // push p to current seq
-                        // then add the clone to seqs and make it the current seq
+                        // then add the clone to seqs and make its reference to current seq
                         let new_seq = seq.clone();
                         seq.push(p);
                         seqs.push(new_seq);
@@ -108,7 +108,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             (To(p, q), Left) => {
                 let q = q.with_side(Left);
                 if q.is_atom() && seq.contains(&q) {
-                    // when `fml` is redundant
+                    trace!("The formula is redundant.");
                     // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
@@ -116,19 +116,24 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 let p = p.with_side(Right);
                 match (seq.is_trivial(p), seq.is_trivial(q)) {
                     (true, true) => {
-                        // if trivial, drop it and continue to the next sequent
+                        // both are trivial
+                        trace!("Trivial");
+                        trace!("Trivial");
+                        // drop seq
                         seqs.pop().unwrap();
                     }
                     (true, false) => {
-                        // when q is yet to be proved
+                        trace!("Trivial");
+                        // q is yet to be proved
                         seq.push(q);
                     }
                     (false, true) => {
-                        // when p is yet to be proved
+                        trace!("Trivial");
+                        // p is yet to be proved
                         seq.push(p);
                     }
                     (false, false) => {
-                        // when both are yet to be proved
+                        // both are yet to be proved
                         let mut seq2 = seq.clone();
                         seq.push(q);
                         seq2.push(p);
@@ -142,7 +147,8 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
                 if seq.is_trivial2(p, q) {
-                    // if trivial, drop it and continue to the next sequent
+                    trace!("Trivial");
+                    // drop it and continue to the next sequent
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
@@ -162,21 +168,26 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 };
                 match (seq.is_trivial2(fml11, fml12), seq.is_trivial2(fml21, fml22)) {
                     (true, true) => {
-                        // if trivial, drop it
+                        // both are trivial
+                        trace!("Trivial");
+                        trace!("Trivial");
+                        // drop seq
                         seqs.pop().unwrap();
                     }
                     (true, false) => {
-                        // when the second is yet to be proved
+                        trace!("Trivial");
+                        // the second is yet to be proved
                         seq.push(fml21);
                         seq.push(fml22);
                     }
                     (false, true) => {
-                        // when the first is yet to be proved
+                        trace!("Trivial");
+                        // the first is yet to be proved
                         seq.push(fml11);
                         seq.push(fml12);
                     }
                     (false, false) => {
-                        // when both are yet to be proved
+                        // both are yet to be proved
                         let mut seq2 = seq.clone();
                         seq.push(fml11);
                         seq.push(fml12);
