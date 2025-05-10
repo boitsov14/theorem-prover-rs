@@ -87,20 +87,20 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     seqs.pop().unwrap();
                     continue 'outer;
                 }
-                let mut seq = seq;
+                let mut current_seq = seq;
                 while let Some(p) = temp_fmls.pop() {
                     if temp_fmls.is_empty() {
                         // if the last element
                         // push p to current seq without cloning
-                        seq.push(p);
+                        current_seq.push(p);
                     } else {
                         // If not the last element, clone current seq for the next fml
                         // push p to current seq
                         // then add the clone to seqs and make its reference to current seq
-                        let new_seq = seq.clone();
-                        seq.push(p);
-                        seqs.push(new_seq);
-                        seq = seqs.last_mut().unwrap();
+                        let next_seq = current_seq.clone();
+                        current_seq.push(p);
+                        seqs.push(next_seq);
+                        current_seq = seqs.last_mut().unwrap();
                     }
                 }
             }
