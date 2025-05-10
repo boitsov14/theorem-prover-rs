@@ -114,32 +114,29 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     continue 'outer;
                 }
                 let p = p.with_side(Right);
-                match (seq.is_trivial(p), seq.is_trivial(q)) {
-                    (true, true) => {
-                        // both are trivial
-                        trace!("Trivial");
-                        trace!("Trivial");
-                        // drop seq
-                        seqs.pop().unwrap();
-                    }
-                    (true, false) => {
-                        trace!("Trivial");
-                        // q is yet to be proved
-                        seq.push(q);
-                    }
-                    (false, true) => {
-                        trace!("Trivial");
-                        // p is yet to be proved
-                        seq.push(p);
-                    }
-                    (false, false) => {
-                        // both are yet to be proved
-                        let mut seq2 = seq.clone();
-                        seq.push(q);
-                        seq2.push(p);
-                        // `seq` is the reference to the last element, so don't need to push
-                        seqs.push(seq2);
-                    }
+                let p_is_trivial = seq.is_trivial(p);
+                let q_is_trivial = seq.is_trivial(q);
+                if p_is_trivial && q_is_trivial {
+                    // both are trivial
+                    trace!("Trivial");
+                    trace!("Trivial");
+                    // drop seq
+                    seqs.pop().unwrap();
+                } else if p_is_trivial {
+                    trace!("Trivial");
+                    // q is yet to be proved
+                    seq.push(q);
+                } else if q_is_trivial {
+                    trace!("Trivial");
+                    // p is yet to be proved
+                    seq.push(p);
+                } else {
+                    // both are yet to be proved
+                    let mut seq2 = seq.clone();
+                    seq.push(q);
+                    seq2.push(p);
+                    // `seq` is the reference to the last element, so don't need to push
+                    seqs.push(seq2);
                 }
             }
             // Convert `⊢ p → q` to `p ⊢ q`
@@ -166,35 +163,32 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     Left => (p_r, q_r, p_l, q_l),
                     Right => (q_l, p_r, p_l, q_r),
                 };
-                match (seq.is_trivial2(fml11, fml12), seq.is_trivial2(fml21, fml22)) {
-                    (true, true) => {
-                        // both are trivial
-                        trace!("Trivial");
-                        trace!("Trivial");
-                        // drop seq
-                        seqs.pop().unwrap();
-                    }
-                    (true, false) => {
-                        trace!("Trivial");
-                        // the second is yet to be proved
-                        seq.push(fml21);
-                        seq.push(fml22);
-                    }
-                    (false, true) => {
-                        trace!("Trivial");
-                        // the first is yet to be proved
-                        seq.push(fml11);
-                        seq.push(fml12);
-                    }
-                    (false, false) => {
-                        // both are yet to be proved
-                        let mut seq2 = seq.clone();
-                        seq.push(fml11);
-                        seq.push(fml12);
-                        seq2.push(fml21);
-                        seq2.push(fml22);
-                        seqs.push(seq2);
-                    }
+                let fml1_is_trivial = seq.is_trivial2(fml11, fml12);
+                let fml2_is_trivial = seq.is_trivial2(fml21, fml22);
+                if fml1_is_trivial && fml2_is_trivial {
+                    // both are trivial
+                    trace!("Trivial");
+                    trace!("Trivial");
+                    // drop seq
+                    seqs.pop().unwrap();
+                } else if fml1_is_trivial {
+                    trace!("Trivial");
+                    // the second is yet to be proved
+                    seq.push(fml21);
+                    seq.push(fml22);
+                } else if fml2_is_trivial {
+                    trace!("Trivial");
+                    // the first is yet to be proved
+                    seq.push(fml11);
+                    seq.push(fml12);
+                } else {
+                    // both are yet to be proved
+                    let mut seq2 = seq.clone();
+                    seq.push(fml11);
+                    seq.push(fml12);
+                    seq2.push(fml21);
+                    seq2.push(fml22);
+                    seqs.push(seq2);
                 }
             }
             // since formulas in 'seq' are ordered,
