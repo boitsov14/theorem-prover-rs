@@ -1,6 +1,7 @@
 use super::sequent::{Sequent, Side::*, SidedFormula};
 use crate::{intern::Names, lang::Formula::*};
 use log::trace;
+use std::vec;
 
 pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
     if seq.is_initially_trivial() {
@@ -9,6 +10,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
         return true;
     }
     let mut seqs = vec![seq];
+    let mut temp_fmls = vec![];
     'outer: loop {
         trace!("Remainder:");
         for seq in seqs.iter().rev() {
@@ -69,52 +71,37 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     // `fml` is already popped out, so nothing to do.
                     continue 'outer;
                 }
-                let mut l = l.iter().map(|p| p.with_side(side)).rev().peekable();
-                let mut seq2;
-                loop {
-                    let Some(p) = l.next() else {
-                        // ex. `⊢ true` or `false ⊢` (for the first loop)
-                        // ex. p, q, r ⊢ p ∧ q ∧ r (all of l is trivial) (for the last loop)
-                        // the sequent is proved, so drop it and continue to the next sequent
-                        seqs.pop().unwrap();
-                        continue 'outer;
-                    };
+                // exclude trivial fmls to reduce the clone cost of seq.
+                for p in l {
+                    let p = p.with_side(side);
                     if seq.is_trivial(p) {
                         trace!("Trivial");
-                        // if p is trivial, ignore it and continue to the next
                         continue;
                     }
-                    if l.peek().is_none() {
-                        seq.push(p);
-                        // if p is last, continue to the next sequent
-                        // ex. `q, r ⊢ p ∧ q ∧ r`
-                        continue 'outer;
-                    }
-                    // if p is not last, need to clone the sequent
-                    // because `seq` is the reference to the last element
-                    seq2 = seq.clone();
-                    seq.push(p);
-                    break;
+                    temp_fmls.push(p);
                 }
-                loop {
-                    let Some(p) = l.next() else {
-                        // ex. p, q ⊢ p ∧ q ∧ r (all of l is trivial) (for the last loop) (r is processed before)
-                        // the sequent is proved, so drop it and continue to the next sequent
-                        continue 'outer;
-                    };
-                    if seq2.is_trivial(p) {
-                        trace!("Trivial");
-                        continue;
+                if temp_fmls.is_empty() {
+                    // ex. `⊢ true` or `false ⊢` (l is empty)
+                    // ex. p, q, r ⊢ p ∧ q ∧ r (all of l is trivial)
+                    // the sequent is proved, so drop it and continue to the next sequent
+                    seqs.pop().unwrap();
+                    continue 'outer;
+                }
+                let mut seq = seq;
+                while let Some(p) = temp_fmls.pop() {
+                    if temp_fmls.is_empty() {
+                        // if the last element
+                        // push p to current seq without cloning
+                        seq.push(p);
+                    } else {
+                        // If not the last element, clone current seq for the next fml
+                        // push p to current seq
+                        // then add the clone to seqs and make it the current seq
+                        let new_seq = seq.clone();
+                        seq.push(p);
+                        seqs.push(new_seq);
+                        seq = seqs.last_mut().unwrap();
                     }
-                    // check p is last element of l
-                    if l.peek().is_none() {
-                        seq2.push(p);
-                        seqs.push(seq2);
-                        continue 'outer;
-                    }
-                    let mut seq2 = seq2.clone();
-                    seq2.push(p);
-                    seqs.push(seq2);
                 }
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
