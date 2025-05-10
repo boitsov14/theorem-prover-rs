@@ -78,65 +78,6 @@ impl<'a> Sequent<'a> {
     }
 }
 
-/// Writes all proved nodes to the LaTeX buffer.
-/// - Processes only when all their children are proved
-/// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
-    while let Some(ProofNode { seq, tactic, proved_children_cnt, parent_idx }) = nodes.last() {
-        let Some(tactic) = tactic.get() else {
-            // tactic not initialized yet
-            break;
-        };
-        if *proved_children_cnt < tactic.children_cnt() {
-            // some children are not yet proved
-            break;
-        }
-        // check if the buffer size exceeds the limit
-        if buf.len() > MAX_FILE_SIZE {
-            // terminate the entire process immediately
-            error!("Failed: File size exceeded the limit.");
-            panic!("File size exceeded the limit.");
-        }
-        // write the inference rule
-        writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
-        if let Some(parent_idx) = *parent_idx {
-            // if has a parent
-            // increment parent's proved children count
-            nodes[parent_idx].proved_children_cnt += 1;
-        }
-        // remove the written node
-        nodes.pop().unwrap();
-    }
-    Ok(())
-}
-
-/// Writes all remaining nodes to the LaTeX buffer.
-/// When proof construction fails (e.g., when encountering atomic formulas,
-/// which cannot be processed further), this function writes the current state of the
-/// proof tree to give users insight into where and why the proof attempt failed.
-/// - Non-leaf nodes: Written as inference rules
-/// - Leaf nodes: Written as hypotheses
-fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
-    while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
-        // check if the buffer size exceeds the limit
-        if buf.len() > MAX_FILE_SIZE {
-            // terminate the entire process immediately
-            error!("Failed: File size exceeded the limit.");
-            panic!("File size exceeded the limit.");
-        }
-        if let Some(tactic) = tactic.get() {
-            // when it has children
-            // write the inference rule
-            writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
-        } else {
-            // when it is leaf
-            // write the sequent as a hypothesis
-            writeln!(buf, r"\hypo{{{}}}", seq.display(names))?;
-        }
-    }
-    Ok(())
-}
-
 /// Generates a LaTeX proof tree using the ebproof package.
 pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     // Create output LaTeX file
@@ -358,4 +299,63 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             (Ex(..) | All(..), _) => unimplemented!(),
         }
     }
+}
+
+/// Writes all proved nodes to the LaTeX buffer.
+/// - Processes only when all their children are proved
+/// - Automatically increments parent nodes' count of proved children
+fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+    while let Some(ProofNode { seq, tactic, proved_children_cnt, parent_idx }) = nodes.last() {
+        let Some(tactic) = tactic.get() else {
+            // tactic not initialized yet
+            break;
+        };
+        if *proved_children_cnt < tactic.children_cnt() {
+            // some children are not yet proved
+            break;
+        }
+        // check if the buffer size exceeds the limit
+        if buf.len() > MAX_FILE_SIZE {
+            // terminate the entire process immediately
+            error!("Failed: File size exceeded the limit.");
+            panic!("File size exceeded the limit.");
+        }
+        // write the inference rule
+        writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
+        if let Some(parent_idx) = *parent_idx {
+            // if has a parent
+            // increment parent's proved children count
+            nodes[parent_idx].proved_children_cnt += 1;
+        }
+        // remove the written node
+        nodes.pop().unwrap();
+    }
+    Ok(())
+}
+
+/// Writes all remaining nodes to the LaTeX buffer.
+/// When proof construction fails (e.g., when encountering atomic formulas,
+/// which cannot be processed further), this function writes the current state of the
+/// proof tree to give users insight into where and why the proof attempt failed.
+/// - Non-leaf nodes: Written as inference rules
+/// - Leaf nodes: Written as hypotheses
+fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+    while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
+        // check if the buffer size exceeds the limit
+        if buf.len() > MAX_FILE_SIZE {
+            // terminate the entire process immediately
+            error!("Failed: File size exceeded the limit.");
+            panic!("File size exceeded the limit.");
+        }
+        if let Some(tactic) = tactic.get() {
+            // when it has children
+            // write the inference rule
+            writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
+        } else {
+            // when it is leaf
+            // write the sequent as a hypothesis
+            writeln!(buf, r"\hypo{{{}}}", seq.display(names))?;
+        }
+    }
+    Ok(())
 }
