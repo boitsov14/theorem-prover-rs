@@ -23,10 +23,9 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             trace!("Unprovable: No formula in the sequent.");
             // all the following examples go to `⊢` eventually
-            // `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
+            // ex. `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
             return false;
         };
-        trace!(">> {}", fml.display(names).to_unicode());
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
@@ -74,19 +73,21 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 let mut seq2;
                 loop {
                     let Some(p) = l.next() else {
-                        // when `⊢ true` or `false ⊢`
-                        // or all of l is trivial
+                        // ex. `⊢ true` or `false ⊢` (for the first loop)
+                        // ex. p, q, r ⊢ p ∧ q ∧ r (all of l is trivial) (for the last loop)
                         // the sequent is proved, so drop it and continue to the next sequent
                         seqs.pop().unwrap();
                         continue 'outer;
                     };
                     if seq.is_trivial(p) {
+                        trace!("Trivial");
                         // if p is trivial, ignore it and continue to the next
                         continue;
                     }
                     if l.peek().is_none() {
                         seq.push(p);
                         // if p is last, continue to the next sequent
+                        // ex. `q, r ⊢ p ∧ q ∧ r`
                         continue 'outer;
                     }
                     // if p is not last, need to clone the sequent
@@ -97,9 +98,12 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 }
                 loop {
                     let Some(p) = l.next() else {
+                        // ex. p, q ⊢ p ∧ q ∧ r (all of l is trivial) (for the last loop) (r is processed before)
+                        // the sequent is proved, so drop it and continue to the next sequent
                         continue 'outer;
                     };
                     if seq2.is_trivial(p) {
+                        trace!("Trivial");
                         continue;
                     }
                     // check p is last element of l
