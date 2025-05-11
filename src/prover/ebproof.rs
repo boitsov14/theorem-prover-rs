@@ -112,7 +112,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
         return Ok(());
     }
     let mut nodes = vec![ProofNode::root(seq)];
-    'outer: loop {
+    'main: loop {
         // write all proved nodes
         flush_proved_nodes(&mut nodes, names, buf)?;
         // get the last sequent
@@ -181,7 +181,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                     // ex. `⊢ p ∧ q ∧ r, p`
                     // drop `fml` and continue to the next sequent
                     nodes.last_mut().unwrap().seq.pop();
-                    continue 'outer;
+                    continue 'main;
                 }
                 // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
@@ -212,7 +212,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                     // ex. `p → q, q ⊢`
                     // drop `fml` and continue to the next sequent
                     nodes.last_mut().unwrap().seq.pop();
-                    continue 'outer;
+                    continue 'main;
                 }
                 // set the tactic
                 tactic.set(Tactic::To { side }).unwrap();
