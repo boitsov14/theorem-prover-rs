@@ -11,7 +11,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
     }
     let mut seqs = vec![seq];
     let mut temp_fmls = vec![];
-    'outer: loop {
+    'main: loop {
         trace!("Remainder:");
         for seq in seqs.iter().rev() {
             trace!("{}", seq.display(names).to_unicode());
@@ -37,7 +37,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     trace!("Trivial");
                     // drop it and continue to the next sequent
                     seqs.pop().unwrap();
-                    continue 'outer;
+                    continue 'main;
                 }
                 seq.push(p);
             }
@@ -52,7 +52,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                         trace!("Trivial");
                         // drop it and continue to the next sequent
                         seqs.pop().unwrap();
-                        continue 'outer;
+                        continue 'main;
                     }
                     seq.push(p);
                 }
@@ -69,7 +69,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     // ex. `p ∨ q ∨ r, p ⊢`
                     // ex. `⊢ p ∧ q ∧ r, p`
                     // `fml` is already popped out, so nothing to do.
-                    continue 'outer;
+                    continue 'main;
                 }
                 // exclude trivial fmls to reduce the clone cost of seq.
                 for p in l {
@@ -85,7 +85,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     // ex. p, q, r ⊢ p ∧ q ∧ r (all of l is trivial)
                     // the sequent is proved, so drop it and continue to the next sequent
                     seqs.pop().unwrap();
-                    continue 'outer;
+                    continue 'main;
                 }
                 let mut current_seq = seq;
                 while let Some(p) = temp_fmls.pop() {
@@ -111,7 +111,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     trace!("The formula is redundant.");
                     // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.
-                    continue 'outer;
+                    continue 'main;
                 }
                 let p = p.with_side(Right);
                 let p_is_trivial = seq.is_trivial(p);
@@ -147,7 +147,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     trace!("Trivial");
                     // drop it and continue to the next sequent
                     seqs.pop().unwrap();
-                    continue 'outer;
+                    continue 'main;
                 }
                 seq.push(p);
                 seq.push(q);
