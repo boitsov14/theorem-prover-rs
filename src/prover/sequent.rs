@@ -8,10 +8,9 @@ use crate::{
 use Cost::*;
 use Side::*;
 use indexmap::IndexSet;
-use rustc_hash::FxHasher;
 use std::{fmt, hash::BuildHasherDefault, ops::Deref};
 
-type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
+type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<rustc_hash::FxHasher>>;
 
 /// side in sequent calculus: antecedent ⊢ succedent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

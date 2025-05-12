@@ -4,3 +4,4 @@ callgrind.out.*
 *.tex
 *.log
 result.json
+flamegraph.svg

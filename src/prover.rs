@@ -74,7 +74,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
 }
 
 #[cfg(feature = "bench")]
-#[divan::bench_group(max_time = 3)]
+#[divan::bench_group(max_time = 1)]
 mod bench {
     use super::*;
     use crate::lang::SplitSequent;
