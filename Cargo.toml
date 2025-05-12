@@ -39,6 +39,8 @@ required-features = ["bench"]
 codegen-units = 1
 lto = true
 panic = "abort"
+# flamegraph
+# debug = true
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
