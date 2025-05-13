@@ -128,7 +128,7 @@ impl<'a> Sequent<'a> {
 
     #[inline(always)]
     pub fn push(&mut self, fml: SidedFormula<'a>) {
-        if self.seq.contains(&fml) {
+        if self.contains(&fml) {
             return;
         }
         // TODO: 2024/08/25 costを最初に定義することのパフォーマンスへの影響考察
