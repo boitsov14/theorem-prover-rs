@@ -133,11 +133,7 @@ impl<'a> Sequent<'a> {
         }
         // TODO: 2024/08/25 costを最初に定義することのパフォーマンスへの影響考察
         let cost = fml.get_cost();
-        let i = self
-            .seq
-            .iter()
-            .rposition(|p| p.get_cost() >= cost)
-            .map_or(0, |x| x + 1);
+        let i = self.seq.partition_point(|p| p.get_cost() >= cost);
         self.seq.shift_insert(i, fml);
     }
 
