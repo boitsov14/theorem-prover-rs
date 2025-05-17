@@ -5,3 +5,4 @@ callgrind.out.*
 *.log
 result.json
 flamegraph.svg
+profile.json.gz

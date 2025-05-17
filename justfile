@@ -1,3 +1,6 @@
+# For windows compatibility
+set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe","-c"]
+
 # Update everything: Rust toolchain, project dependencies, and global tools
 # Note: -i means "allow incompatible upgrades"
 # Requires cargo-edit and cargo-update
@@ -31,6 +34,18 @@ test:
 # Run benchmarks
 bench FILTER='':
     cargo bench --features bench -- {{FILTER}}
+
+# Run flamegraph
+flamegraph:
+    cargo flamegraph --profile profiling
+
+# Build in profiling mode
+build-profiling:
+    cargo build --profile profiling
+
+# Run samply
+samply:
+    samply record --rate 1000000 ./target/profiling/theorem-prover-rs.exe
 
 # Add dependency to Cargo.toml
 add package:
