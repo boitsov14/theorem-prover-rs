@@ -36,7 +36,8 @@ bench FILTER='':
     cargo bench --features bench -- {{FILTER}}
 
 # Run flamegraph
-flamegraph:
+# Requires admin
+flame:
     cargo flamegraph --profile profiling
 
 # Build in profiling mode
