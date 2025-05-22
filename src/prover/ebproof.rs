@@ -174,7 +174,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.with_side(side))
-                    .any(|p| p.is_atom() && seq.contains(&p))
+                    .any(|p| p.is_atom() && seq.contains_atom(&p))
                 {
                     // when `fml` is redundant
                     // ex. `p ∨ q ∨ r, p ⊢`
@@ -207,7 +207,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
                 let q = q.with_side(Left);
-                if q.is_atom() && seq.contains(&q) {
+                if q.is_atom() && seq.contains_atom(&q) {
                     // when `fml` is redundant
                     // ex. `p → q, q ⊢`
                     // drop `fml` and continue to the next sequent

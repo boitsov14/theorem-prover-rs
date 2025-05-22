@@ -63,7 +63,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.with_side(side))
-                    .any(|p| p.is_atom() && seq.contains(&p))
+                    .any(|p| p.is_atom() && seq.contains_atom(&p))
                 {
                     trace!("The formula is redundant.");
                     // ex. `p ∨ q ∨ r, p ⊢`
@@ -107,7 +107,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
                 let q = q.with_side(Left);
-                if q.is_atom() && seq.contains(&q) {
+                if q.is_atom() && seq.contains_atom(&q) {
                     trace!("The formula is redundant.");
                     // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.

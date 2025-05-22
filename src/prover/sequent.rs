@@ -8,9 +8,10 @@ use crate::{
 use Cost::*;
 use Side::*;
 use indexmap::IndexSet;
-use std::{fmt, hash::BuildHasherDefault, ops::Deref};
+use rustc_hash::{FxHashSet, FxHasher};
+use std::{fmt, hash::BuildHasherDefault};
 
-type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<rustc_hash::FxHasher>>;
+type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 /// side in sequent calculus: antecedent ⊢ succedent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -30,6 +31,7 @@ impl fmt::Display for Side {
     }
 }
 
+// TODO: 2025/05/22 atomやquantを分けるなら不要？
 /// cost for propositional proof operations (ordered by priority)
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Cost {
@@ -52,17 +54,12 @@ pub struct SidedFormula<'a> {
 #[derive(Clone, Debug, Default)]
 pub struct Sequent<'a> {
     /// index set of sided formulas
-    // TODO: 2025/02/10 make private
+    // TODO: 2025/05/22 名前要検討
     seq: FxIndexSet<SidedFormula<'a>>,
-}
-
-// TODO: 2025/02/07 Add Comment
-impl<'a> Deref for Sequent<'a> {
-    type Target = FxIndexSet<SidedFormula<'a>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.seq
-    }
+    atoms: FxHashSet<SidedFormula<'a>>,
+    // TODO: 2025/05/22 要検討
+    // quant: FxIndexSet<SidedFormula<'a>>,
+    // quant: Vec<SidedFormula<'a>>,
 }
 
 impl Side {
@@ -120,21 +117,20 @@ impl<'a> Sequent<'a> {
     }
 
     pub fn is_initially_trivial(&self) -> bool {
-        self.seq
+        self.atoms
             .iter()
-            .filter(|fml| fml.is_atom())
-            .any(|fml| self.contains(&fml.opposite()))
+            .any(|fml| self.contains_atom(&fml.opposite()))
     }
 
     #[inline(always)]
     pub fn push(&mut self, fml: SidedFormula<'a>) {
-        if self.contains(&fml) {
-            return;
+        if fml.is_atom() {
+            self.atoms.insert(fml);
+        } else {
+            let cost = fml.get_cost();
+            let i = self.seq.partition_point(|p| p.get_cost() >= cost);
+            self.seq.insert_before(i, fml);
         }
-        // TODO: 2024/08/25 costを最初に定義することのパフォーマンスへの影響考察
-        let cost = fml.get_cost();
-        let i = self.seq.partition_point(|p| p.get_cost() >= cost);
-        self.seq.shift_insert(i, fml);
     }
 
     #[inline(always)]
@@ -143,18 +139,18 @@ impl<'a> Sequent<'a> {
     }
 
     #[inline(always)]
-    pub fn contains(&self, fml: &SidedFormula<'a>) -> bool {
-        self.seq.contains(fml)
+    pub fn contains_atom(&self, fml: &SidedFormula<'a>) -> bool {
+        self.atoms.contains(fml)
     }
 
     #[inline(always)]
     pub fn is_trivial(&self, fml: SidedFormula<'a>) -> bool {
-        fml.is_atom() && self.contains(&fml.opposite())
+        fml.is_atom() && self.contains_atom(&fml.opposite())
     }
 
     #[inline(always)]
     pub fn is_trivial2(&self, fml1: SidedFormula<'a>, fml2: SidedFormula<'a>) -> bool {
-        if (fml1.is_atom() && self.contains(&fml1.opposite())) || (fml2.is_atom() && self.contains(&fml2.opposite())) {
+        if (fml1.is_atom() && self.contains_atom(&fml1.opposite())) || (fml2.is_atom() && self.contains_atom(&fml2.opposite())) {
             // trivial if either of them is trivial
             return true;
         }
@@ -172,14 +168,28 @@ pub struct SequentDisplay<'a> {
 
 impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Left).enumerate() {
+        for (i, SidedFormula { fml, .. }) in self
+            .seq
+            .seq
+            .iter()
+            .chain(self.seq.atoms.iter())
+            .filter(|p| p.side == Left)
+            .enumerate()
+        {
             if i > 0 {
                 write!(f, ", ")?;
             }
             write!(f, "{}", fml.display(self.names))?;
         }
         write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate() {
+        for (i, SidedFormula { fml, .. }) in self
+            .seq
+            .seq
+            .iter()
+            .chain(self.seq.atoms.iter())
+            .filter(|p| p.side == Right)
+            .enumerate()
+        {
             if i > 0 {
                 write!(f, ", ")?;
             }
