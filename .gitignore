@@ -6,3 +6,4 @@ callgrind.out.*
 result.json
 flamegraph.svg
 profile.json.gz
+/tex

@@ -77,3 +77,8 @@ update-rust-all:
 # Requires cross
 cross-build:
     cross build --release --target x86_64-unknown-linux-gnu
+
+# Latex build
+tex:
+    cp ebproof.tex tex/out.tex
+    pdflatex -output-directory tex tex/out.tex
