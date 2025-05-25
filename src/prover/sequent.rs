@@ -5,13 +5,9 @@ use crate::{
         SplitSequent,
     },
 };
-use Cost::*;
 use Side::*;
-use indexmap::IndexSet;
-use rustc_hash::{FxHashSet, FxHasher};
-use std::{fmt, hash::BuildHasherDefault};
-
-type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
+use rustc_hash::FxHashSet;
+use std::fmt;
 
 /// side in sequent calculus: antecedent ⊢ succedent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -31,18 +27,6 @@ impl fmt::Display for Side {
     }
 }
 
-// TODO: 2025/05/22 atomやquantを分けるなら不要？
-/// cost for propositional proof operations (ordered by priority)
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum Cost {
-    // lower cost for fewer branches
-    Prop(usize),
-    // cannot be further simplified
-    Atom,
-    // deferred because cost is used only for proving propositional logic
-    Quant,
-}
-
 /// formula with side (left/right) in a sequent
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SidedFormula<'a> {
@@ -50,16 +34,14 @@ pub struct SidedFormula<'a> {
     pub side: Side,
 }
 
-/// sequent with an index set of sided formulas
 #[derive(Clone, Debug, Default)]
 pub struct Sequent<'a> {
-    /// index set of sided formulas
-    // TODO: 2025/05/22 名前要検討
-    seq: FxIndexSet<SidedFormula<'a>>,
+    // single branch formulas (cost 1)
+    single: Vec<SidedFormula<'a>>,
+    // Multi-branch formulas (cost 2+)
+    multi: Vec<SidedFormula<'a>>,
+    // atoms
     atoms: FxHashSet<SidedFormula<'a>>,
-    // TODO: 2025/05/22 要検討
-    // quant: FxIndexSet<SidedFormula<'a>>,
-    // quant: Vec<SidedFormula<'a>>,
 }
 
 impl Side {
@@ -82,13 +64,12 @@ impl Formula {
 
 impl SidedFormula<'_> {
     #[inline(always)]
-    fn get_cost(&self) -> Cost {
+    fn get_cost(&self) -> usize {
         match (self.fml, self.side) {
-            (Pred(..), _) => Atom,
-            (And(_) | Ex(..), Left) | (Or(_) | To(..) | All(..), Right) | (Not(_), _) => Prop(1),
-            (To(..), Left) | (Iff(..), _) => Prop(2),
-            (And(l), Right) | (Or(l), Left) => Prop(l.len()),
-            (All(..), Left) | (Ex(..), Right) => Quant,
+            (And(_) | Ex(..), Left) | (Or(_) | To(..) | All(..), Right) | (Not(_), _) => 1,
+            (To(..), Left) | (Iff(..), _) => 2,
+            (And(l), Right) | (Or(l), Left) => l.len(),
+            (Pred(..), _) | (All(..), Left) | (Ex(..), Right) => unreachable!(),
         }
     }
 
@@ -127,15 +108,24 @@ impl<'a> Sequent<'a> {
         if fml.is_atom() {
             self.atoms.insert(fml);
         } else {
-            let cost = fml.get_cost();
-            let i = self.seq.partition_point(|p| p.get_cost() >= cost);
-            self.seq.insert_before(i, fml);
+            match fml.get_cost() {
+                0 => {}
+                1 => self.single.push(fml),
+                _ => self.multi.push(fml),
+            }
         }
     }
 
-    #[inline(always)]
+    /// Pop minimum cost formula efficiently
     pub fn pop(&mut self) -> Option<SidedFormula<'a>> {
-        self.seq.pop()
+        // Check buckets in cost order
+        if let Some(fml) = self.single.pop() {
+            Some(fml)
+        } else if let Some(fml) = self.multi.pop() {
+            Some(fml)
+        } else {
+            None
+        }
     }
 
     #[inline(always)]
@@ -170,8 +160,9 @@ impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, SidedFormula { fml, .. }) in self
             .seq
-            .seq
+            .single
             .iter()
+            .chain(self.seq.multi.iter())
             .chain(self.seq.atoms.iter())
             .filter(|p| p.side == Left)
             .enumerate()
@@ -184,8 +175,9 @@ impl fmt::Display for SequentDisplay<'_> {
         write!(f, r" &\vdash ")?;
         for (i, SidedFormula { fml, .. }) in self
             .seq
-            .seq
+            .single
             .iter()
+            .chain(self.seq.multi.iter())
             .chain(self.seq.atoms.iter())
             .filter(|p| p.side == Right)
             .enumerate()
