@@ -66,20 +66,24 @@ struct ProofNode<'a> {
 
 impl<'a> ProofNode<'a> {
     #[inline(always)]
-    fn root(seq: Sequent<'a>) -> Self {
+    fn new_root(seq: Sequent<'a>) -> Self {
         Self { seq, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: None }
     }
 }
 
 impl<'a> Sequent<'a> {
     #[inline(always)]
-    fn with_parent(self, parent_idx: usize) -> ProofNode<'a> {
+    fn to_node(self, parent_idx: usize) -> ProofNode<'a> {
         ProofNode { seq: self, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: Some(parent_idx) }
     }
 }
 
 /// Generates a LaTeX proof tree using the ebproof package.
 pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
+    // Buffer for storing the proof tree string
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
+    // Generate the proof tree
+    ebproof_impl(seq, names, &mut buf)?;
     // Create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex"))?;
     // Write LaTeX preamble
@@ -90,9 +94,7 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
 \begin{{document}}
 \begin{{prooftree}}",
     )?;
-    // Buffer for storing the proof tree string
-    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
-    ebproof_core(seq, names, &mut buf)?;
+    // Write the proof tree content
     file.write_all(&buf)?;
     // Write LaTeX closing
     writeln!(
@@ -103,15 +105,15 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     Ok(())
 }
 
-/// Core implementation for generating LaTeX proof trees.
-fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+/// Implementation for generating LaTeX proof trees.
+fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
         writeln!(buf, r"\infer{{0}}[\scriptsize Axiom]{{{}}}", seq.display(names))?;
         return Ok(());
     }
-    let mut nodes = vec![ProofNode::root(seq)];
+    let mut nodes = vec![ProofNode::new_root(seq)];
     'main: loop {
         // write all proved nodes
         flush_proved_nodes(&mut nodes, names, buf)?;
@@ -138,7 +140,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let seq = seq.with_parent(nodes.len() - 1);
+                let seq = seq.to_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -149,11 +151,11 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
                 // set the tactic
-                let init = match side {
+                let initial_tactic = match side {
                     Left => Tactic::And { side, children_cnt: 1 },
                     Right => Tactic::Or { side, children_cnt: 1 },
                 };
-                tactic.set(init).unwrap();
+                tactic.set(initial_tactic).unwrap();
                 let mut is_trivial = false;
                 for p in l {
                     let p = p.with_side(side);
@@ -162,7 +164,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                     }
                     seq.push(p);
                 }
-                let seq = seq.with_parent(nodes.len() - 1);
+                let seq = seq.to_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -185,18 +187,18 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 }
                 // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
-                let init = match side {
+                let initial_tactic = match side {
                     Right => Tactic::And { side, children_cnt: l.len() },
                     Left => Tactic::Or { side, children_cnt: l.len() },
                 };
-                tactic.set(init).unwrap();
+                tactic.set(initial_tactic).unwrap();
                 let parent_idx = nodes.len() - 1;
                 for p in l.iter().rev() {
                     let p = p.with_side(side);
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let seq = seq.with_parent(parent_idx);
+                    let seq = seq.to_node(parent_idx);
                     if is_trivial {
                         // if trivial, set the Axiom tactic
                         seq.tactic.set(Tactic::Axiom).unwrap();
@@ -224,8 +226,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 seq1.push(q);
                 seq2.push(p);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.with_parent(parent_idx);
-                let seq2 = seq2.with_parent(parent_idx);
+                let seq1 = seq1.to_node(parent_idx);
+                let seq2 = seq2.to_node(parent_idx);
                 if is_trivial_q {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();
@@ -246,7 +248,7 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
-                let seq = seq.with_parent(nodes.len() - 1);
+                let seq = seq.to_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -275,8 +277,8 @@ fn ebproof_core(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.with_parent(parent_idx);
-                let seq2 = seq2.with_parent(parent_idx);
+                let seq1 = seq1.to_node(parent_idx);
+                let seq2 = seq2.to_node(parent_idx);
                 if is_trivial_1 {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();
