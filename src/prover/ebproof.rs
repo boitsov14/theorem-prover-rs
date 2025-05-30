@@ -72,6 +72,7 @@ impl<'a> ProofNode<'a> {
 }
 
 impl<'a> Sequent<'a> {
+    // TODO: 2025/05/30 forestを参考にするか
     #[inline(always)]
     fn to_node(self, parent_idx: usize) -> ProofNode<'a> {
         ProofNode { seq: self, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: Some(parent_idx) }
