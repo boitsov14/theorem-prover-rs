@@ -72,7 +72,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     }
 
     // forest
-    if options.forest {
+    if provability && options.forest {
         info!("Generating forest...");
         let start_time = Instant::now();
         forest::forest(seq, &names, &options.out)?;

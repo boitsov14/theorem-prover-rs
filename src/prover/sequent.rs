@@ -97,6 +97,14 @@ impl<'a> Sequent<'a> {
         seq
     }
 
+    /// iterate over all formulas in the sequent
+    pub fn iter(&self) -> impl Iterator<Item = &SidedFormula<'a>> {
+        self.single
+            .iter()
+            .chain(self.multi.iter())
+            .chain(self.atoms.iter())
+    }
+
     pub fn is_initially_trivial(&self) -> bool {
         self.atoms
             .iter()
@@ -158,30 +166,14 @@ pub struct SequentDisplay<'a> {
 
 impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, SidedFormula { fml, .. }) in self
-            .seq
-            .single
-            .iter()
-            .chain(self.seq.multi.iter())
-            .chain(self.seq.atoms.iter())
-            .filter(|p| p.side == Left)
-            .enumerate()
-        {
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Left).enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
             write!(f, "{}", fml.display(self.names))?;
         }
         write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in self
-            .seq
-            .single
-            .iter()
-            .chain(self.seq.multi.iter())
-            .chain(self.seq.atoms.iter())
-            .filter(|p| p.side == Right)
-            .enumerate()
-        {
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
