@@ -129,7 +129,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     let mut forest_nodes: Vec<ForestNode> = Vec::new();
     // generate the proof tree
-    forest_impl(seq.clone(), names, &mut forest_nodes)?;
+    forest_impl(seq.clone(), &mut forest_nodes)?;
     // reorder forest nodes using stack-based algorithm
     let forest_nodes = reorder_forest_nodes(forest_nodes);
     // Write the proof tree content
@@ -138,7 +138,13 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     let mut file = File::create(PathBuf::from(out).join("forest.tex"))?;
     // replace the placeholder with proof
     let proof = include_str!("../../templates/forest.tex")
-        .replace("%CLAIM%", &seq.display(names).to_string())
+        .replace(
+            "%CLAIM%",
+            &seq.display(names)
+                .to_string()
+                .replace(r"&\vdash", r"\vdash")
+                .trim(),
+        )
         .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes())?;
