@@ -140,7 +140,12 @@ impl fmt::Display for FormulaDisplay<'_> {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(f, r"{} \rightarrow {}", p.display_inner(self.names), q.display_inner(self.names))?;
+                write!(
+                    f,
+                    r"{} \rightarrow {}",
+                    p.display_inner(self.names),
+                    q.display_inner(self.names)
+                )?;
                 if self.is_inner {
                     write!(f, ")")?;
                 }
@@ -149,7 +154,12 @@ impl fmt::Display for FormulaDisplay<'_> {
                 if self.is_inner {
                     write!(f, "(")?;
                 }
-                write!(f, r"{} \leftrightarrow {}", p.display_inner(self.names), q.display_inner(self.names))?;
+                write!(
+                    f,
+                    r"{} \leftrightarrow {}",
+                    p.display_inner(self.names),
+                    q.display_inner(self.names)
+                )?;
                 if self.is_inner {
                     write!(f, ")")?;
                 }
@@ -174,11 +184,19 @@ impl fmt::Display for FormulaDisplay<'_> {
 impl Formula {
     /// Returns a `FormulaDisplay` used to display the formula with the given names.
     pub fn display<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
-        FormulaDisplay { formula: self, names, is_inner: false }
+        FormulaDisplay {
+            formula: self,
+            names,
+            is_inner: false,
+        }
     }
 
     fn display_inner<'a>(&'a self, names: &'a Names) -> FormulaDisplay<'a> {
-        FormulaDisplay { formula: self, names, is_inner: true }
+        FormulaDisplay {
+            formula: self,
+            names,
+            is_inner: true,
+        }
     }
 }
 

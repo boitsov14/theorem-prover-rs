@@ -29,7 +29,11 @@ pub fn cli() {
     let options = CliOptions::parse();
 
     // initialize logger
-    let s = if options.trace { include_str!("../logger/trace.yaml") } else { include_str!("../logger/info.yaml") };
+    let s = if options.trace {
+        include_str!("../logger/trace.yaml")
+    } else {
+        include_str!("../logger/info.yaml")
+    };
     let logger_config = serde_yaml::from_str(s).unwrap();
     log4rs::init_raw_config(logger_config).unwrap();
 

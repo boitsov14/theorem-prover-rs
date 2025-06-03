@@ -67,7 +67,12 @@ struct ProofNode<'a> {
 impl<'a> ProofNode<'a> {
     #[inline(always)]
     fn new_root(seq: Sequent<'a>) -> Self {
-        Self { seq, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: None }
+        Self {
+            seq,
+            tactic: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx: None,
+        }
     }
 }
 
@@ -75,7 +80,12 @@ impl<'a> Sequent<'a> {
     // TODO: 2025/05/30 forestを参考にするか
     #[inline(always)]
     fn to_node(self, parent_idx: usize) -> ProofNode<'a> {
-        ProofNode { seq: self, tactic: OnceCell::new(), proved_children_cnt: 0, parent_idx: Some(parent_idx) }
+        ProofNode {
+            seq: self,
+            tactic: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx: Some(parent_idx),
+        }
     }
 }
 
@@ -88,7 +98,8 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
     // create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex"))?;
     // replace the placeholder with proof
-    let proof = include_str!("../../templates/ebproof.tex").replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
+    let proof = include_str!("../../templates/ebproof.tex")
+        .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes())?;
     Ok(())
@@ -99,7 +110,11 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
-        writeln!(buf, r"\infer{{0}}[\scriptsize Axiom]{{{}}}", seq.display(names))?;
+        writeln!(
+            buf,
+            r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+            seq.display(names)
+        )?;
         return Ok(());
     }
     let mut nodes = vec![ProofNode::new_root(seq)];
@@ -141,8 +156,14 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             (And(l), Left) | (Or(l), Right) => {
                 // set the tactic
                 let initial_tactic = match side {
-                    Left => Tactic::And { side, children_cnt: 1 },
-                    Right => Tactic::Or { side, children_cnt: 1 },
+                    Left => Tactic::And {
+                        side,
+                        children_cnt: 1,
+                    },
+                    Right => Tactic::Or {
+                        side,
+                        children_cnt: 1,
+                    },
                 };
                 tactic.set(initial_tactic).unwrap();
                 let mut is_trivial = false;
@@ -177,8 +198,14 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
                 let initial_tactic = match side {
-                    Right => Tactic::And { side, children_cnt: l.len() },
-                    Left => Tactic::Or { side, children_cnt: l.len() },
+                    Right => Tactic::And {
+                        side,
+                        children_cnt: l.len(),
+                    },
+                    Left => Tactic::Or {
+                        side,
+                        children_cnt: l.len(),
+                    },
                 };
                 tactic.set(initial_tactic).unwrap();
                 let parent_idx = nodes.len() - 1;
@@ -295,8 +322,18 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
-    while let Some(ProofNode { seq, tactic, proved_children_cnt, parent_idx }) = nodes.last() {
+fn flush_proved_nodes(
+    nodes: &mut Vec<ProofNode>,
+    names: &Names,
+    buf: &mut Vec<u8>,
+) -> io::Result<()> {
+    while let Some(ProofNode {
+        seq,
+        tactic,
+        proved_children_cnt,
+        parent_idx,
+    }) = nodes.last()
+    {
         let Some(tactic) = tactic.get() else {
             // tactic not initialized yet
             break;
@@ -312,7 +349,12 @@ fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u
             panic!("File size exceeded the limit.");
         }
         // write the inference rule
-        writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
+        writeln!(
+            buf,
+            r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
+            tactic.children_cnt(),
+            seq.display(names)
+        )?;
         if let Some(parent_idx) = *parent_idx {
             // if has a parent
             // increment parent's proved children count
@@ -341,7 +383,12 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
         if let Some(tactic) = tactic.get() {
             // when it has children
             // write the inference rule
-            writeln!(buf, r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}", tactic.children_cnt(), seq.display(names))?;
+            writeln!(
+                buf,
+                r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
+                tactic.children_cnt(),
+                seq.display(names)
+            )?;
         } else {
             // when it is leaf
             // write the sequent as a hypothesis

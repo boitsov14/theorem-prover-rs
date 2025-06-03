@@ -148,12 +148,20 @@ impl<'a> Sequent<'a> {
 
     #[inline(always)]
     pub fn is_trivial2(&self, fml1: SidedFormula<'a>, fml2: SidedFormula<'a>) -> bool {
-        if (fml1.is_atom() && self.contains_atom(&fml1.opposite())) || (fml2.is_atom() && self.contains_atom(&fml2.opposite())) {
+        if (fml1.is_atom() && self.contains_atom(&fml1.opposite()))
+            || (fml2.is_atom() && self.contains_atom(&fml2.opposite()))
+        {
             // trivial if either of them is trivial
             return true;
         }
-        let SidedFormula { fml: fml1, side: side1 } = fml1;
-        let SidedFormula { fml: fml2, side: side2 } = fml2;
+        let SidedFormula {
+            fml: fml1,
+            side: side1,
+        } = fml1;
+        let SidedFormula {
+            fml: fml2,
+            side: side2,
+        } = fml2;
         // trivial if same formula with different side
         fml1 == fml2 && side1 != side2
     }
@@ -166,14 +174,16 @@ pub struct SequentDisplay<'a> {
 
 impl fmt::Display for SequentDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Left).enumerate() {
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Left).enumerate()
+        {
             if i > 0 {
                 write!(f, ", ")?;
             }
             write!(f, "{}", fml.display(self.names))?;
         }
         write!(f, r" &\vdash ")?;
-        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate() {
+        for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate()
+        {
             if i > 0 {
                 write!(f, ", ")?;
             }

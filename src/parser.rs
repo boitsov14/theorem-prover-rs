@@ -25,7 +25,10 @@ pub enum Error {
  | {}^___
  | 
  = expected {}", " ".repeat(e.location.column - 1), e.expected)]
-    Peg { s: String, e: peg::error::ParseError<peg::str::LineCol> },
+    Peg {
+        s: String,
+        e: peg::error::ParseError<peg::str::LineCol>,
+    },
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -75,7 +78,12 @@ pub fn parse_formula(s: &str, names: &mut Names, modify_formula: bool) -> Result
 }
 
 /// Parses a sequent.
-pub fn parse_sequent(s: &str, names: &mut Names, modify_formula: bool, tptp: bool) -> Result<SplitSequent, Error> {
+pub fn parse_sequent(
+    s: &str,
+    names: &mut Names,
+    modify_formula: bool,
+    tptp: bool,
+) -> Result<SplitSequent, Error> {
     let s = if tptp { modify_tptp(s) } else { s.to_string() };
     let s = modify_string(&s);
     check_parentheses(&s)?;
@@ -101,7 +109,11 @@ fn modify_string(s: &str) -> String {
 fn check_parentheses(s: &str) -> Result<(), Error> {
     let lp = s.chars().filter(|&c| c == '(').count();
     let rp = s.chars().filter(|&c| c == ')').count();
-    if lp == rp { Ok(()) } else { Err(Error::Parentheses { lp, rp }) }
+    if lp == rp {
+        Ok(())
+    } else {
+        Err(Error::Parentheses { lp, rp })
+    }
 }
 
 /// Modifies the TPTP format.
@@ -222,8 +234,14 @@ impl PFormula {
             Self::Not(p) => Formula::Not(Box::new(p.into_formula(names))),
             Self::And(p, q) => Formula::And(vec![p.into_formula(names), q.into_formula(names)]),
             Self::Or(p, q) => Formula::Or(vec![p.into_formula(names), q.into_formula(names)]),
-            Self::To(p, q) => Formula::To(Box::new(p.into_formula(names)), Box::new(q.into_formula(names))),
-            Self::Iff(p, q) => Formula::Iff(Box::new(p.into_formula(names)), Box::new(q.into_formula(names))),
+            Self::To(p, q) => Formula::To(
+                Box::new(p.into_formula(names)),
+                Box::new(q.into_formula(names)),
+            ),
+            Self::Iff(p, q) => Formula::Iff(
+                Box::new(p.into_formula(names)),
+                Box::new(q.into_formula(names)),
+            ),
             Self::All(s, p) => Formula::All(vec![names.get_id(s)], Box::new(p.into_formula(names))),
             Self::Ex(s, p) => Formula::Ex(vec![names.get_id(s)], Box::new(p.into_formula(names))),
         }
@@ -494,7 +512,10 @@ mod tests {
         use PTerm::*;
         assert_eq!(pterm("x"), Var("x".into()));
         assert_eq!(pterm("f(x)"), Func("f".into(), vec![pterm("x")]));
-        assert_eq!(pterm("f(x,g(y),z)"), Func("f".into(), vec![pterm("x"), pterm("g(y)"), pterm("z")]));
+        assert_eq!(
+            pterm("f(x,g(y),z)"),
+            Func("f".into(), vec![pterm("x"), pterm("g(y)"), pterm("z")])
+        );
     }
 
     #[test]
@@ -504,27 +525,63 @@ mod tests {
         assert_eq!(pfml("⊥"), False);
         assert_eq!(pfml("P"), Pred("P".into(), vec![]));
         assert_eq!(pfml("P(x)"), Pred("P".into(), vec![pterm("x")]));
-        assert_eq!(pfml("P(x,f(y),z)"), Pred("P".into(), vec![pterm("x"), pterm("f(y)"), pterm("z")]));
+        assert_eq!(
+            pfml("P(x,f(y),z)"),
+            Pred("P".into(), vec![pterm("x"), pterm("f(y)"), pterm("z")])
+        );
         assert_eq!(pfml("¬P"), Not(Box::new(pfml("P"))));
         assert_eq!(pfml("P ∧ Q"), And(Box::new(pfml("P")), Box::new(pfml("Q"))));
         assert_eq!(pfml("P ∨ Q"), Or(Box::new(pfml("P")), Box::new(pfml("Q"))));
         assert_eq!(pfml("P → Q"), To(Box::new(pfml("P")), Box::new(pfml("Q"))));
         assert_eq!(pfml("P ↔ Q"), Iff(Box::new(pfml("P")), Box::new(pfml("Q"))));
         assert_eq!(pfml("∀xP(x)"), All("x".into(), Box::new(pfml("P(x)"))));
-        assert_eq!(pfml("∀x,yP(x,y)"), All("x".into(), Box::new(All("y".into(), Box::new(pfml("P(x,y)"))))));
+        assert_eq!(
+            pfml("∀x,yP(x,y)"),
+            All(
+                "x".into(),
+                Box::new(All("y".into(), Box::new(pfml("P(x,y)"))))
+            )
+        );
         assert_eq!(
             pfml("∀x,y,zP(x,y,z)"),
-            All("x".into(), Box::new(All("y".into(), Box::new(All("z".into(), Box::new(pfml("P(x,y,z)")))))))
+            All(
+                "x".into(),
+                Box::new(All(
+                    "y".into(),
+                    Box::new(All("z".into(), Box::new(pfml("P(x,y,z)"))))
+                ))
+            )
         );
         assert_eq!(pfml("∃xP(x)"), Ex("x".into(), Box::new(pfml("P(x)"))));
-        assert_eq!(pfml("∃x,yP(x,y)"), Ex("x".into(), Box::new(Ex("y".into(), Box::new(pfml("P(x,y)"))))));
-        assert_eq!(pfml("∃x,y,zP(x,y,z)"), Ex("x".into(), Box::new(Ex("y".into(), Box::new(Ex("z".into(), Box::new(pfml("P(x,y,z)"))))))));
+        assert_eq!(
+            pfml("∃x,yP(x,y)"),
+            Ex(
+                "x".into(),
+                Box::new(Ex("y".into(), Box::new(pfml("P(x,y)"))))
+            )
+        );
+        assert_eq!(
+            pfml("∃x,y,zP(x,y,z)"),
+            Ex(
+                "x".into(),
+                Box::new(Ex(
+                    "y".into(),
+                    Box::new(Ex("z".into(), Box::new(pfml("P(x,y,z)"))))
+                ))
+            )
+        );
     }
 
     #[test]
     fn test_parse_pfml_assoc() {
         use PFormula::*;
-        assert_eq!(pfml("P → Q → R"), To(Box::new(pfml("P")), Box::new(To(Box::new(pfml("Q")), Box::new(pfml("R"))))));
+        assert_eq!(
+            pfml("P → Q → R"),
+            To(
+                Box::new(pfml("P")),
+                Box::new(To(Box::new(pfml("Q")), Box::new(pfml("R"))))
+            )
+        );
     }
 
     #[test]
@@ -534,7 +591,10 @@ mod tests {
             pfml("¬P ∧ Q ∨ R → S ↔ T"),
             Iff(
                 Box::new(To(
-                    Box::new(Or(Box::new(And(Box::new(Not(Box::new(pfml("P")))), Box::new(pfml("Q")))), Box::new(pfml("R")))),
+                    Box::new(Or(
+                        Box::new(And(Box::new(Not(Box::new(pfml("P")))), Box::new(pfml("Q")))),
+                        Box::new(pfml("R"))
+                    )),
                     Box::new(pfml("S"))
                 )),
                 Box::new(pfml("T"))
@@ -544,7 +604,10 @@ mod tests {
             pfml("∀xP(x) → ∃yQ(y) → R"),
             To(
                 Box::new(All("x".into(), Box::new(pfml("P(x)")))),
-                Box::new(To(Box::new(Ex("y".into(), Box::new(pfml("Q(y)")))), Box::new(pfml("R"))))
+                Box::new(To(
+                    Box::new(Ex("y".into(), Box::new(pfml("Q(y)")))),
+                    Box::new(pfml("R"))
+                ))
             )
         );
     }
@@ -553,21 +616,67 @@ mod tests {
     fn test_parse_pseq() {
         assert_eq!(
             pseq("P, Q, R ⊢ S, T, U"),
-            PSequent { ant: vec![pfml("P"), pfml("Q"), pfml("R")], suc: vec![pfml("S"), pfml("T"), pfml("U")] }
+            PSequent {
+                ant: vec![pfml("P"), pfml("Q"), pfml("R")],
+                suc: vec![pfml("S"), pfml("T"), pfml("U")]
+            }
         );
-        assert_eq!(pseq("P, Q ⊢ R, S"), PSequent { ant: vec![pfml("P"), pfml("Q")], suc: vec![pfml("R"), pfml("S")] });
-        assert_eq!(pseq("P ⊢ Q"), PSequent { ant: vec![pfml("P")], suc: vec![pfml("Q")] });
-        assert_eq!(pseq("P ⊢"), PSequent { ant: vec![pfml("P")], suc: vec![] });
-        assert_eq!(pseq("⊢ P"), PSequent { ant: vec![], suc: vec![pfml("P")] });
-        assert_eq!(pseq("⊢"), PSequent { ant: vec![], suc: vec![] });
+        assert_eq!(
+            pseq("P, Q ⊢ R, S"),
+            PSequent {
+                ant: vec![pfml("P"), pfml("Q")],
+                suc: vec![pfml("R"), pfml("S")]
+            }
+        );
+        assert_eq!(
+            pseq("P ⊢ Q"),
+            PSequent {
+                ant: vec![pfml("P")],
+                suc: vec![pfml("Q")]
+            }
+        );
+        assert_eq!(
+            pseq("P ⊢"),
+            PSequent {
+                ant: vec![pfml("P")],
+                suc: vec![]
+            }
+        );
+        assert_eq!(
+            pseq("⊢ P"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("P")]
+            }
+        );
+        assert_eq!(
+            pseq("⊢"),
+            PSequent {
+                ant: vec![],
+                suc: vec![]
+            }
+        );
         assert_eq!(
             pseq("P ∧ Q, R ∨ S, ∀xP(x) ⊢ ∃yQ(y), ¬R, ∃z∀wS(z,w)"),
             PSequent {
-                ant: vec![pfml("P ∧ Q"), pfml("R ∨ S"), pfml("∀xP(x)")], suc: vec![pfml("∃yQ(y)"), pfml("¬R"), pfml("∃z∀wS(z,w)")]
+                ant: vec![pfml("P ∧ Q"), pfml("R ∨ S"), pfml("∀xP(x)")],
+                suc: vec![pfml("∃yQ(y)"), pfml("¬R"), pfml("∃z∀wS(z,w)")]
             }
         );
-        assert_eq!(pseq("P"), PSequent { ant: vec![], suc: vec![pfml("P")] });
-        assert_eq!(pseq("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)"), PSequent { ant: vec![], suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")] });
+        assert_eq!(
+            pseq("P"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("P")]
+            }
+        );
+        assert_eq!(
+            pseq("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)"),
+            PSequent {
+                ant: vec![],
+                suc: vec![pfml("¬P ∧ Q ∨ R → S ↔ ∀x∃yP(x,y)")]
+            }
+        );
     }
 
     #[test]
@@ -610,7 +719,8 @@ mod tests {
     fn test_flatten_and_or() {
         use Formula::*;
         let mut names = Names::default();
-        let mut fml = parse_formula("(P ∧ Q ∧ (R ∨ S ∨ (T ∧ U ∧ V))) → W", &mut names, false).unwrap();
+        let mut fml =
+            parse_formula("(P ∧ Q ∧ (R ∨ S ∨ (T ∧ U ∧ V))) → W", &mut names, false).unwrap();
         fml.flatten();
         assert_eq!(
             fml,
@@ -741,12 +851,21 @@ mod tests {
         assert_eq!(
             fml,
             And(vec![
-                Pred(names.get_id("P".into()), vec![Func(names.get_id("x".into()), vec![])]),
+                Pred(
+                    names.get_id("P".into()),
+                    vec![Func(names.get_id("x".into()), vec![])]
+                ),
                 All(
                     vec![names.get_id("y".into())],
                     Box::new(Pred(
                         names.get_id("Q".into()),
-                        vec![Var(names.get_id("y".into())), Func(names.get_id("f".into()), vec![Func(names.get_id("z".into()), vec![])])]
+                        vec![
+                            Var(names.get_id("y".into())),
+                            Func(
+                                names.get_id("f".into()),
+                                vec![Func(names.get_id("z".into()), vec![])]
+                            )
+                        ]
                     ))
                 )
             ])

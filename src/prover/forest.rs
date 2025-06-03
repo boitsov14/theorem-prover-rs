@@ -52,8 +52,20 @@ struct ForestNode<'a> {
 impl<'a> ProofNode<'a> {
     /// Create new root proof node with None as from value
     #[inline(always)]
-    fn new_root(seq: Sequent<'a>, formula_map: FxHashMap<usize, SidedFormula<'a>>, added_formulas: Vec<(usize, SidedFormula<'a>)>) -> Self {
-        Self { seq, children_cnt: OnceCell::new(), proved_children_cnt: 0, parent_idx: None, formula_map, added_formulas, from: None }
+    fn new_root(
+        seq: Sequent<'a>,
+        formula_map: FxHashMap<usize, SidedFormula<'a>>,
+        added_formulas: Vec<(usize, SidedFormula<'a>)>,
+    ) -> Self {
+        Self {
+            seq,
+            children_cnt: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx: None,
+            formula_map,
+            added_formulas,
+            from: None,
+        }
     }
 
     /// Create new child proof node with from_formula's id as from value
@@ -67,14 +79,27 @@ impl<'a> ProofNode<'a> {
     ) -> Self {
         // use get_from for non-root nodes
         let from = Some(from_formula.get_from(&formula_map));
-        Self { seq, children_cnt: OnceCell::new(), proved_children_cnt: 0, parent_idx: Some(parent_idx), formula_map, added_formulas, from }
+        Self {
+            seq,
+            children_cnt: OnceCell::new(),
+            proved_children_cnt: 0,
+            parent_idx: Some(parent_idx),
+            formula_map,
+            added_formulas,
+            from,
+        }
     }
 }
 
 impl<'a> ForestNode<'a> {
     /// Create new forest node for LaTeX output
     fn new(from: Option<usize>, children_cnt: usize, idx: usize, fml: SidedFormula<'a>) -> Self {
-        Self { from, children_cnt, idx, fml }
+        Self {
+            from,
+            children_cnt,
+            idx,
+            fml,
+        }
     }
 }
 
@@ -121,7 +146,11 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<ForestNode<'a>>) -> io::Result<()> {
+fn forest_impl<'a>(
+    seq: Sequent<'a>,
+    names: &Names,
+    forest_nodes: &mut Vec<ForestNode<'a>>,
+) -> io::Result<()> {
     // global unique id counter for formulas
     let mut global_idx = 1;
     // create initial formula map with id assignment
@@ -156,7 +185,12 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
             // if no sequent to be proved, completed the proof
             return Ok(());
         };
-        let ProofNode { mut seq, parent_idx, mut formula_map, .. } = nodes.last().unwrap().clone();
+        let ProofNode {
+            mut seq,
+            parent_idx,
+            mut formula_map,
+            ..
+        } = nodes.last().unwrap().clone();
         // get the last formula for decomposition
         let fml = seq.pop().unwrap();
         let from_formula = fml;
@@ -174,7 +208,13 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
                 let is_trivial = seq.is_trivial(p);
 
                 seq.push(p);
-                let seq = ProofNode::new(seq, formula_map, added_formulas, nodes.len() - 1, from_formula);
+                let seq = ProofNode::new(
+                    seq,
+                    formula_map,
+                    added_formulas,
+                    nodes.len() - 1,
+                    from_formula,
+                );
                 if is_trivial {
                     seq.children_cnt.set(0).unwrap();
                 }
@@ -196,7 +236,13 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
                     }
                     seq.push(p);
                 }
-                let seq = ProofNode::new(seq, formula_map, added_formulas, nodes.len() - 1, from_formula);
+                let seq = ProofNode::new(
+                    seq,
+                    formula_map,
+                    added_formulas,
+                    nodes.len() - 1,
+                    from_formula,
+                );
                 if is_trivial {
                     seq.children_cnt.set(0).unwrap();
                 }
@@ -229,7 +275,13 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
 
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let seq_node = ProofNode::new(seq, formula_map.clone(), added_formulas, parent_idx, from_formula);
+                    let seq_node = ProofNode::new(
+                        seq,
+                        formula_map.clone(),
+                        added_formulas,
+                        parent_idx,
+                        from_formula,
+                    );
                     if is_trivial {
                         seq_node.children_cnt.set(0).unwrap();
                     }
@@ -264,8 +316,20 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
                 seq1.push(q);
                 seq2.push(p);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = ProofNode::new(seq1, formula_map1, added_formulas1, parent_idx, from_formula);
-                let seq2 = ProofNode::new(seq2, formula_map2, added_formulas2, parent_idx, from_formula);
+                let seq1 = ProofNode::new(
+                    seq1,
+                    formula_map1,
+                    added_formulas1,
+                    parent_idx,
+                    from_formula,
+                );
+                let seq2 = ProofNode::new(
+                    seq2,
+                    formula_map2,
+                    added_formulas2,
+                    parent_idx,
+                    from_formula,
+                );
 
                 if is_trivial_q {
                     seq1.children_cnt.set(0).unwrap();
@@ -290,7 +354,13 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
 
                 seq.push(p);
                 seq.push(q);
-                let seq = ProofNode::new(seq, formula_map, added_formulas, nodes.len() - 1, from_formula);
+                let seq = ProofNode::new(
+                    seq,
+                    formula_map,
+                    added_formulas,
+                    nodes.len() - 1,
+                    from_formula,
+                );
                 if is_trivial {
                     seq.children_cnt.set(0).unwrap();
                 }
@@ -327,8 +397,20 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = ProofNode::new(seq1, formula_map1, added_formulas1, parent_idx, from_formula);
-                let seq2 = ProofNode::new(seq2, formula_map2, added_formulas2, parent_idx, from_formula);
+                let seq1 = ProofNode::new(
+                    seq1,
+                    formula_map1,
+                    added_formulas1,
+                    parent_idx,
+                    from_formula,
+                );
+                let seq2 = ProofNode::new(
+                    seq2,
+                    formula_map2,
+                    added_formulas2,
+                    parent_idx,
+                    from_formula,
+                );
                 if is_trivial_1 {
                     seq1.children_cnt.set(0).unwrap();
                 }
@@ -352,7 +434,10 @@ fn forest_impl<'a>(seq: Sequent<'a>, names: &Names, forest_nodes: &mut Vec<Fores
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec<ForestNode<'a>>) -> io::Result<()> {
+fn flush_proved_nodes<'a>(
+    nodes: &mut Vec<ProofNode<'a>>,
+    forest_nodes: &mut Vec<ForestNode<'a>>,
+) -> io::Result<()> {
     while let Some(node) = nodes.last() {
         let Some(children_cnt_val) = node.children_cnt.get() else {
             // not processed yet
@@ -378,7 +463,8 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
 
         // first formula gets the actual children_cnt
         let (first_idx, first_fml) = completed_node.added_formulas.pop().unwrap();
-        let first_forest_node = ForestNode::new(completed_node.from, children_cnt_val, first_idx, first_fml);
+        let first_forest_node =
+            ForestNode::new(completed_node.from, children_cnt_val, first_idx, first_fml);
         forest_nodes.push(first_forest_node);
 
         // remaining formulas get children_cnt = 1
@@ -441,20 +527,38 @@ fn reorder_forest_nodes<'a>(mut forest_nodes: Vec<ForestNode<'a>>) -> Vec<Forest
 /// - Stack tracks remaining children count for each node
 /// - Indent management for proper LaTeX formatting
 /// - Automatic closing of brackets when children count reaches zero
-fn write_forest_latex<'a>(forest_nodes: &[ForestNode<'a>], names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+fn write_forest_latex<'a>(
+    forest_nodes: &[ForestNode<'a>],
+    names: &Names,
+    buf: &mut Vec<u8>,
+) -> io::Result<()> {
     // stack of remaining children count
     let mut stack = vec![];
     // current indentation level
     let mut ind = 0;
 
-    for ForestNode { from, children_cnt, idx, fml } in forest_nodes {
+    for ForestNode {
+        from,
+        children_cnt,
+        idx,
+        fml,
+    } in forest_nodes
+    {
         // let from = from.map_or("".to_string(), |i| i.to_string());
         let from = from.map_or(String::new(), |i| format!(",from={}", i));
 
         if *children_cnt != 0 {
             // internal node - write opening bracket
             check_buf_size(buf);
-            writeln!(buf, "{:ind$}[{},idx={}{}", "", fml.to_tablau().display(names), idx, from, ind = ind * 2)?;
+            writeln!(
+                buf,
+                "{:ind$}[{},idx={}{}",
+                "",
+                fml.to_tablau().display(names),
+                idx,
+                from,
+                ind = ind * 2
+            )?;
 
             // increment indentation for children
             ind += 1;
@@ -465,7 +569,15 @@ fn write_forest_latex<'a>(forest_nodes: &[ForestNode<'a>], names: &Names, buf: &
 
         // leaf node - write with close attribute
         check_buf_size(buf);
-        writeln!(buf, "{:ind$}[{},idx={}{},close]", "", fml.to_tablau().display(names), idx, from, ind = ind * 2)?;
+        writeln!(
+            buf,
+            "{:ind$}[{},idx={}{},close]",
+            "",
+            fml.to_tablau().display(names),
+            idx,
+            from,
+            ind = ind * 2
+        )?;
 
         // decrement children count of parent on stack
         *stack.last_mut().unwrap() -= 1;
