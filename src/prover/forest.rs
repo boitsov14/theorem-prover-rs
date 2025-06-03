@@ -44,7 +44,7 @@ struct ForestNode<'a> {
     // number of children nodes
     children_cnt: usize,
     // formula id
-    idx: usize,
+    id: usize,
     // sided formula
     fml: SidedFormula<'a>,
 }
@@ -93,11 +93,11 @@ impl<'a> ProofNode<'a> {
 
 impl<'a> ForestNode<'a> {
     /// Create new forest node for LaTeX output
-    fn new(from: Option<usize>, children_cnt: usize, idx: usize, fml: SidedFormula<'a>) -> Self {
+    fn new(from: Option<usize>, children_cnt: usize, id: usize, fml: SidedFormula<'a>) -> Self {
         Self {
             from,
             children_cnt,
-            idx,
+            id,
             fml,
         }
     }
@@ -146,30 +146,26 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn forest_impl<'a>(
-    seq: Sequent<'a>,
-    names: &Names,
-    forest_nodes: &mut Vec<ForestNode<'a>>,
-) -> io::Result<()> {
+fn forest_impl<'a>(seq: Sequent<'a>, forest_nodes: &mut Vec<ForestNode<'a>>) -> io::Result<()> {
     // global unique id counter for formulas
-    let mut global_idx = 1;
+    let mut global_id = 1;
     // create initial formula map with id assignment
     let mut formula_map = FxHashMap::default();
     let mut added_formulas = Vec::new();
 
     for p in seq.iter() {
-        formula_map.insert(global_idx, *p);
-        added_formulas.push((global_idx, *p));
-        global_idx += 1;
+        formula_map.insert(global_id, *p);
+        added_formulas.push((global_id, *p));
+        global_id += 1;
     }
 
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
         // create individual forest nodes for each formula
-        for (i, (idx, fml)) in added_formulas.iter().enumerate() {
+        for (i, (id, fml)) in added_formulas.iter().enumerate() {
             let children_cnt = if i == added_formulas.len() - 1 { 0 } else { 1 };
-            let forest_node = ForestNode::new(None, children_cnt, *idx, *fml);
+            let forest_node = ForestNode::new(None, children_cnt, *id, *fml);
             forest_nodes.push(forest_node);
         }
         return Ok(());
@@ -187,7 +183,6 @@ fn forest_impl<'a>(
         };
         let ProofNode {
             mut seq,
-            parent_idx,
             mut formula_map,
             ..
         } = nodes.last().unwrap().clone();
@@ -202,9 +197,9 @@ fn forest_impl<'a>(
             (Not(p), _) => {
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
-                formula_map.insert(global_idx, p);
-                let added_formulas = vec![(global_idx, p)];
-                global_idx += 1;
+                formula_map.insert(global_id, p);
+                let added_formulas = vec![(global_id, p)];
+                global_id += 1;
                 let is_trivial = seq.is_trivial(p);
 
                 seq.push(p);
@@ -228,9 +223,9 @@ fn forest_impl<'a>(
                 let mut added_formulas = Vec::new();
                 for p in l {
                     let p = p.with_side(side);
-                    formula_map.insert(global_idx, p);
-                    added_formulas.push((global_idx, p));
-                    global_idx += 1;
+                    formula_map.insert(global_id, p);
+                    added_formulas.push((global_id, p));
+                    global_id += 1;
                     if seq.is_trivial(p) {
                         is_trivial = true;
                     }
@@ -264,13 +259,13 @@ fn forest_impl<'a>(
                 }
                 children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
-                global_idx += l.len();
+                global_id += l.len();
                 for p in l.iter().rev() {
                     let mut formula_map = formula_map.clone();
                     let p = p.with_side(side);
-                    global_idx -= 1;
-                    formula_map.insert(global_idx, p);
-                    let added_formulas = vec![(global_idx, p)];
+                    global_id -= 1;
+                    formula_map.insert(global_id, p);
+                    let added_formulas = vec![(global_id, p)];
                     let is_trivial = seq.is_trivial(p);
 
                     let mut seq = seq.clone();
@@ -287,7 +282,7 @@ fn forest_impl<'a>(
                     }
                     nodes.push(seq_node);
                 }
-                global_idx += l.len();
+                global_id += l.len();
             }
             // convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
@@ -303,11 +298,11 @@ fn forest_impl<'a>(
                 let p = p.with_side(Right);
                 let mut formula_map1 = formula_map.clone();
                 let mut formula_map2 = formula_map;
-                formula_map1.insert(global_idx + 1, q);
-                let added_formulas1 = vec![(global_idx + 1, q)];
-                formula_map2.insert(global_idx, p);
-                let added_formulas2 = vec![(global_idx, p)];
-                global_idx += 2;
+                formula_map1.insert(global_id + 1, q);
+                let added_formulas1 = vec![(global_id + 1, q)];
+                formula_map2.insert(global_id, p);
+                let added_formulas2 = vec![(global_id, p)];
+                global_id += 2;
                 let is_trivial_q = seq.is_trivial(q);
                 let is_trivial_p = seq.is_trivial(p);
 
@@ -345,11 +340,11 @@ fn forest_impl<'a>(
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
-                formula_map.insert(global_idx, p);
-                global_idx += 1;
-                formula_map.insert(global_idx, q);
-                global_idx += 1;
-                let added_formulas = vec![(global_idx - 2, p), (global_idx - 1, q)];
+                formula_map.insert(global_id, p);
+                global_id += 1;
+                formula_map.insert(global_id, q);
+                global_id += 1;
+                let added_formulas = vec![(global_id - 2, p), (global_id - 1, q)];
                 let is_trivial = seq.is_trivial2(p, q);
 
                 seq.push(p);
@@ -380,13 +375,13 @@ fn forest_impl<'a>(
                 };
                 let mut formula_map1 = formula_map.clone();
                 let mut formula_map2 = formula_map;
-                formula_map1.insert(global_idx + 2, fml11);
-                formula_map1.insert(global_idx + 3, fml12);
-                let added_formulas1 = vec![(global_idx + 2, fml11), (global_idx + 3, fml12)];
-                formula_map2.insert(global_idx, fml21);
-                formula_map2.insert(global_idx + 1, fml22);
-                let added_formulas2 = vec![(global_idx, fml21), (global_idx + 1, fml22)];
-                global_idx += 4;
+                formula_map1.insert(global_id + 2, fml11);
+                formula_map1.insert(global_id + 3, fml12);
+                let added_formulas1 = vec![(global_id + 2, fml11), (global_id + 3, fml12)];
+                formula_map2.insert(global_id, fml21);
+                formula_map2.insert(global_id + 1, fml22);
+                let added_formulas2 = vec![(global_id, fml21), (global_id + 1, fml22)];
+                global_id += 4;
                 let is_trivial_1 = seq.is_trivial2(fml11, fml12);
                 let is_trivial_2 = seq.is_trivial2(fml21, fml22);
 
@@ -462,14 +457,13 @@ fn flush_proved_nodes<'a>(
         let mut completed_node = nodes.pop().unwrap();
 
         // first formula gets the actual children_cnt
-        let (first_idx, first_fml) = completed_node.added_formulas.pop().unwrap();
-        let first_forest_node =
-            ForestNode::new(completed_node.from, children_cnt_val, first_idx, first_fml);
+        let (id, fml) = completed_node.added_formulas.pop().unwrap();
+        let first_forest_node = ForestNode::new(completed_node.from, children_cnt_val, id, fml);
         forest_nodes.push(first_forest_node);
 
         // remaining formulas get children_cnt = 1
-        while let Some((idx, fml)) = completed_node.added_formulas.pop() {
-            let forest_node = ForestNode::new(completed_node.from, 1, idx, fml);
+        while let Some((id, fml)) = completed_node.added_formulas.pop() {
+            let forest_node = ForestNode::new(completed_node.from, 1, id, fml);
             forest_nodes.push(forest_node);
         }
     }
@@ -540,7 +534,7 @@ fn write_forest_latex<'a>(
     for ForestNode {
         from,
         children_cnt,
-        idx,
+        id,
         fml,
     } in forest_nodes
     {
@@ -555,7 +549,7 @@ fn write_forest_latex<'a>(
                 "{:ind$}[{},idx={}{}",
                 "",
                 fml.to_tablau().display(names),
-                idx,
+                id,
                 from,
                 ind = ind * 2
             )?;
@@ -574,7 +568,7 @@ fn write_forest_latex<'a>(
             "{:ind$}[{},idx={}{},close]",
             "",
             fml.to_tablau().display(names),
-            idx,
+            id,
             from,
             ind = ind * 2
         )?;
