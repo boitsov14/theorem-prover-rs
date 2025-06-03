@@ -1,0 +1,45 @@
+% ref: https://tex.stackexchange.com/a/570639
+\documentclass[preview,varwidth=\maxdimen,border=10pt]{standalone}
+\usepackage[linguistics]{forest}
+\usepackage{array}
+\newcolumntype{C}[1]{>{\centering $}p{#1}<{$}}
+\forestset{
+  declare toks={from}{},
+  declare toks={idx}{},
+  declare toks register={claim},
+  declare boolean={align me}{0},
+  declare dimen={my width}{0pt},
+  declare dimen register={lmeas},
+  lmeas/.pgfmath=width("99."),
+  declare dimen register={rmeas},
+  rmeas/.pgfmath=width("(99)"),
+  claim=,
+  my proof/.style={
+    for tree={math content},
+    for root=align me,
+    before typesetting nodes={if claim={}{}{replace by/.process={Rw{claim}{[##1,math content,append]}},no edge,before computing xy={l'=2\baselineskip}}},
+    where n children=1{!1.no edge,before computing xy={!1.l'=\baselineskip}}{},
+    for root={align me},
+    where n children>=2{for children={align me}}{},
+    before packing={
+      where align me={
+        tempdima/.max={>{OOw2+d}{max x}{min x}{##1-##2}}{walk and save={temptoksa}{current,until={>O_=!{n children}{1}}{first,typeset node}}},
+        for nodewalk={load=temptoksa}{my width/.register=tempdima,typeset node}
+      }{},
+      for tree={
+      tempcounta=idx,
+        align=p{\foresteregister{lmeas}}C{\foresteoption{my width}}p{\foresteregister{rmeas}},
+        content/.process={OR OSl+tt= ? w w3 {content}{tempcounta}{from}{}{}{(##1)}{##2.\quad & ##1\quad & ##3}},
+        typeset node
+      }
+    },
+    close/.style={label={[xshift=-2.5pt]below:$\times$}}
+  }
+}
+\begin{document}
+\begin{forest}
+  my proof,
+  claim=%CLAIM%
+%PROOF_CONTENT%
+\end{forest}
+\end{document}

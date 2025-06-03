@@ -100,33 +100,23 @@ impl<'a> SidedFormula<'a> {
 
 /// Generates a LaTeX proof tree using the forest package.
 pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
-    // Buffer for storing the proof tree string
+    // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     let mut forest_nodes: Vec<ForestNode> = Vec::new();
-    // Generate the proof tree
-    forest_impl(seq, names, &mut forest_nodes)?;
-
+    // generate the proof tree
+    forest_impl(seq.clone(), names, &mut forest_nodes)?;
     // reorder forest nodes using stack-based algorithm
     let forest_nodes = reorder_forest_nodes(forest_nodes);
-
-    // Create output LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("forest.tex"))?;
-    // Write LaTeX preamble
-    //     writeln!(
-    //         file,
-    //         r"\documentclass[preview,varwidth=\maxdimen,border=10pt]{{standalone}}
-    // \begin{{document}}
-    // \begin{{prooftree}}",
-    //     )?;
     // Write the proof tree content
     write_forest_latex(&forest_nodes, names, &mut buf)?;
-    file.write_all(&buf)?;
-    // Write LaTeX closing
-    //     writeln!(
-    //         file,
-    //         r"\end{{prooftree}}
-    // \end{{document}}",
-    //     )?;
+    // create output LaTeX file
+    let mut file = File::create(PathBuf::from(out).join("forest.tex"))?;
+    // replace the placeholder with proof
+    let proof = include_str!("../../templates/forest.tex")
+        .replace("%CLAIM%", &seq.display(names).to_string())
+        .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
+    // write proof
+    file.write_all(proof.as_bytes())?;
     Ok(())
 }
 
