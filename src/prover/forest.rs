@@ -511,7 +511,7 @@ fn write_latex<'a>(
     // stack of remaining children count
     let mut stack = vec![];
     // current indentation level
-    let mut ind = 0;
+    let mut ind = 1;
 
     for TableauNode {
         from,

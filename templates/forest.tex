@@ -10,36 +10,59 @@
   declare boolean={align me}{0},
   declare dimen={my width}{0pt},
   declare dimen register={lmeas},
-  lmeas/.pgfmath=width("99."),
   declare dimen register={rmeas},
+  lmeas/.pgfmath=width("99."),
   rmeas/.pgfmath=width("(99)"),
-  claim=,
-  my proof/.style={
+  proof/.style={
     for tree={math content},
     for root=align me,
-    before typesetting nodes={if claim={}{}{replace by/.process={Rw{claim}{[##1,math content,append]}},no edge,before computing xy={l'=2\baselineskip}}},
-    where n children=1{!1.no edge,before computing xy={!1.l'=\baselineskip}}{},
+    before typesetting nodes={
+      if claim={}{}{
+        replace by/.process={Rw{claim}{[##1,math content,append]}},
+        no edge,
+        before computing xy={l'=2\baselineskip}
+      }
+    },
+    where n children=1{
+      !1.no edge,
+      before computing xy={!1.l'=\baselineskip}
+    }{},
     for root={align me},
-    where n children>=2{for children={align me}}{},
+    where n children>=2{
+      for children={align me}
+    }{},
     before packing={
       where align me={
-        tempdima/.max={>{OOw2+d}{max x}{min x}{##1-##2}}{walk and save={temptoksa}{current,until={>O_=!{n children}{1}}{first,typeset node}}},
-        for nodewalk={load=temptoksa}{my width/.register=tempdima,typeset node}
+        tempdima/.max={>{OOw2+d}{max x}{min x}{##1-##2}}{
+          walk and save={temptoksa}{
+            current,
+            until={>O_=!{n children}{1}}{first,typeset node}
+          }
+        },
+        for nodewalk={load=temptoksa}{
+          my width/.register=tempdima,
+          typeset node
+        }
       }{},
       for tree={
-      tempcounta=idx,
+        tempcounta=idx,
         align=p{\foresteregister{lmeas}}C{\foresteoption{my width}}p{\foresteregister{rmeas}},
-        content/.process={OR OSl+tt= ? w w3 {content}{tempcounta}{from}{}{}{(##1)}{##2.\quad & ##1\quad & ##3}},
+        content/.process={
+          OR OSl+tt= ? w w3 {content}{tempcounta}{from}{}{}
+          {(##1)}{##2.\quad & ##1\quad & ##3}
+        },
         typeset node
       }
     },
-    close/.style={label={[xshift=-2.5pt]below:$\times$}}
+    close/.style={
+      label={[xshift=-2.5pt]below:$\times$}
+    }
   }
 }
 \begin{document}
 \begin{forest}
-  my proof,
+  proof,
   claim=%CLAIM%
-%PROOF_CONTENT%
+  %PROOF_CONTENT%
 \end{forest}
 \end{document}
