@@ -257,6 +257,6 @@ mod tests {
     fn fml_display(s: &str) {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, true).unwrap();
-        assert_eq!(fml.display(&names).to_string(), s);
+        assert_eq!(fml.display(&names).to_unicode(), s);
     }
 }

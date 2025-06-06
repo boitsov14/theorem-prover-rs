@@ -691,7 +691,7 @@ mod tests {
     fn test_parse_fml(s: &str) -> String {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, false).unwrap();
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 
     #[test]
@@ -800,7 +800,7 @@ mod tests {
         let mut fml = parse_formula(s, &mut names, false).unwrap();
         fml.flatten();
         fml.unique();
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 
     #[case("P ∧ P", "P")]
@@ -827,7 +827,7 @@ mod tests {
         let mut fml = parse_formula(s, &mut names, false).unwrap();
         fml.flatten();
         fml.rename_nested_bdd_vars(&mut names, &hashmap!());
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 
     #[case("∀xP(x)" => "∀xP(x)")]
@@ -838,7 +838,7 @@ mod tests {
         let mut names = Names::default();
         let mut fml = parse_formula(s, &mut names, false).unwrap();
         fml.rename_bdd_vars(&mut names);
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 
     #[test]
@@ -872,19 +872,20 @@ mod tests {
         );
     }
 
-    #[case("P, P, P ⊢ P, P, P" => "P ⊢ P")]
-    #[case("P, Q, P, Q ⊢ P, P, Q, Q" => "P, Q ⊢ P, Q")]
-    fn test_unique_seq(s: &str) -> String {
+    #[case("P, P, P ⊢ P, P, P", "P ⊢ P")]
+    #[case("P, Q, P, Q ⊢ P, P, Q, Q", "P, Q ⊢ P, Q")]
+    fn test_unique_seq(s1: &str, s2: &str) {
         let mut names = Names::default();
-        let mut seq = parse_sequent(s, &mut names, false, false).unwrap();
-        seq.unique();
-        // seq.to_seq().display(&names).to_string()
-        "Oops".to_string()
+        let mut seq1 = parse_sequent(s1, &mut names, false, false).unwrap();
+        seq1.unique();
+        let seq2 = parse_sequent(s2, &mut names, false, false).unwrap();
+        assert_eq!(seq1.ant, seq2.ant);
+        assert_eq!(seq1.suc, seq2.suc);
     }
 
     #[test]
     fn test_tptp_prop() {
-        let s = "
+        let s1 = "
 % Comments : 
 %--------------------------------------------------------------------------
 fof(axiom1,axiom,(
@@ -902,11 +903,11 @@ fof(con,conjecture,(
 
 %--------------------------------------------------------------------------
 ";
+        let s2 = "(p1 ↔ p2) → (p1 ∧ p2 ∧ p3), (p2 ↔ p3) → (p1 ∧ p2 ∧ p3), (p3 ↔ p1) → (p1 ∧ p2 ∧ p3) ⊢ p1 ∧ p2 ∧ p3";
         let mut names = Names::default();
-        let seq = parse_sequent(s, &mut names, true, true).unwrap();
-        // assert_eq!(
-        //     seq.to_seq().display(&names).to_string(),
-        //     "(p1 ↔ p2) → (p1 ∧ p2 ∧ p3), (p2 ↔ p3) → (p1 ∧ p2 ∧ p3), (p3 ↔ p1) → (p1 ∧ p2 ∧ p3) ⊢ p1 ∧ p2 ∧ p3"
-        // );
+        let seq1 = parse_sequent(s1, &mut names, true, true).unwrap();
+        let seq2 = parse_sequent(s2, &mut names, true, false).unwrap();
+        assert_eq!(seq1.ant, seq2.ant);
+        assert_eq!(seq1.suc, seq2.suc);
     }
 }

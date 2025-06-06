@@ -240,7 +240,7 @@ mod tests {
         let var = names.get_id(var.into());
         let term = parse_term(term, &mut names).unwrap();
         fml.subst(var, &term);
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 
     #[case("P(x)", &[("x", "f(y)")] => "P(f(y))")]
@@ -265,6 +265,6 @@ mod tests {
             })
             .collect();
         fml.subst_map(&map);
-        fml.display(&names).to_string()
+        fml.display(&names).to_unicode()
     }
 }
