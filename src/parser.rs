@@ -884,6 +884,17 @@ mod tests {
     }
 
     #[test]
+    fn test_parentheses_error() {
+        let cases = [("(P", 1, 0), ("((P)", 2, 1), ("(P))", 1, 2), ("P)", 0, 1)];
+        for (s, lp, rp) in cases {
+            assert_eq!(
+                check_parentheses(s).unwrap_err().to_string(),
+                format!("Found {lp} left parentheses and {rp} right parentheses.")
+            );
+        }
+    }
+
+    #[test]
     fn test_tptp_prop() {
         let s1 = "
 % Comments : 
