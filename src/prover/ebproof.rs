@@ -5,13 +5,7 @@ use super::sequent::{
 };
 use crate::{intern::Names, lang::Formula::*};
 use log::error;
-use std::{
-    cell::OnceCell,
-    fmt,
-    fs::File,
-    io::{self, Write},
-    path::PathBuf,
-};
+use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 

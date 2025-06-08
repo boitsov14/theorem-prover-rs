@@ -9,12 +9,7 @@ use crate::{
 };
 use log::error;
 use rustc_hash::FxHashMap;
-use std::{
-    cell::OnceCell,
-    fs::File,
-    io::{self, Write},
-    path::PathBuf,
-};
+use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 
@@ -146,7 +141,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
         )
         .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
     // write proof
-    file.write_all(proof.as_bytes());
+    file.write_all(proof.as_bytes()).unwrap();
 }
 
 /// Implementation for generating LaTeX proof trees.
