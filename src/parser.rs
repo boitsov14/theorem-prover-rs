@@ -686,6 +686,15 @@ mod tests {
         assert_eq!(fml.display(&names).to_string(), "P0");
     }
 
+    #[case("(((x)))" => "x")]
+    #[case("((f(((x)))))" => "f(x)")]
+    #[case("((f(((x)),((g(((y))))))))" => "f(x,g(y))")]
+    fn test_parse_term(s: &str) -> String {
+        let mut names = Names::default();
+        let term = parse_term(s, &mut names).unwrap();
+        term.display(&names).to_string()
+    }
+
     #[case("\t\n\rP\t\n\r∧\t\n\rQ\t\n\r" => "P ∧ Q")]
     #[case("(((P)∧((Q))))" => "P ∧ Q")]
     fn test_parse_fml(s: &str) -> String {
