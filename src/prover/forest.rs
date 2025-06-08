@@ -123,18 +123,18 @@ impl<'a> SidedFormula<'a> {
 }
 
 /// Generates a LaTeX proof tree using the forest package.
-pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
+pub fn forest(seq: Sequent, names: &Names, out: &str) {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     let mut nodes: Vec<TableauNode> = Vec::new();
     // generate the proof tree
-    forest_impl(seq.clone(), &mut nodes)?;
+    forest_impl(seq.clone(), &mut nodes);
     // reorder forest nodes using stack-based algorithm
     reorder(&mut nodes);
     // Write the proof tree content
-    write_latex(&nodes, names, &mut buf)?;
+    write_latex(&nodes, names, &mut buf);
     // create output LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("forest.tex"))?;
+    let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
     // replace the placeholder with proof
     let proof = include_str!("../../templates/forest.tex")
         .replace(
@@ -146,12 +146,11 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
         )
         .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
     // write proof
-    file.write_all(proof.as_bytes())?;
-    Ok(())
+    file.write_all(proof.as_bytes());
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) -> io::Result<()> {
+fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
     // global unique id counter for formulas
     let mut id = 1;
     // create initial formula map with id assignment
@@ -173,18 +172,18 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) -> io
             let forest_node = TableauNode::new(*id, *fml, children_cnt, None);
             new_nodes.push(forest_node);
         }
-        return Ok(());
+        return;
     }
 
     let mut nodes = vec![ProofNode::new_root(seq, fml_map, added_fmls)];
 
     'main: loop {
         // write all proved nodes to forest_nodes
-        flush_proved_nodes(&mut nodes, new_nodes)?;
+        flush_proved_nodes(&mut nodes, new_nodes);
         // get the last sequent for processing
         let Some(ProofNode { children_cnt, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return Ok(());
+            return;
         };
         let ProofNode {
             mut seq,
@@ -411,10 +410,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) -> io
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes<'a>(
-    nodes: &mut Vec<ProofNode<'a>>,
-    forest_nodes: &mut Vec<TableauNode<'a>>,
-) -> io::Result<()> {
+fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec<TableauNode<'a>>) {
     while let Some(node) = nodes.last() {
         let Some(children_cnt_val) = node.children_cnt.get() else {
             // not processed yet
@@ -449,7 +445,6 @@ fn flush_proved_nodes<'a>(
             forest_nodes.push(forest_node);
         }
     }
-    Ok(())
 }
 
 fn check_buf_size(buf: &Vec<u8>) {
@@ -503,11 +498,7 @@ fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
 /// - Stack tracks remaining children count for each node
 /// - Indent management for proper LaTeX formatting
 /// - Automatic closing of brackets when children count reaches zero
-fn write_latex<'a>(
-    forest_nodes: &[TableauNode<'a>],
-    names: &Names,
-    buf: &mut Vec<u8>,
-) -> io::Result<()> {
+fn write_latex<'a>(forest_nodes: &[TableauNode<'a>], names: &Names, buf: &mut Vec<u8>) {
     // stack of remaining children count
     let mut stack = vec![];
     // current indentation level
@@ -534,7 +525,8 @@ fn write_latex<'a>(
                 id,
                 from,
                 ind = ind * 2
-            )?;
+            )
+            .unwrap();
 
             // increment indentation for children
             ind += 1;
@@ -553,7 +545,8 @@ fn write_latex<'a>(
             id,
             from,
             ind = ind * 2
-        )?;
+        )
+        .unwrap();
 
         // decrement children count of parent on stack
         *stack.last_mut().unwrap() -= 1;
@@ -565,7 +558,7 @@ fn write_latex<'a>(
                 stack.pop();
                 ind -= 1;
                 check_buf_size(buf);
-                writeln!(buf, "{:ind$}]", "", ind = ind * 2)?;
+                writeln!(buf, "{:ind$}]", "", ind = ind * 2).unwrap();
 
                 // decrement parent's children count if exists
                 if let Some(parent_children) = stack.last_mut() {
@@ -580,5 +573,4 @@ fn write_latex<'a>(
 
     // stack should be empty at the end
     assert!(stack.is_empty());
-    Ok(())
 }

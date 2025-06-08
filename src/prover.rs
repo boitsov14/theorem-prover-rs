@@ -6,6 +6,7 @@ mod sequent;
 use crate::{cli::CliOptions, intern::Names, parser::parse_sequent};
 use core::prove_prop;
 use ebproof::ebproof;
+use forest::forest;
 use log::info;
 use sequent::Sequent;
 use serde::{Deserialize, Serialize};
@@ -63,7 +64,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     if options.ebproof {
         info!("Generating ebproof...");
         let start_time = Instant::now();
-        ebproof(seq.clone(), &names, &options.out)?;
+        ebproof(seq.clone(), &names, &options.out);
         let end_time = Instant::now();
         let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
         info!("Ebproof time: {ebproof_time} ms");
@@ -75,7 +76,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     if provability && options.forest {
         info!("Generating forest...");
         let start_time = Instant::now();
-        forest::forest(seq, &names, &options.out)?;
+        forest(seq, &names, &options.out);
         let end_time = Instant::now();
         let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
         info!("Forest time: {forest_time} ms");

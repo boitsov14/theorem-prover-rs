@@ -90,23 +90,22 @@ impl<'a> Sequent<'a> {
 }
 
 /// Generates a LaTeX proof tree using the ebproof package.
-pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> io::Result<()> {
+pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     // generate the proof tree
-    ebproof_impl(seq, names, &mut buf)?;
+    ebproof_impl(seq, names, &mut buf);
     // create output LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("ebproof.tex"))?;
+    let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
     // replace the placeholder with proof
     let proof = include_str!("../../templates/ebproof.tex")
         .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
     // write proof
-    file.write_all(proof.as_bytes())?;
-    Ok(())
+    file.write_all(proof.as_bytes()).unwrap();
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
@@ -114,17 +113,18 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             buf,
             r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
             seq.display(names)
-        )?;
-        return Ok(());
+        )
+        .unwrap();
+        return;
     }
     let mut nodes = vec![ProofNode::new_root(seq)];
     'main: loop {
         // write all proved nodes
-        flush_proved_nodes(&mut nodes, names, buf)?;
+        flush_proved_nodes(&mut nodes, names, buf);
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return Ok(());
+            return;
         };
         let mut seq = seq.clone();
         // get the last formula
@@ -132,8 +132,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
             // if `seq` has no formula, it is impossible to prove
             // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
             // write all remaining nodes
-            flush_all_nodes(&mut nodes, names, buf)?;
-            return Ok(());
+            flush_all_nodes(&mut nodes, names, buf);
+            return;
         };
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
@@ -311,8 +311,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
                 // if `fml` is predicate, no formulas can be processed
                 // thus, it is impossible to prove
                 // write all remaining nodes
-                flush_all_nodes(&mut nodes, names, buf)?;
-                return Ok(());
+                flush_all_nodes(&mut nodes, names, buf);
+                return;
             }
             (Ex(..) | All(..), _) => unimplemented!(),
         }
@@ -322,11 +322,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) -> io::Result<()
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes(
-    nodes: &mut Vec<ProofNode>,
-    names: &Names,
-    buf: &mut Vec<u8>,
-) -> io::Result<()> {
+fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) {
     while let Some(ProofNode {
         seq,
         tactic,
@@ -354,7 +350,8 @@ fn flush_proved_nodes(
             r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
             tactic.children_cnt(),
             seq.display(names)
-        )?;
+        )
+        .unwrap();
         if let Some(parent_idx) = *parent_idx {
             // if has a parent
             // increment parent's proved children count
@@ -363,7 +360,6 @@ fn flush_proved_nodes(
         // remove the written node
         nodes.pop().unwrap();
     }
-    Ok(())
 }
 
 /// Writes all remaining nodes to the LaTeX buffer.
@@ -372,7 +368,7 @@ fn flush_proved_nodes(
 /// proof tree to give users insight into where and why the proof attempt failed.
 /// - Non-leaf nodes: Written as inference rules
 /// - Leaf nodes: Written as hypotheses
-fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) -> io::Result<()> {
+fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) {
     while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
@@ -388,12 +384,12 @@ fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>)
                 r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
                 tactic.children_cnt(),
                 seq.display(names)
-            )?;
+            )
+            .unwrap();
         } else {
             // when it is leaf
             // write the sequent as a hypothesis
-            writeln!(buf, r"\hypo{{{}}}", seq.display(names))?;
+            writeln!(buf, r"\hypo{{{}}}", seq.display(names)).unwrap();
         }
     }
-    Ok(())
 }
