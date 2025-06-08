@@ -53,5 +53,5 @@ pub fn cli() {
         .join(" ");
     info!("Input: {s}");
 
-    prove(&s, &options).unwrap();
+    prove(&s, &options);
 }

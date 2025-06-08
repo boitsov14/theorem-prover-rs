@@ -11,7 +11,7 @@ use log::info;
 use sequent::Sequent;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::{fs::File, io, path::PathBuf, time::Instant};
+use std::{fs::File, path::PathBuf, time::Instant};
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Default)]
@@ -22,16 +22,15 @@ struct Result {
     ebproof_time: Option<String>,
 }
 
-pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
+pub fn prove(s: &str, options: &CliOptions) {
     // set up result
     let mut result = Result::default();
-    let write_json = |result: &Result| -> io::Result<()> {
+    let write_json = |result: &Result| {
         let path = PathBuf::from(&options.out).join("result.json");
-        let file = File::create(path)?;
-        serde_json::to_writer_pretty(file, result)?;
-        Ok(())
+        let file = File::create(path).unwrap();
+        serde_json::to_writer_pretty(file, result).unwrap();
     };
-    write_json(&result)?;
+    write_json(&result);
     // parse
     info!("Parsing...");
     let mut names = Names::default();
@@ -39,14 +38,14 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         Ok(seq) => seq,
         Err(e) => {
             info!("Failed: {e}");
-            return Ok(());
+            return;
         }
     };
     let seq = Sequent::init(&seq);
     // log the parsed sequent
     info!("Parsed sequent: {}", seq.display(&names).to_unicode());
     result.sequent = Some(seq.display(&names).to_string());
-    write_json(&result)?;
+    write_json(&result);
 
     // prove
     info!("Proving...");
@@ -58,7 +57,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
     let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
     info!("Proof time: {proof_time} ms");
     result.proof_time = Some(format!("{proof_time} ms"));
-    write_json(&result)?;
+    write_json(&result);
 
     // ebproof
     if options.ebproof {
@@ -69,7 +68,7 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
         info!("Ebproof time: {ebproof_time} ms");
         result.ebproof_time = Some(format!("{ebproof_time} ms"));
-        write_json(&result)?;
+        write_json(&result);
     }
 
     // forest
@@ -81,8 +80,6 @@ pub fn prove(s: &str, options: &CliOptions) -> io::Result<()> {
         let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
         info!("Forest time: {forest_time} ms");
     }
-
-    Ok(())
 }
 
 #[cfg(feature = "bench")]
