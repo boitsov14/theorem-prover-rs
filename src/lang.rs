@@ -192,6 +192,35 @@ mod tests {
     };
     use test_case::case;
 
+    /// Tests is_atom method for various formula types.
+    #[test]
+    fn test_is_atom() {
+        let mut names = Names::default();
+        // atomic formulas (should return true)
+        let atomic = ["P", "P(x)", "P(x,y)", "Q(f(x),g(y,z))"];
+        // non-atomic formulas (should return false)
+        let non_atomic = [
+            "¬P",
+            "P ∧ Q",
+            "P ∨ Q",
+            "P → Q",
+            "P ↔ Q",
+            "∀xP(x)",
+            "∃xP(x)",
+            "(P ∧ Q) ∨ R",
+        ];
+        // test atomic formulas
+        for p in atomic {
+            let p = parse_formula(p, &mut names, true).unwrap();
+            assert!(p.is_atom());
+        }
+        // test non-atomic formulas
+        for p in non_atomic {
+            let p = parse_formula(p, &mut names, true).unwrap();
+            assert!(!p.is_atom());
+        }
+    }
+
     #[case("x", "x", "f(y)" => "f(y)")]
     #[case("x", "x", "f(x)" => "f(x)")]
     #[case("f(x,x,x)", "x", "g(y)" => "f(g(y),g(y),g(y))")]
