@@ -192,14 +192,14 @@ peg::parser!( grammar parser() for str {
     rule func_id() = id()
     rule pred_id() = quiet!{ id() } / expected!("predicate")
     rule p_true() = quiet!{ "⊤" / "true" / r"\top" }
-    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / r"\bot" }
+    rule p_false() = quiet!{ "⊥" / "⟂" / "false" / r"\bot" / r"\lfalse" }
     rule not() = quiet!{ "¬" / "~" / "not" / r"\lnot" / r"\neg" } / expected!(r#""¬""#)
     rule and() = quiet!{ "∧" / r"/\" / "&" / "and" / r"\land" / r"\wedge" } / expected!(r#""∧""#)
     rule or() = quiet!{ "∨" / r"\/" / "|" / "or" / r"\lor" / r"\vee" } / expected!(r#""∨""#)
-    rule to() = quiet!{ "→" / "->" / "=>" / "to" / r"\rightarrow" / r"\to" } / expected!(r#""→""#)
-    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "iff" / r"\leftrightarrow" } / expected!(r#""↔""#)
-    rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" } / expected!(r#""∀""#)
-    rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" } / expected!(r#""∃""#)
+    rule to() = quiet!{ "→" / "->" / "=>" / "to" / r"\rightarrow" / r"\to" / r"\lif" } / expected!(r#""→""#)
+    rule iff() = quiet!{ "↔" / "<->" / "<=>" / "iff" / r"\leftrightarrow" / r"\liff" } / expected!(r#""↔""#)
+    rule all() = quiet!{ "∀" / "!" / "all" / r"\forall" / r"\lall" } / expected!(r#""∀""#)
+    rule ex() = quiet!{ "∃" / "?" / "ex" / r"\exists" / r"\lis" } / expected!(r#""∃""#)
     rule turnstile() = quiet!{ "⊢" / "|-" / "├" / "┣" / r"\vdash" } / expected!(r#""⊢""#)
     rule _ = quiet!{ [' ']* }
 });

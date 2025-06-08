@@ -42,10 +42,10 @@ impl fmt::Display for Tactic {
             Not { side } => write!(f, r"$\lnot$: {side}"),
             And { side, .. } => write!(f, r"$\land$: {side}"),
             Or { side, .. } => write!(f, r"$\lor$: {side}"),
-            To { side } => write!(f, r"$\rightarrow$: {side}"),
-            Iff { side } => write!(f, r"$\leftrightarrow$: {side}"),
-            All { side } => write!(f, r"$\forall$: {side}"),
-            Ex { side } => write!(f, r"$\exists$: {side}"),
+            To { side } => write!(f, r"$\lif$: {side}"),
+            Iff { side } => write!(f, r"$\liff$: {side}"),
+            All { side } => write!(f, r"$\lall$: {side}"),
+            Ex { side } => write!(f, r"$\lis$: {side}"),
         }
     }
 }

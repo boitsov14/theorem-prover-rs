@@ -121,7 +121,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                     write!(f, ")")?;
                 }
             }
-            Or(l) if l.is_empty() => write!(f, r"\bot")?,
+            Or(l) if l.is_empty() => write!(f, r"\lfalse")?,
             Or(l) => {
                 if self.is_inner {
                     write!(f, "(")?;
@@ -142,7 +142,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 }
                 write!(
                     f,
-                    r"{} \rightarrow {}",
+                    r"{} \lif {}",
                     p.display_inner(self.names),
                     q.display_inner(self.names)
                 )?;
@@ -156,7 +156,7 @@ impl fmt::Display for FormulaDisplay<'_> {
                 }
                 write!(
                     f,
-                    r"{} \leftrightarrow {}",
+                    r"{} \liff {}",
                     p.display_inner(self.names),
                     q.display_inner(self.names)
                 )?;
@@ -166,13 +166,13 @@ impl fmt::Display for FormulaDisplay<'_> {
             }
             All(vs, p) => {
                 for v in vs {
-                    write!(f, r"\forall {}", self.names[*v])?;
+                    write!(f, r"\lall {}", self.names[*v])?;
                 }
                 write!(f, "{}", p.display_inner(self.names))?;
             }
             Ex(vs, p) => {
                 for v in vs {
-                    write!(f, r"\exists {}", self.names[*v])?;
+                    write!(f, r"\lis {}", self.names[*v])?;
                 }
                 write!(f, "{}", p.display_inner(self.names))?;
             }
@@ -212,14 +212,14 @@ impl FormulaDisplay<'_> {
 /// by converting LaTeX commands to symbols
 pub fn to_unicode(s: &str) -> String {
     s.replace(r"\top", "⊤")
-        .replace(r"\bot", "⊥")
+        .replace(r"\lfalse", "⊥")
         .replace(r"\lnot ", "¬")
         .replace(r"\land", "∧")
         .replace(r"\lor", "∨")
-        .replace(r"\rightarrow", "→")
-        .replace(r"\leftrightarrow", "↔")
-        .replace(r"\forall ", "∀")
-        .replace(r"\exists ", "∃")
+        .replace(r"\lif", "→")
+        .replace(r"\liff", "↔")
+        .replace(r"\lall ", "∀")
+        .replace(r"\lis ", "∃")
         .replace(r"&\vdash", "⊢")
     // TODO: 2025/02/13 これは必要か
     // .replace(r"\_", "_")
