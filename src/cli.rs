@@ -2,7 +2,7 @@ use crate::prover::prove;
 use clap::Parser;
 use itertools::Itertools;
 use log::{info, trace};
-use serde_yaml;
+use serde_yml;
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
@@ -34,7 +34,7 @@ pub fn cli() {
     } else {
         include_str!("../logger/info.yaml")
     };
-    let logger_config = serde_yaml::from_str(s).unwrap();
+    let logger_config = serde_yml::from_str(s).unwrap();
     log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {
