@@ -220,6 +220,7 @@ mod tests {
     fn sequent_display(s: &str) {
         let mut names = Names::default();
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
+        // TODO: 2025/06/08 移動
         // assert_eq!(seq.to_seq().display(&names).to_string(), s);
     }
 }

@@ -122,3 +122,76 @@ mod bench {
         bencher.bench_local(|| ebproof(seq.clone(), &names, ""));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{fs, path::Path};
+
+    /// Generate LaTeX files
+    /// Compares content
+    /// Creates .new files and panics if different
+    #[test]
+    fn generate_tex() {
+        // read snapshot file
+        let content = fs::read_to_string("examples/snapshot.txt").unwrap();
+        let mut name = String::new();
+
+        for line in content.lines() {
+            if line.starts_with('#') {
+                // extract name from comment
+                name = line[1..].trim().replace(" ", "_").replace("'", "");
+            } else if !line.is_empty() {
+                // parse sequent
+                let mut names = Names::default();
+                let seq = parse_sequent(line, &mut names, true, false).unwrap();
+                let seq = Sequent::init(&seq);
+
+                // ebproof
+                let output_dir = Path::new("examples/generated/ebproof");
+                // generate ebproof latex file
+                ebproof(seq.clone(), &names, output_dir.to_str().unwrap());
+                // compare
+                let generated = output_dir.join("ebproof.tex");
+                let target = output_dir.join(format!("{name}.tex"));
+                handle_file_comparison(&generated, &target);
+
+                // forest
+                let output_dir = Path::new("examples/generated/forest");
+                // generate forest latex file
+                forest(seq, &names, output_dir.to_str().unwrap());
+                // compare
+                let generated = output_dir.join("forest.tex");
+                let target = output_dir.join(format!("{name}.tex"));
+                handle_file_comparison(&generated, &target);
+            }
+        }
+    }
+
+    /// Compares content
+    /// Creates .new files and panics if different
+    fn handle_file_comparison(generated: &PathBuf, target: &PathBuf) {
+        // clean up any existing .new file
+        let new = target.with_extension("new");
+        if new.exists() {
+            fs::remove_file(&new).unwrap();
+        }
+        // read generated content (must exist)
+        let generated_content = fs::read_to_string(generated).unwrap();
+        // try to read target content (may not exist for new test cases)
+        let Ok(target_content) = fs::read_to_string(target) else {
+            // if target file does not exist, rename generated to target and return
+            fs::rename(generated, target).unwrap();
+            return;
+        };
+        // if files are the same, do nothing
+        if generated_content == target_content {
+            return;
+        }
+        // if files are different, save as .new file and fail test
+        // this allows developers to review differences manually
+        fs::rename(generated, &new).unwrap();
+        // comment out this line if you want to see all differences
+        panic!("Files differ");
+    }
+}

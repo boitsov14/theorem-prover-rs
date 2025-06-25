@@ -211,7 +211,8 @@ impl FormulaDisplay<'_> {
 /// Returns the unicode representation
 /// by converting LaTeX commands to symbols
 pub fn to_unicode(s: &str) -> String {
-    s.replace(r"\top", "⊤")
+    s.trim()
+        .replace(r"\top", "⊤")
         .replace(r"\lfalse", "⊥")
         .replace(r"\lnot ", "¬")
         .replace(r"\land", "∧")
