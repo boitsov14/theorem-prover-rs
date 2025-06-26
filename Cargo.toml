@@ -23,6 +23,8 @@ typed-arena = "2.0.2"
 unicode-normalization = "0.1.24"
 
 [dev-dependencies]
+insta = "1.43.1"
+tempfile = "3.20.0"
 test-case = "3.3.1"
 
 [features]
