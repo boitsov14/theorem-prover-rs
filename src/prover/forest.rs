@@ -137,6 +137,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
             &seq.display(names)
                 .to_string()
                 .replace(r"&\vdash", r"\vdash")
+                .replace(",", r"{,}\,")
                 .trim(),
         )
         .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());

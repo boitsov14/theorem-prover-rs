@@ -102,3 +102,21 @@ cov:
 # cargo insta test --test-runner nextest: no review
 insta:
     cargo insta test --test-runner nextest --review
+
+# Build all snapshots to PNG images
+build-snapshots:
+    #!/bin/bash
+    # exit immediately on any error
+    set -e
+    # process each snapshot file
+    for snap in snapshots/*.snap; do
+        name=$(basename "$snap" .snap)
+        # extract tex content (skip first 4 lines)
+        tail -n +5 "$snap" > "examples/snapshots/$name.tex"
+        # build pdf
+        pdflatex -halt-on-error -interaction=nonstopmode -output-directory "examples/snapshots" "examples/snapshots/$name.tex"
+        # convert to png
+        gswin64c  -dBATCH -dNOPAUSE -r600 -sDEVICE=pngmono -o "examples/snapshots/$name.png" "examples/snapshots/$name.pdf"
+        # cleanup temp files
+        rm "examples/snapshots/$name".{tex,aux,log,pdf}
+    done
