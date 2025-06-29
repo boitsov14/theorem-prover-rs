@@ -141,6 +141,7 @@ mod tests {
                 // extract name from comment
                 name = line[1..].trim().replace(" ", "-").replace("'", "");
             } else if !line.is_empty() {
+                println!("testing: {}", line);
                 // settings for snapshot tests
                 let mut settings = insta::Settings::new();
                 // short file names
@@ -157,7 +158,13 @@ mod tests {
                 let seq = parse_sequent(line, &mut names, true, false).unwrap();
                 let seq = Sequent::init(&seq);
 
+                // check provability
+                let provability = prove_prop(seq.clone(), &names);
+                println!("{provability}");
+                assert!(provability);
+
                 // ebproof
+                println!("ebproof...");
                 // generate ebproof latex file
                 ebproof(seq.clone(), &names, temp.to_str().unwrap());
                 let ebproof_content = fs::read_to_string(temp.join("ebproof.tex")).unwrap();
@@ -169,8 +176,10 @@ mod tests {
                         &seq.display(&names).to_unicode()
                     );
                 });
+                println!("done");
 
                 // forest
+                println!("forest...");
                 // generate forest latex file
                 forest(seq.clone(), &names, temp.to_str().unwrap());
                 let forest_content = fs::read_to_string(temp.join("forest.tex")).unwrap();
@@ -182,6 +191,7 @@ mod tests {
                         &seq.display(&names).to_unicode()
                     );
                 });
+                println!("done");
             }
         }
     }
