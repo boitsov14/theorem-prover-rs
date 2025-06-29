@@ -130,11 +130,8 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    /// Generate LaTeX files
-    /// Compares content
-    /// Creates .new files and panics if different
     #[test]
-    fn generate_tex() {
+    fn test_latex_snapshot() {
         // read snapshot file
         let content = fs::read_to_string("examples/snapshots.txt").unwrap();
         let mut name = String::new();
@@ -142,7 +139,7 @@ mod tests {
         for line in content.lines() {
             if line.starts_with('#') {
                 // extract name from comment
-                name = line[1..].trim().replace(" ", "_").replace("'", "");
+                name = line[1..].trim().replace(" ", "-").replace("'", "");
             } else if !line.is_empty() {
                 // settings for snapshot tests
                 let mut settings = insta::Settings::new();
@@ -167,7 +164,7 @@ mod tests {
                 // snapshot test for ebproof
                 settings.bind(|| {
                     assert_snapshot!(
-                        format!("{name}_ebproof"),
+                        format!("{name}-ebproof"),
                         ebproof_content,
                         &seq.display(&names).to_unicode()
                     );
@@ -180,7 +177,7 @@ mod tests {
                 // snapshot test for forest
                 settings.bind(|| {
                     assert_snapshot!(
-                        format!("{name}_forest"),
+                        format!("{name}-forest"),
                         forest_content,
                         &seq.display(&names).to_unicode()
                     );
