@@ -101,7 +101,7 @@ cov:
 # cargo insta accept: Accept all snapshots
 # cargo insta test --test-runner nextest: no review
 insta:
-    cargo insta test --test-runner nextest --review
+    INSTA_UPDATE=unseen cargo insta test --test-runner nextest --review --unreferenced=reject
 
 # Build all snapshots to PNG images
 build-snapshots:
