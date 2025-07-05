@@ -104,19 +104,21 @@ insta:
     INSTA_UPDATE=unseen cargo insta test --test-runner nextest --review --unreferenced=reject -- test_latex_snapshot
 
 # Build all snapshots to PNG images
-build-snapshots:
+tex-insta:
     #!/bin/bash
     # exit immediately on any error
-    set -e
+    set -euo pipefail
+    # delete old png
+    rm examples/snapshots/*.png
     # process each snapshot file
     for snap in snapshots/*.snap; do
         name=$(basename "$snap" .snap)
         # extract tex content (skip first 4 lines)
-        tail -n +5 "$snap" > "examples/snapshots/$name.tex"
+        tail -n +5 "$snap" > examples/snapshots/"$name".tex
         # build pdf
-        pdflatex -halt-on-error -interaction=nonstopmode -output-directory "examples/snapshots" "examples/snapshots/$name.tex"
+        pdflatex -halt-on-error -interaction=nonstopmode -output-directory examples/snapshots examples/snapshots/"$name".tex
         # convert to png
-        gswin64c  -dBATCH -dNOPAUSE -r600 -sDEVICE=pngmono -o "examples/snapshots/$name.png" "examples/snapshots/$name.pdf"
+        gswin64c -dBATCH -dNOPAUSE -r600 -sDEVICE=pngmono -o examples/snapshots/"$name".png examples/snapshots/"$name".pdf
         # cleanup temp files
-        rm "examples/snapshots/$name".{tex,aux,log,pdf}
+        rm examples/snapshots/"$name".{tex,aux,log,pdf}
     done
