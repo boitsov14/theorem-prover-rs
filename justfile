@@ -1,6 +1,9 @@
 # For windows compatibility
 set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe","-c"]
 
+# Ignore recipe lines beginning with #.
+set ignore-comments
+
 # Update everything: Rust toolchain, project dependencies, and global tools
 # Note: -i means "allow incompatible upgrades"
 # Requires cargo-edit and cargo-update
