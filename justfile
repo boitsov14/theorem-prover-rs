@@ -1,8 +1,8 @@
 # For windows compatibility
-set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe","-c"]
+set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe", "-c"]
 
 # Ignore recipe lines beginning with #.
-set ignore-comments
+set ignore-comments := true
 
 # Update everything: Rust toolchain, project dependencies, and global tools
 # Note: -i means "allow incompatible upgrades"
@@ -24,11 +24,11 @@ lint:
 # Run the project with arguments
 # Use -- to separate cargo arguments from application arguments
 run *ARGS:
-    cargo run -- {{ARGS}}
+    cargo run -- {{ ARGS }}
 
 # Run the project with arguments in release mode
 run-release *ARGS:
-    cargo run --release -- {{ARGS}}
+    cargo run --release -- {{ ARGS }}
 
 # Run tests
 # --no-fail-fast: Do not exit the test run until all tests complete.
@@ -41,7 +41,7 @@ test:
 
 # Run benchmarks
 bench FILTER='':
-    cargo bench --features bench -- {{FILTER}}
+    cargo bench --features bench -- {{ FILTER }}
 
 # Run flamegraph
 # Requires admin
@@ -58,16 +58,16 @@ samply:
 
 # Add dependency to Cargo.toml
 add package:
-    cargo add {{package}}
+    cargo add {{ package }}
 
 # Add dependency to Cargo.toml with specific features
 add-features package +FEATURES:
-    cargo add {{package}} --features {{FEATURES}}
+    cargo add {{ package }} --features {{ FEATURES }}
 
 # Install binary package globally
 # Requires cargo-binstall
 binstall package:
-    cargo binstall {{package}}
+    cargo binstall {{ package }}
 
 # List globally installed packages
 list-global:
@@ -89,7 +89,7 @@ cross-build:
 # Latex build
 tex FILE:
     rm tex/*
-    cp {{FILE}}.tex tex/out.tex
+    cp {{ FILE }}.tex tex/out.tex
     pdflatex -halt-on-error -interaction=nonstopmode -output-directory tex tex/out.tex
 
 # Detect unused dependencies
@@ -125,3 +125,7 @@ tex-insta:
         # cleanup temp files
         rm examples/snapshots/"$name".{tex,aux,log,pdf}
     done
+
+# Format justfile
+just-fmt:
+    just --fmt --unstable
