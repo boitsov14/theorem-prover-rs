@@ -54,7 +54,8 @@ pub fn prove(s: &str, options: &CliOptions) {
     let end_time = Instant::now();
     info!("Result: {provability}");
     result.provability = Some(provability.to_string());
-    let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
+    #[allow(clippy::cast_precision_loss)]
+    let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
     info!("Proof time: {proof_time} ms");
     result.proof_time = Some(format!("{proof_time} ms"));
     write_json(&result);
@@ -65,7 +66,8 @@ pub fn prove(s: &str, options: &CliOptions) {
         let start_time = Instant::now();
         ebproof(seq.clone(), &names, &options.out);
         let end_time = Instant::now();
-        let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
+        #[allow(clippy::cast_precision_loss)]
+        let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
         info!("Ebproof time: {ebproof_time} ms");
         result.ebproof_time = Some(format!("{ebproof_time} ms"));
         write_json(&result);
@@ -77,7 +79,8 @@ pub fn prove(s: &str, options: &CliOptions) {
         let start_time = Instant::now();
         forest(seq, &names, &options.out);
         let end_time = Instant::now();
-        let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000 as f32;
+        #[allow(clippy::cast_precision_loss)]
+        let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
         info!("Forest time: {forest_time} ms");
     }
 }
@@ -85,6 +88,7 @@ pub fn prove(s: &str, options: &CliOptions) {
 #[cfg(feature = "bench")]
 #[divan::bench_group(max_time = 1)]
 mod bench {
+    #[allow(clippy::wildcard_imports)]
     use super::*;
     use crate::lang::SplitSequent;
     use divan::Bencher;
@@ -135,13 +139,14 @@ mod tests {
         // read snapshot file
         let content = fs::read_to_string("examples/snapshots.txt").unwrap();
         let mut name = String::new();
+        let mut idx = 1;
 
         for line in content.lines() {
-            if line.starts_with('#') {
+            if let Some(line) = line.strip_prefix('#') {
                 // extract name from comment
-                name = line[1..].trim().replace(" ", "-").replace("'", "");
+                name = line.trim().replace(' ', "-").replace('\'', "");
             } else if !line.is_empty() {
-                println!("testing: {}", line);
+                println!("testing: {line}");
                 // settings for snapshot tests
                 let mut settings = insta::Settings::new();
                 // short file names
@@ -157,6 +162,7 @@ mod tests {
                 let mut names = Names::default();
                 let seq = parse_sequent(line, &mut names, true, false).unwrap();
                 let seq = Sequent::init(&seq);
+                let seq_unicode = seq.display(&names).to_unicode();
 
                 // check provability
                 let provability = prove_prop(seq.clone(), &names);
@@ -171,9 +177,9 @@ mod tests {
                 // snapshot test for ebproof
                 settings.bind(|| {
                     assert_snapshot!(
-                        format!("{name}-ebproof"),
+                        format!("{idx}-ebproof-{name}"),
                         ebproof_content,
-                        &seq.display(&names).to_unicode()
+                        &seq_unicode
                     );
                 });
                 println!("done");
@@ -181,17 +187,15 @@ mod tests {
                 // forest
                 println!("forest...");
                 // generate forest latex file
-                forest(seq.clone(), &names, temp.to_str().unwrap());
+                forest(seq, &names, temp.to_str().unwrap());
                 let forest_content = fs::read_to_string(temp.join("forest.tex")).unwrap();
                 // snapshot test for forest
                 settings.bind(|| {
-                    assert_snapshot!(
-                        format!("{name}-forest"),
-                        forest_content,
-                        &seq.display(&names).to_unicode()
-                    );
+                    assert_snapshot!(format!("{idx}-forest-{name}"), forest_content, &seq_unicode);
                 });
                 println!("done");
+
+                idx += 1;
             }
         }
     }

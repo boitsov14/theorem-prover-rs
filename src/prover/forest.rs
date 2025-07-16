@@ -63,7 +63,7 @@ impl<'a> ProofNode<'a> {
         }
     }
 
-    /// Create new child proof node with from_formula's id as from value
+    /// Create new child proof node with `from_formula`'s id as from value
     #[inline(always)]
     fn new(
         seq: Sequent<'a>,
@@ -98,17 +98,17 @@ impl<'a> TableauNode<'a> {
     }
 }
 
-impl<'a> SidedFormula<'a> {
+impl SidedFormula<'_> {
     /// Get id of sided formula from formula map for generating from information
     #[inline(always)]
-    fn get_from(&self, fml_map: &FxHashMap<usize, SidedFormula<'a>>) -> Option<usize> {
+    fn get_from(&self, fml_map: &FxHashMap<usize, Self>) -> Option<usize> {
         fml_map
             .iter()
             .find_map(|(id, p)| if p == self { Some(*id) } else { None })
     }
 
     /// Convert sided formula to tableau representation for display
-    fn to_tableau(&self) -> Formula {
+    fn to_tableau(self) -> Formula {
         let fml = self.fml.clone();
         match self.side {
             Left => fml,
@@ -119,11 +119,18 @@ impl<'a> SidedFormula<'a> {
 
 /// Generates a LaTeX proof tree using the forest package.
 pub fn forest(seq: Sequent, names: &Names, out: &str) {
+    let claim = &seq
+        .display(names)
+        .to_string()
+        .replace(r"&\vdash", r"\vdash")
+        .replace(',', r"{,}\,")
+        .trim()
+        .to_string();
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     let mut nodes: Vec<TableauNode> = Vec::new();
     // generate the proof tree
-    forest_impl(seq.clone(), &mut nodes);
+    forest_impl(seq, &mut nodes);
     // reorder forest nodes using stack-based algorithm
     reorder(&mut nodes);
     // Write the proof tree content
@@ -132,15 +139,8 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
     // replace the placeholder with proof
     let proof = include_str!("../../templates/forest.tex")
-        .replace(
-            "%CLAIM%",
-            &seq.display(names)
-                .to_string()
-                .replace(r"&\vdash", r"\vdash")
-                .replace(",", r"{,}\,")
-                .trim(),
-        )
-        .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
+        .replace("%CLAIM%", claim)
+        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
 }
@@ -164,7 +164,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         // ex. p, q ⊢ r, p
         // create individual forest nodes for each formula
         for (i, (id, fml)) in added_fmls.iter().enumerate() {
-            let children_cnt = if i == added_fmls.len() - 1 { 0 } else { 1 };
+            let children_cnt = usize::from(i != added_fmls.len() - 1);
             let forest_node = TableauNode::new(*id, *fml, children_cnt, None);
             new_nodes.push(forest_node);
         }
@@ -443,7 +443,8 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
     }
 }
 
-fn check_buf_size(buf: &Vec<u8>) {
+/// check buffer size and panic if it exceeds `MAX_FILE_SIZE`
+fn check_buf_size(buf: &[u8]) {
     if buf.len() > MAX_FILE_SIZE {
         // terminate the entire process immediately
         error!("Failed: File size exceeded the limit.");
@@ -453,7 +454,7 @@ fn check_buf_size(buf: &Vec<u8>) {
 
 /// Reorder forest nodes using stack-based algorithm similar to reverse Polish notation
 /// - Pop nodes from input vector in reverse order
-/// - Pop children_cnt elements from stack and combine with current node
+/// - Pop `children_cnt` elements from stack and combine with current node
 /// - Children are inserted in reverse order of popping to maintain correct structure
 fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
     // stack of node vectors for processing
@@ -487,14 +488,14 @@ fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
     // stack should contain exactly one element at the end
     assert!(stack.len() == 1);
 
-    *nodes = stack.into_iter().next().unwrap()
+    *nodes = stack.into_iter().next().unwrap();
 }
 
 /// Write forest nodes to LaTeX buffer using stack-based algorithm
 /// - Stack tracks remaining children count for each node
 /// - Indent management for proper LaTeX formatting
 /// - Automatic closing of brackets when children count reaches zero
-fn write_latex<'a>(forest_nodes: &[TableauNode<'a>], names: &Names, buf: &mut Vec<u8>) {
+fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8>) {
     // stack of remaining children count
     let mut stack = vec![];
     // current indentation level
@@ -508,7 +509,7 @@ fn write_latex<'a>(forest_nodes: &[TableauNode<'a>], names: &Names, buf: &mut Ve
     } in forest_nodes
     {
         // let from = from.map_or("".to_string(), |i| i.to_string());
-        let from = from.map_or(String::new(), |i| format!(",from={}", i));
+        let from = from.map_or(String::new(), |i| format!(",from={i}"));
 
         if *children_cnt != 0 {
             // internal node - write opening bracket

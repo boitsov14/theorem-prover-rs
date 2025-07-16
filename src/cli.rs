@@ -2,7 +2,6 @@ use crate::prover::prove;
 use clap::Parser;
 use itertools::Itertools;
 use log::{info, trace};
-use serde_yml;
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]

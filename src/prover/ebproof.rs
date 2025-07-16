@@ -73,7 +73,7 @@ impl<'a> ProofNode<'a> {
 impl<'a> Sequent<'a> {
     // TODO: 2025/05/30 forestを参考にするか
     #[inline(always)]
-    fn to_node(self, parent_idx: usize) -> ProofNode<'a> {
+    fn into_node(self, parent_idx: usize) -> ProofNode<'a> {
         ProofNode {
             seq: self,
             tactic: OnceCell::new(),
@@ -93,7 +93,7 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
     // replace the placeholder with proof
     let proof = include_str!("../../templates/ebproof.tex")
-        .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf).trim());
+        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
 }
@@ -138,7 +138,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let seq = seq.to_node(nodes.len() - 1);
+                let seq = seq.into_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -168,7 +168,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                     }
                     seq.push(p);
                 }
-                let seq = seq.to_node(nodes.len() - 1);
+                let seq = seq.into_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -208,7 +208,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let seq = seq.to_node(parent_idx);
+                    let seq = seq.into_node(parent_idx);
                     if is_trivial {
                         // if trivial, set the Axiom tactic
                         seq.tactic.set(Tactic::Axiom).unwrap();
@@ -236,8 +236,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 seq1.push(q);
                 seq2.push(p);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.to_node(parent_idx);
-                let seq2 = seq2.to_node(parent_idx);
+                let seq1 = seq1.into_node(parent_idx);
+                let seq2 = seq2.into_node(parent_idx);
                 if is_trivial_q {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();
@@ -258,7 +258,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
-                let seq = seq.to_node(nodes.len() - 1);
+                let seq = seq.into_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
@@ -287,8 +287,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.to_node(parent_idx);
-                let seq2 = seq2.to_node(parent_idx);
+                let seq1 = seq1.into_node(parent_idx);
+                let seq2 = seq2.into_node(parent_idx);
                 if is_trivial_1 {
                     // if trivial, set the Axiom tactic
                     seq1.tactic.set(Tactic::Axiom).unwrap();

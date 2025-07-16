@@ -129,10 +129,8 @@ impl<'a> Sequent<'a> {
         // Check buckets in cost order
         if let Some(fml) = self.single.pop() {
             Some(fml)
-        } else if let Some(fml) = self.multi.pop() {
-            Some(fml)
         } else {
-            None
+            self.multi.pop()
         }
     }
 
