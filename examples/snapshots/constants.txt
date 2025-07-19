@@ -1,0 +1,62 @@
+# true introduction
+⊢ true
+
+# false elimination
+false ⊢ P
+
+# true neutral and
+P ∧ true ↔ P
+
+# false neutral and
+P ∧ false ↔ false
+
+# true neutral or
+P ∨ true ↔ true
+
+# false neutral or
+P ∨ false ↔ P
+
+# implication to true
+P → true ↔ true
+
+# implication to false
+P → false ↔ ¬P
+
+# true biconditional
+true ↔ P ↔ P
+
+# false biconditional
+false ↔ P ↔ ¬P
+
+# true negation
+¬true ↔ false
+
+# false negation
+¬false ↔ true
+
+# contradiction implies false
+P ∧ ¬P → false
+
+# false absorption
+(P ∨ false) ∧ (Q ∨ false) ↔ P ∧ Q
+
+# true absorption
+(P ∧ true) ∨ (Q ∧ true) ↔ P ∨ Q
+
+# complex true false
+(P → false) ∧ (Q → true) ∧ (R ∨ false) ↔ ¬P ∧ R
+
+# conditional with true false
+(P → true) ∧ (Q → false) ∧ P ∧ Q ⊢ false
+
+# complex true false equivalence
+(P ∧ true ∧ ¬false) ∨ (Q ∧ false ∧ ¬true) ↔ P
+
+# true false resolution
+(P ∨ true) ∧ (¬P ∨ false) → true
+
+# nested true false
+(true → (P → false)) ∧ P ⊢ false
+
+# multiple constants
+true ∧ ¬false ∧ (P ∨ false) ∧ (Q → true) ↔ P

@@ -1,0 +1,239 @@
+# identity
+P → P
+
+# excluded middle
+P ∨ ¬P
+
+# non-contradiction
+¬(P ∧ ¬P)
+
+# explosion
+P ∧ ¬P ⊢ Q
+
+# double negation
+¬¬P → P
+
+# modus ponens
+P ∧ (P → Q) → Q
+
+# modus tollens
+P → Q, ¬Q ⊢ ¬P
+
+# transitivity
+(P → Q) ∧ (Q → R) → (P → R)
+
+# disjunctive syllogism
+P ∨ Q, ¬P ⊢ Q
+
+# conjunction left
+(P ∧ Q) → P
+
+# conjunction right
+(P ∧ Q) → Q
+
+# disjunction left
+P → (P ∨ Q)
+
+# disjunction right
+Q → (P ∨ Q)
+
+# weakening
+P ⊢ P ∨ Q
+
+# contraction
+(P → (P → Q)) → (P → Q)
+
+# exportation
+P ∧ Q → R ⊢ P → (Q → R)
+
+# importation
+(P → (Q → R)) → (P ∧ Q → R)
+
+# contraposition
+P → Q ⊢ ¬Q → ¬P
+
+# material implication
+P → Q ⊢ ¬P ∨ Q
+
+# de morgan conjunction
+¬(P ∧ Q) ↔ (¬P ∨ ¬Q)
+
+# de morgan disjunction
+¬(P ∨ Q) ↔ (¬P ∧ ¬Q)
+
+# distributivity and or
+P ∧ (Q ∨ R) ↔ (P ∧ Q) ∨ (P ∧ R)
+
+# distributivity or and
+P ∨ (Q ∧ R) ↔ (P ∨ Q) ∧ (P ∨ R)
+
+# absorption and
+P ∧ (P ∨ Q) → P
+
+# absorption or
+P ∨ (P ∧ Q) → P
+
+# commutativity and
+(P ∧ Q) → (Q ∧ P)
+
+# commutativity or
+(P ∨ Q) → (Q ∨ P)
+
+# associativity and
+(P ∧ Q) ∧ R ↔ P ∧ (Q ∧ R)
+
+# associativity or
+(P ∨ Q) ∨ R ↔ P ∨ (Q ∨ R)
+
+# biconditional left
+(P ↔ Q) → (P → Q)
+
+# biconditional right
+(P ↔ Q) → (Q → P)
+
+# biconditional intro
+(P → Q) ∧ (Q → P) → (P ↔ Q)
+
+# biconditional reflexivity
+P ↔ P
+
+# biconditional symmetry
+(P ↔ Q) → (Q ↔ P)
+
+# biconditional transitivity
+(P ↔ Q) ∧ (Q ↔ R) → (P ↔ R)
+
+# pierce's law
+((P → Q) → P) → P
+
+# duns scotus
+¬P → (P → Q)
+
+# clavius
+(¬P → P) → P
+
+# consequentia mirabilis
+(¬P → P) → P
+
+# reductio ad absurdum
+(P → Q) ∧ (P → ¬Q) → ¬P
+
+# constructive dilemma
+P → Q, R → S, P ∨ R ⊢ Q ∨ S
+
+# destructive dilemma
+P → Q, R → S, ¬Q ∨ ¬S ⊢ ¬P ∨ ¬R
+
+# law of implication
+(P → Q) ∨ (Q → P)
+
+# biconditional negation
+¬(P ↔ Q) ↔ ((P ∧ ¬Q) ∨ (¬P ∧ Q))
+
+# conjunction intro
+P → (Q → (P ∧ Q))
+
+# proof by contradiction
+¬P → (Q ∧ ¬Q) ⊢ P
+
+# conditional proof
+P → Q, P → ¬Q ⊢ ¬P
+
+# disjunction elimination
+(P ∨ Q) → ((P → R) → ((Q → R) → R))
+
+# negation introduction
+(P → (Q ∧ ¬Q)) → ¬P
+
+# consistency
+¬(P ∧ ¬P) ∨ Q
+
+# resolution
+(P ∨ Q) ∧ (¬P ∨ R) → (Q ∨ R)
+
+# hypothetical syllogism
+P → Q, Q → R ⊢ P → R
+
+# chain rule
+(P → (Q → R)) ∧ (Q → (R → S)) → (P → (Q → S))
+
+# complex absorption
+(P ∧ Q) ∨ (P ∧ R) → P ∧ (Q ∨ R)
+
+# complex distributivity
+(P ∨ Q) ∧ (R ∨ S) → (P ∧ R) ∨ (P ∧ S) ∨ (Q ∧ R) ∨ (Q ∧ S)
+
+# consensus theorem
+(P ∧ Q) ∨ (¬P ∧ R) ∨ (Q ∧ R) ↔ (P ∧ Q) ∨ (¬P ∧ R)
+
+# symmetric difference
+(P ∧ ¬Q) ∨ (¬P ∧ Q) ↔ ¬(P ↔ Q)
+
+# complex conditional
+(P → Q) ∧ (R → S) ∧ (P ∨ R) ∧ (¬Q ∨ ¬S) → (¬P ∧ ¬R)
+
+# extended modus ponens
+P ∧ (P → Q) ∧ (Q → R) ∧ (R → S) → S
+
+# multiple negation elimination
+¬¬¬¬P → P
+
+# complex biconditional
+(P ↔ Q) ∧ (Q ↔ R) ∧ (R ↔ S) → (P ↔ S)
+
+# disjunctive normal form equivalence
+(P ∧ Q) ∨ (P ∧ ¬Q ∧ R) ∨ (¬P ∧ Q ∧ R) ↔ (P ∧ (Q ∨ R)) ∨ (¬P ∧ Q ∧ R)
+
+# implication introduction
+P ⊢ Q → (P ∨ Q)
+
+# cut rule
+P → Q, Q → R ⊢ P → R
+
+# complex resolution
+P ∨ Q ∨ R, ¬P ∨ S, ¬Q ∨ T ⊢ R ∨ S ∨ T
+
+# de morgan laws
+¬(P ∧ Q) ⊢ ¬P ∨ ¬Q
+
+# biconditional elimination
+P ↔ Q, P ⊢ Q
+
+# multiple premises
+P, Q, R, P ∧ Q → S, R → T ⊢ S ∧ T
+
+# nested implications
+P → (Q → R), P, Q ⊢ R
+
+# complex disjunction
+P ∨ (Q ∧ R), ¬P, Q → S, R → T ⊢ S ∧ T
+
+# contradiction from inconsistency
+P, ¬P ⊢ Q ∧ ¬Q
+
+# ternary resolution
+(P ∨ Q ∨ R) ∧ (¬P ∨ S ∨ T) ∧ (¬Q ∨ ¬R ∨ U) → (S ∨ T ∨ U)
+
+# quaternary chain
+(P → Q) ∧ (Q → R) ∧ (R → S) ∧ (S → T) → (P → T)
+
+# complex absorption with negation
+(P ∧ ¬Q) ∨ (P ∧ R) ∨ (¬P ∧ Q ∧ R) → P ∨ (Q ∧ R)
+
+# extended pierce's law
+(((P → Q) → P) → P) → (((Q → R) → Q) → Q)
+
+# complex biconditional chain
+(P ↔ Q) ∧ (Q ↔ R) ∧ (R ↔ S) ∧ (S ↔ T) → (P ↔ T)
+
+# nested conditional elimination
+(P → (Q → (R → S))) ∧ P ∧ Q ∧ R → S
+
+# multiple contradiction
+(P ∧ ¬P) ∨ (Q ∧ ¬Q) ∨ (R ∧ ¬R) → (S ∧ T ∧ U)
+
+# complex equivalence
+((P ∧ Q) → R) ↔ (P → (Q → R))
+
+# extended consensus
+(P ∧ Q ∧ R) ∨ (¬P ∧ S ∧ T) ∨ (Q ∧ S ∧ U) ∨ (R ∧ T ∧ U) ↔ (P ∧ Q ∧ R) ∨ (¬P ∧ S ∧ T) ∨ (Q ∧ S ∧ U)
