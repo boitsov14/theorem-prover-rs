@@ -133,18 +133,21 @@ mod tests {
     use insta::assert_snapshot;
     use std::fs;
     use tempfile::TempDir;
+    use test_case::case;
 
-    #[test]
-    fn test_latex_snapshot() {
+    #[case("props")]
+    #[case("constants")]
+    #[case("iltp-props")]
+    fn test_latex_snapshot(file: &str) {
         // read snapshot file
-        let content = fs::read_to_string("examples/snapshots.txt").unwrap();
+        let content = fs::read_to_string(format!("examples/snapshots/{file}.txt")).unwrap();
         let mut name = String::new();
         let mut idx = 1;
 
         for line in content.lines() {
             if let Some(line) = line.strip_prefix('#') {
                 // extract name from comment
-                name = line.trim().replace(' ', "-").replace('\'', "");
+                name = line.trim().replace('\'', "").replace([' ', '+', '.'], "-");
             } else if !line.is_empty() {
                 println!("testing: {line}");
                 // settings for snapshot tests
@@ -152,7 +155,7 @@ mod tests {
                 // short file names
                 settings.set_prepend_module_to_snapshot(false);
                 // snapshot path
-                settings.set_snapshot_path("../snapshots");
+                settings.set_snapshot_path(format!("../snapshots/{file}"));
 
                 // create temporary directory for each test case
                 let temp = TempDir::new().unwrap();
