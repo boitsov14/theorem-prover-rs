@@ -117,8 +117,7 @@ impl<'a> Sequent<'a> {
             self.atoms.insert(fml);
         } else {
             match fml.get_cost() {
-                0 => {}
-                1 => self.single.push(fml),
+                0 | 1 => self.single.push(fml),
                 _ => self.multi.push(fml),
             }
         }
