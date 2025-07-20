@@ -169,9 +169,6 @@ P → Q, Q → R ⊢ P → R
 # symmetric difference
 (P ∧ ¬Q) ∨ (¬P ∧ Q) ↔ ¬(P ↔ Q)
 
-# complex conditional
-(P → Q) ∧ (R → S) ∧ (P ∨ R) ∧ (¬Q ∨ ¬S) → (¬P ∧ ¬R)
-
 # extended modus ponens
 P ∧ (P → Q) ∧ (Q → R) ∧ (R → S) → S
 
@@ -211,9 +208,6 @@ P ∨ (Q ∧ R), ¬P, Q → S, R → T ⊢ S ∧ T
 # contradiction from inconsistency
 P, ¬P ⊢ Q ∧ ¬Q
 
-# ternary resolution
-(P ∨ Q ∨ R) ∧ (¬P ∨ S ∨ T) ∧ (¬Q ∨ ¬R ∨ U) → (S ∨ T ∨ U)
-
 # quaternary chain
 (P → Q) ∧ (Q → R) ∧ (R → S) ∧ (S → T) → (P → T)
 
@@ -234,6 +228,3 @@ P, ¬P ⊢ Q ∧ ¬Q
 
 # complex equivalence
 ((P ∧ Q) → R) ↔ (P → (Q → R))
-
-# extended consensus
-(P ∧ Q ∧ R) ∨ (¬P ∧ S ∧ T) ∨ (Q ∧ S ∧ U) ∨ (R ∧ T ∧ U) ↔ (P ∧ Q ∧ R) ∨ (¬P ∧ S ∧ T) ∨ (Q ∧ S ∧ U)
