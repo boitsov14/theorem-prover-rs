@@ -228,3 +228,9 @@ P, ¬P ⊢ Q ∧ ¬Q
 
 # complex equivalence
 ((P ∧ Q) → R) ↔ (P → (Q → R))
+
+# identity sequent
+P ⊢ P
+
+# trivial sequent
+P, Q ⊢ R, P
