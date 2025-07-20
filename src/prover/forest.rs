@@ -168,6 +168,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
             let forest_node = TableauNode::new(*id, *fml, children_cnt, None);
             new_nodes.push(forest_node);
         }
+        new_nodes.reverse();
         return;
     }
 
@@ -469,16 +470,8 @@ fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
         // start with current node
         let mut combined = vec![node];
 
-        // collect children in temporary buffer to reverse pop order
-        let mut children = Vec::with_capacity(children_cnt);
-        for _ in 0..children_cnt {
-            let child_vec = stack.pop().unwrap();
-            children.push(child_vec);
-        }
-
-        // extend in reverse order of popping (but keep internal order of each child_vec)
-        for child_vec in children.into_iter().rev() {
-            // clone to get ForestNode, not &ForestNode
+        // drain last children_cnt elements from stack and extend
+        for child_vec in stack.drain(stack.len() - children_cnt..) {
             combined.extend(child_vec);
         }
 
