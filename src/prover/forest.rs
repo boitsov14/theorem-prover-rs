@@ -13,39 +13,33 @@ use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 
-/// Internal proof node for processing proof tree generation
 #[derive(Clone, Debug)]
 struct ProofNode<'a> {
     seq: Sequent<'a>,
-    // number of children nodes
     children_cnt: OnceCell<usize>,
-    // number of proved children nodes
     proved_children_cnt: usize,
-    // None if root node, Some(parent_idx) if not
     parent_idx: Option<usize>,
+    // TODO: 2025/08/25 名前どうする
     // sided formula map with id assignment using FxHashMap for performance
     fml_map: FxHashMap<usize, SidedFormula<'a>>,
     // newly added formulas with their ids
     added_fmls: Vec<(usize, SidedFormula<'a>)>,
-    // from information for this node (None for root)
+    // from information
     from: Option<usize>,
 }
 
-/// Forest node for LaTeX generation output
+/// For LaTeX generation output
 #[derive(Clone, Debug)]
 struct TableauNode<'a> {
     // formula id
     id: usize,
-    // sided formula
     fml: SidedFormula<'a>,
-    // number of children nodes
     children_cnt: usize,
-    // from information for LaTeX output (None for root)
+    // from information for LaTeX output
     from: Option<usize>,
 }
 
 impl<'a> ProofNode<'a> {
-    /// Create new root proof node with None as from value
     #[inline(always)]
     fn new_root(
         seq: Sequent<'a>,
@@ -123,12 +117,10 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
         .display(names)
         .to_string()
         .replace(r"&\vdash", r"\vdash")
-        .replace(',', r"{,}\,")
-        .trim()
-        .to_string();
+        .replace(',', r"{,}\,");
     // buffer for storing the proof tree string
-    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
-    let mut nodes: Vec<TableauNode> = Vec::new();
+    let mut buf = Vec::with_capacity(MAX_FILE_SIZE);
+    let mut nodes = Vec::new();
     // generate the proof tree
     forest_impl(seq, &mut nodes);
     // reorder forest nodes using stack-based algorithm
@@ -147,7 +139,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 
 /// Implementation for generating LaTeX proof trees.
 fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
-    // global unique id counter for formulas
+    // global unique id counter for formulas(= tableau node id)
     let mut id = 1;
     // create initial formula map with id assignment
     let mut fml_map = FxHashMap::default();
@@ -163,7 +155,9 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
         // create individual forest nodes for each formula
+        // TODO: 2025/08/26 ここ最初にrevでやった方がいいのでは
         for (i, (id, fml)) in added_fmls.iter().enumerate() {
+            // if not the last formula, it has one child, otherwise it has no children
             let children_cnt = usize::from(i != added_fmls.len() - 1);
             let forest_node = TableauNode::new(*id, *fml, children_cnt, None);
             new_nodes.push(forest_node);
