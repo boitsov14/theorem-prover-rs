@@ -75,8 +75,7 @@ impl<'a> ProofNode<'a> {
         from_formula: SidedFormula<'a>,
     ) -> Self {
         // use get_from for non-root nodes
-        let from_id = from_formula.get_from_id(&fml_to_id);
-
+        let from_id = fml_to_id.get(&from_formula).copied();
         // create tableau nodes with last one having OnceCell::new() for children_cnt
         let mut tableau_nodes = Vec::new();
         for (i, (id, fml)) in added_fmls.into_iter().enumerate() {
@@ -121,12 +120,6 @@ impl<'a> TableauNode<'a> {
 }
 
 impl SidedFormula<'_> {
-    /// Get id of sided formula from formula map for generating from information
-    #[inline(always)]
-    fn get_from_id(&self, fml_to_id: &FxHashMap<Self, usize>) -> Option<usize> {
-        fml_to_id.get(self).copied()
-    }
-
     /// Convert sided formula to tableau representation for display
     fn to_tableau(self) -> Formula {
         let fml = self.fml.clone();
