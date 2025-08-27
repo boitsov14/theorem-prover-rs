@@ -16,16 +16,13 @@ const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 #[derive(Clone, Debug)]
 struct ProofNode<'a> {
     seq: Sequent<'a>,
-    children_cnt: OnceCell<usize>,
     proved_children_cnt: usize,
     parent_idx: Option<usize>,
     // TODO: 2025/08/25 名前どうする
     // sided formula map with id assignment using FxHashMap for performance
     fml_map: FxHashMap<usize, SidedFormula<'a>>,
-    // newly added formulas with their ids
-    added_fmls: Vec<(usize, SidedFormula<'a>)>,
-    // from information
-    from: Option<usize>,
+    // tableau nodes
+    tableau_nodes: Vec<TableauNode<'a>>,
 }
 
 /// For LaTeX generation output
@@ -34,7 +31,7 @@ struct TableauNode<'a> {
     // formula id
     id: usize,
     fml: SidedFormula<'a>,
-    children_cnt: usize,
+    children_cnt: OnceCell<usize>,
     // from information for LaTeX output
     from: Option<usize>,
 }
@@ -46,14 +43,28 @@ impl<'a> ProofNode<'a> {
         fml_map: FxHashMap<usize, SidedFormula<'a>>,
         added_fmls: Vec<(usize, SidedFormula<'a>)>,
     ) -> Self {
+        // create tableau nodes with last one having OnceCell::new() for children_cnt
+        let mut tableau_nodes = Vec::new();
+        for (i, (id, fml)) in added_fmls.into_iter().enumerate() {
+            let children_cnt = if i == 0 {
+                // last formula gets OnceCell::new()
+                OnceCell::new()
+            } else {
+                // others get 1
+                let cell = OnceCell::new();
+                cell.set(1).unwrap();
+                cell
+            };
+            tableau_nodes.push(TableauNode::new(id, fml, children_cnt, None));
+        }
+        tableau_nodes.reverse();
+
         Self {
             seq,
-            children_cnt: OnceCell::new(),
             proved_children_cnt: 0,
             parent_idx: None,
             fml_map,
-            added_fmls,
-            from: None,
+            tableau_nodes,
         }
     }
 
@@ -64,25 +75,45 @@ impl<'a> ProofNode<'a> {
         fml_map: FxHashMap<usize, SidedFormula<'a>>,
         added_fmls: Vec<(usize, SidedFormula<'a>)>,
         parent_idx: usize,
-        from: SidedFormula<'a>,
+        from_formula: SidedFormula<'a>,
     ) -> Self {
         // use get_from for non-root nodes
-        let from = from.get_from(&fml_map);
+        let from = from_formula.get_from(&fml_map);
+
+        // create tableau nodes with last one having OnceCell::new() for children_cnt
+        let mut tableau_nodes = Vec::new();
+        for (i, (id, fml)) in added_fmls.into_iter().enumerate() {
+            let children_cnt = if i == 0 {
+                // last formula gets OnceCell::new()
+                OnceCell::new()
+            } else {
+                // others get 1
+                let cell = OnceCell::new();
+                cell.set(1).unwrap();
+                cell
+            };
+            tableau_nodes.push(TableauNode::new(id, fml, children_cnt, from));
+        }
+        tableau_nodes.reverse();
+
         Self {
             seq,
-            children_cnt: OnceCell::new(),
             proved_children_cnt: 0,
             parent_idx: Some(parent_idx),
             fml_map,
-            added_fmls,
-            from,
+            tableau_nodes,
         }
     }
 }
 
 impl<'a> TableauNode<'a> {
     /// Create new forest node for LaTeX output
-    fn new(id: usize, fml: SidedFormula<'a>, children_cnt: usize, from: Option<usize>) -> Self {
+    fn new(
+        id: usize,
+        fml: SidedFormula<'a>,
+        children_cnt: OnceCell<usize>,
+        from: Option<usize>,
+    ) -> Self {
         Self {
             id,
             fml,
@@ -158,7 +189,9 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         // TODO: 2025/08/26 ここ最初にrevでやった方がいいのでは
         for (i, (id, fml)) in added_fmls.iter().enumerate() {
             // if not the last formula, it has one child, otherwise it has no children
-            let children_cnt = usize::from(i != added_fmls.len() - 1);
+            let children_cnt_val = usize::from(i != added_fmls.len() - 1);
+            let children_cnt = OnceCell::new();
+            children_cnt.set(children_cnt_val).unwrap();
             let forest_node = TableauNode::new(*id, *fml, children_cnt, None);
             new_nodes.push(forest_node);
         }
@@ -172,10 +205,17 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         // write all proved nodes to forest_nodes
         flush_proved_nodes(&mut nodes, new_nodes);
         // get the last sequent for processing
-        let Some(ProofNode { children_cnt, .. }) = nodes.last() else {
+        let Some(node) = nodes.last() else {
             // if no sequent to be proved, completed the proof
             return;
         };
+        // check if the last tableau node has been initialized
+        let last_tableau_node = node.tableau_nodes.last().unwrap();
+        if last_tableau_node.children_cnt.get().is_some() {
+            // already processed, continue to next iteration
+            continue 'main;
+        }
+
         let ProofNode {
             mut seq,
             mut fml_map,
@@ -190,7 +230,16 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
             // convert `¬p ⊢` to `⊢ p`
             // convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
-                children_cnt.set(1).unwrap();
+                // set children_cnt for the last tableau node
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(1)
+                    .unwrap();
                 let p = p.with_side(side.opposite());
                 fml_map.insert(id, p);
                 let added_fmls = vec![(id, p)];
@@ -200,14 +249,28 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 seq.push(p);
                 let seq = ProofNode::new(seq, fml_map, added_fmls, nodes.len() - 1, from_formula);
                 if is_trivial {
-                    seq.children_cnt.set(0).unwrap();
+                    // set children_cnt to 0 for trivial case
+                    seq.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 nodes.push(seq);
             }
             // convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
-                children_cnt.set(1).unwrap();
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(1)
+                    .unwrap();
                 let mut is_trivial = false;
                 let mut added_fmls = Vec::new();
                 for p in l {
@@ -222,7 +285,12 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 }
                 let seq = ProofNode::new(seq, fml_map, added_fmls, nodes.len() - 1, from_formula);
                 if is_trivial {
-                    seq.children_cnt.set(0).unwrap();
+                    seq.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 nodes.push(seq);
             }
@@ -240,7 +308,15 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
-                children_cnt.set(l.len()).unwrap();
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(l.len())
+                    .unwrap();
                 let parent_idx = nodes.len() - 1;
                 id += l.len();
                 for p in l.iter().rev() {
@@ -256,7 +332,13 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                     let seq_node =
                         ProofNode::new(seq, fml_map.clone(), added_fmls, parent_idx, from_formula);
                     if is_trivial {
-                        seq_node.children_cnt.set(0).unwrap();
+                        seq_node
+                            .tableau_nodes
+                            .last()
+                            .unwrap()
+                            .children_cnt
+                            .set(0)
+                            .unwrap();
                     }
                     nodes.push(seq_node);
                 }
@@ -272,7 +354,15 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
-                children_cnt.set(2).unwrap();
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(2)
+                    .unwrap();
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_map.clone();
                 let mut formula_map2 = fml_map;
@@ -305,17 +395,35 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 );
 
                 if is_trivial_q {
-                    seq1.children_cnt.set(0).unwrap();
+                    seq1.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 if is_trivial_p {
-                    seq2.children_cnt.set(0).unwrap();
+                    seq2.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 nodes.push(seq1);
                 nodes.push(seq2);
             }
             // convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
-                children_cnt.set(1).unwrap();
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(1)
+                    .unwrap();
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
                 fml_map.insert(id, p);
@@ -329,14 +437,27 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 seq.push(q);
                 let seq = ProofNode::new(seq, fml_map, added_fmls, nodes.len() - 1, from_formula);
                 if is_trivial {
-                    seq.children_cnt.set(0).unwrap();
+                    seq.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 nodes.push(seq);
             }
             // convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
-                children_cnt.set(2).unwrap();
+                nodes
+                    .last()
+                    .unwrap()
+                    .tableau_nodes
+                    .last()
+                    .unwrap()
+                    .children_cnt
+                    .set(2)
+                    .unwrap();
                 let p_l = p.with_side(Left);
                 let p_r = p.with_side(Right);
                 let q_l = q.with_side(Left);
@@ -379,10 +500,20 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                     from_formula,
                 );
                 if is_trivial_1 {
-                    seq1.children_cnt.set(0).unwrap();
+                    seq1.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 if is_trivial_2 {
-                    seq2.children_cnt.set(0).unwrap();
+                    seq2.tableau_nodes
+                        .last()
+                        .unwrap()
+                        .children_cnt
+                        .set(0)
+                        .unwrap();
                 }
                 nodes.push(seq1);
                 nodes.push(seq2);
@@ -403,7 +534,9 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
 /// - Automatically increments parent nodes' count of proved children
 fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec<TableauNode<'a>>) {
     while let Some(node) = nodes.last() {
-        let Some(children_cnt_val) = node.children_cnt.get() else {
+        // check if the last tableau node has been initialized (children_cnt set)
+        let last_tableau_node = node.tableau_nodes.last().unwrap();
+        let Some(children_cnt_val) = last_tableau_node.children_cnt.get() else {
             // not processed yet
             break;
         };
@@ -411,7 +544,6 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
             // if has unproved children, stop processing
             break;
         }
-        let children_cnt_val = *children_cnt_val;
 
         // get parent_idx before removing the node
         let parent_idx = node.parent_idx;
@@ -425,15 +557,9 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
         // remove the completed node and use it directly
         let mut completed_node = nodes.pop().unwrap();
 
-        // first formula gets the actual children_cnt
-        let (id, fml) = completed_node.added_fmls.pop().unwrap();
-        let first_forest_node = TableauNode::new(id, fml, children_cnt_val, completed_node.from);
-        forest_nodes.push(first_forest_node);
-
-        // remaining formulas get children_cnt = 1
-        while let Some((id, fml)) = completed_node.added_fmls.pop() {
-            let forest_node = TableauNode::new(id, fml, 1, completed_node.from);
-            forest_nodes.push(forest_node);
+        // add all tableau nodes to forest_nodes
+        while let Some(tableau_node) = completed_node.tableau_nodes.pop() {
+            forest_nodes.push(tableau_node);
         }
     }
 }
@@ -459,13 +585,13 @@ fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
 
     // process nodes in reverse order (pop from end)
     while let Some(node) = nodes.pop() {
-        let children_cnt = node.children_cnt;
+        let children_cnt_val = *node.children_cnt.get().unwrap();
 
         // start with current node
         let mut combined = vec![node];
 
         // drain last children_cnt elements from stack and extend
-        for child_vec in stack.drain(stack.len() - children_cnt..) {
+        for child_vec in stack.drain(stack.len() - children_cnt_val..) {
             combined.extend(child_vec);
         }
 
@@ -497,8 +623,9 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
     {
         // let from = from.map_or("".to_string(), |i| i.to_string());
         let from = from.map_or(String::new(), |i| format!(",from={i}"));
+        let children_cnt_val = *children_cnt.get().unwrap();
 
-        if *children_cnt != 0 {
+        if children_cnt_val != 0 {
             // internal node - write opening bracket
             check_buf_size(buf);
             writeln!(
@@ -515,7 +642,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
             // increment indentation for children
             ind += 1;
             // push current node's children count to stack
-            stack.push(*children_cnt);
+            stack.push(children_cnt_val);
             continue;
         }
 
