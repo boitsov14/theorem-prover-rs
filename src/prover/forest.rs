@@ -32,8 +32,8 @@ struct TableauNode<'a> {
     id: usize,
     fml: SidedFormula<'a>,
     children_cnt: OnceCell<usize>,
-    // from information for LaTeX output
-    from: Option<usize>,
+    // source node id for LaTeX output
+    from_id: Option<usize>,
 }
 
 impl<'a> ProofNode<'a> {
@@ -78,7 +78,7 @@ impl<'a> ProofNode<'a> {
         from_formula: SidedFormula<'a>,
     ) -> Self {
         // use get_from for non-root nodes
-        let from = from_formula.get_from(&fml_map);
+        let from_id = from_formula.get_from(&fml_map);
 
         // create tableau nodes with last one having OnceCell::new() for children_cnt
         let mut tableau_nodes = Vec::new();
@@ -92,7 +92,7 @@ impl<'a> ProofNode<'a> {
                 cell.set(1).unwrap();
                 cell
             };
-            tableau_nodes.push(TableauNode::new(id, fml, children_cnt, from));
+            tableau_nodes.push(TableauNode::new(id, fml, children_cnt, from_id));
         }
         tableau_nodes.reverse();
 
@@ -112,13 +112,13 @@ impl<'a> TableauNode<'a> {
         id: usize,
         fml: SidedFormula<'a>,
         children_cnt: OnceCell<usize>,
-        from: Option<usize>,
+        from_id: Option<usize>,
     ) -> Self {
         Self {
             id,
             fml,
             children_cnt,
-            from,
+            from_id,
         }
     }
 }
@@ -615,14 +615,14 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
     let mut ind = 1;
 
     for TableauNode {
-        from,
+        from_id,
         children_cnt,
         id,
         fml,
     } in forest_nodes
     {
         // let from = from.map_or("".to_string(), |i| i.to_string());
-        let from = from.map_or(String::new(), |i| format!(",from={i}"));
+        let from = from_id.map_or(String::new(), |i| format!(",from={i}"));
         let children_cnt_val = *children_cnt.get().unwrap();
 
         if children_cnt_val != 0 {
