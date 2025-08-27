@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.46", features = ["derive"] }
 divan = { version = "0.1.21", optional = true }
 itertools = "0.14.0"
 log = "0.4.27"
 log4rs = "1.3.0"
 maplit = "1.0.2"
-mimalloc = "0.1.47"
+mimalloc = "0.1.48"
 peg = "0.8.5"
 regex = "1.11.2"
 rustc-hash = "2.1.1"
