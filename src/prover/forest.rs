@@ -499,53 +499,63 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
     let mut ind = 1;
 
     for TableauNode {
-        from_id,
-        children_cnt,
         id,
         fml,
+        from_id,
+        children_cnt,
     } in forest_nodes
     {
-        // let from = from.map_or("".to_string(), |i| i.to_string());
-        let from = if *from_id == 0 {
-            String::new()
-        } else {
-            format!(",from={from_id}")
-        };
-        let children_cnt_val = *children_cnt;
-
-        if children_cnt_val != 0 {
+        check_buf_size(buf);
+        if *children_cnt != 0 {
             // internal node - write opening bracket
             check_buf_size(buf);
-            writeln!(
-                buf,
-                "{:ind$}[{},idx={}{}",
-                "",
-                fml.to_tableau().display(names),
-                id,
-                from,
-                ind = ind * 2
-            )
-            .unwrap();
+            if *from_id == 0 {
+                writeln!(
+                    buf,
+                    "{:ind$}[{},idx={id}",
+                    "",
+                    fml.to_tableau().display(names),
+                    ind = ind * 2
+                )
+                .unwrap();
+            } else {
+                writeln!(
+                    buf,
+                    "{:ind$}[{},idx={id},from={from_id}",
+                    "",
+                    fml.to_tableau().display(names),
+                    ind = ind * 2
+                )
+                .unwrap();
+            }
 
             // increment indentation for children
             ind += 1;
             // push current node's children count to stack
-            stack.push(children_cnt_val);
+            stack.push(*children_cnt);
             continue;
         }
 
         // leaf node - write with close attribute
-        check_buf_size(buf);
-        writeln!(
-            buf,
-            "{:ind$}[{},idx={}{},close]",
-            "",
-            fml.to_tableau().display(names),
-            id,
-            from,
-            ind = ind * 2
-        )
-        .unwrap();
+        if *from_id == 0 {
+            writeln!(
+                buf,
+                "{:ind$}[{},idx={id},close]",
+                "",
+                fml.to_tableau().display(names),
+                ind = ind * 2
+            )
+            .unwrap();
+        } else {
+            writeln!(
+                buf,
+                "{:ind$}[{},idx={id},from={from_id},close]",
+                "",
+                fml.to_tableau().display(names),
+                ind = ind * 2
+            )
+            .unwrap();
+        }
 
         // decrement children count of parent on stack
         *stack.last_mut().unwrap() -= 1;
