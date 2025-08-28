@@ -28,8 +28,8 @@ struct ProofNode<'a> {
 struct PartialTableauNode<'a> {
     id: usize,
     fml: SidedFormula<'a>,
-    /// Source tableau node id that this formula was logically derived from
-    from_id: Option<usize>,
+    /// Source tableau node id that this formula was logically derived from (0 for root)
+    from_id: usize,
 }
 
 /// For LaTeX generation output
@@ -38,8 +38,8 @@ struct TableauNode<'a> {
     id: usize,
     fml: SidedFormula<'a>,
     children_cnt: usize,
-    /// Source tableau node id that this formula was logically derived from
-    from_id: Option<usize>,
+    /// Source tableau node id that this formula was logically derived from (0 for root)
+    from_id: usize,
 }
 
 impl<'a> ProofNode<'a> {
@@ -80,14 +80,14 @@ impl<'a> ProofNode<'a> {
 
 impl<'a> PartialTableauNode<'a> {
     /// Create new partial tableau node for proof construction
-    fn new(id: usize, fml: SidedFormula<'a>, from_id: Option<usize>) -> Self {
+    fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
         Self { id, fml, from_id }
     }
 }
 
 impl<'a> TableauNode<'a> {
     /// Create new forest node for LaTeX output
-    fn new(id: usize, fml: SidedFormula<'a>, children_cnt: usize, from_id: Option<usize>) -> Self {
+    fn new(id: usize, fml: SidedFormula<'a>, children_cnt: usize, from_id: usize) -> Self {
         Self {
             id,
             fml,
@@ -144,7 +144,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
 
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
-        tableau_nodes.push(PartialTableauNode::new(id, *p, None));
+        tableau_nodes.push(PartialTableauNode::new(id, *p, 0));
         id += 1;
     }
     tableau_nodes.reverse();
@@ -157,7 +157,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         for (i, node) in tableau_nodes.iter().enumerate() {
             // if not the last formula, it has one child, otherwise it has no children
             let children_cnt_val = usize::from(i != tableau_nodes.len() - 1);
-            let forest_node = TableauNode::new(node.id, node.fml, children_cnt_val, None);
+            let forest_node = TableauNode::new(node.id, node.fml, children_cnt_val, 0);
             new_nodes.push(forest_node);
         }
         new_nodes.reverse();
@@ -198,7 +198,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 nodes.last().unwrap().children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
                 fml_to_id.insert(p, id);
-                let from_id = fml_to_id.get(&from_formula).copied();
+                let from_id = fml_to_id[&from_formula];
                 let tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
                 id += 1;
                 let is_trivial = seq.is_trivial(p);
@@ -216,7 +216,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
             (And(l), Left) | (Or(l), Right) => {
                 nodes.last().unwrap().children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
-                let from_id = fml_to_id.get(&from_formula).copied();
+                let from_id = fml_to_id[&from_formula];
                 let mut tableau_nodes = Vec::new();
                 for p in l {
                     let p = p.with_side(side);
@@ -251,7 +251,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 }
                 nodes.last().unwrap().children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
-                let from_id = fml_to_id.get(&from_formula).copied();
+                let from_id = fml_to_id[&from_formula];
                 id += l.len();
                 for p in l.iter().rev() {
                     let mut fml_to_id_clone = fml_to_id.clone();
@@ -286,7 +286,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
-                let from_id = formula_map1.get(&from_formula).copied();
+                let from_id = formula_map1[&from_formula];
                 formula_map1.insert(q, id + 1);
                 let tableau_nodes1 = vec![PartialTableauNode::new(id + 1, q, from_id)];
                 formula_map2.insert(p, id);
@@ -321,7 +321,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 id += 1;
                 fml_to_id.insert(q, id);
                 id += 1;
-                let from_id = fml_to_id.get(&from_formula).copied();
+                let from_id = fml_to_id[&from_formula];
                 let tableau_nodes = vec![
                     PartialTableauNode::new(id - 2, p, from_id),
                     PartialTableauNode::new(id - 1, q, from_id),
@@ -350,7 +350,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 };
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
-                let from_id = formula_map1.get(&from_formula).copied();
+                let from_id = formula_map1[&from_formula];
                 formula_map1.insert(fml11, id + 2);
                 formula_map1.insert(fml12, id + 3);
                 let tableau_nodes1 = vec![
@@ -506,7 +506,11 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
     } in forest_nodes
     {
         // let from = from.map_or("".to_string(), |i| i.to_string());
-        let from = from_id.map_or(String::new(), |i| format!(",from={i}"));
+        let from = if *from_id == 0 {
+            String::new()
+        } else {
+            format!(",from={from_id}")
+        };
         let children_cnt_val = *children_cnt;
 
         if children_cnt_val != 0 {
