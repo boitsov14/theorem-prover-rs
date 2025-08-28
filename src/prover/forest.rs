@@ -37,9 +37,9 @@ struct PartialTableauNode<'a> {
 struct TableauNode<'a> {
     id: usize,
     fml: SidedFormula<'a>,
-    children_cnt: usize,
     /// Source tableau node id that this formula was logically derived from (0 for root)
     from_id: usize,
+    children_cnt: usize,
 }
 
 impl<'a> ProofNode<'a> {
@@ -87,12 +87,12 @@ impl<'a> PartialTableauNode<'a> {
 
 impl<'a> TableauNode<'a> {
     /// Create new forest node for LaTeX output
-    fn new(id: usize, fml: SidedFormula<'a>, children_cnt: usize, from_id: usize) -> Self {
+    fn new(id: usize, fml: SidedFormula<'a>, from_id: usize, children_cnt: usize) -> Self {
         Self {
             id,
             fml,
-            children_cnt,
             from_id,
+            children_cnt,
         }
     }
 }
@@ -157,7 +157,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         for (i, node) in tableau_nodes.iter().enumerate() {
             // if not the last formula, it has one child, otherwise it has no children
             let children_cnt_val = usize::from(i != tableau_nodes.len() - 1);
-            let forest_node = TableauNode::new(node.id, node.fml, children_cnt_val, 0);
+            let forest_node = TableauNode::new(node.id, node.fml, 0, children_cnt_val);
             new_nodes.push(forest_node);
         }
         new_nodes.reverse();
@@ -440,8 +440,8 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
             let tableau_node = TableauNode::new(
                 partial_tableau_node.id,
                 partial_tableau_node.fml,
-                current_children_cnt,
                 partial_tableau_node.from_id,
+                current_children_cnt,
             );
             forest_nodes.push(tableau_node);
         }
