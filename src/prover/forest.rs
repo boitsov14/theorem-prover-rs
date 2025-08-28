@@ -18,6 +18,7 @@ struct ProofNode<'a> {
     seq: Sequent<'a>,
     children_cnt: OnceCell<usize>,
     proved_children_cnt: usize,
+    /// None if root
     parent_idx: Option<usize>,
     /// Maps formula to its unique tableau node id
     fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
@@ -402,15 +403,15 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
 fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec<TableauNode<'a>>) {
     while let Some(node) = nodes.last() {
         // check if the children_cnt has been set
-        let Some(children_cnt_val) = node.children_cnt.get() else {
+        let Some(children_cnt) = node.children_cnt.get() else {
             // not processed yet
             break;
         };
-        if node.proved_children_cnt < *children_cnt_val {
+        if node.proved_children_cnt < *children_cnt {
             // if has unproved children, stop processing
             break;
         }
-        let children_cnt_val = *children_cnt_val;
+        let children_cnt = *children_cnt;
 
         // get parent_idx before removing the node
         let parent_idx = node.parent_idx;
@@ -431,7 +432,7 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
             let current_children_cnt =
                 if completed_node.tableau_nodes.is_empty() && tableau_nodes_len > 0 {
                     // This is the last node (which was added first)
-                    children_cnt_val
+                    children_cnt
                 } else {
                     // Other nodes get 1
                     1
