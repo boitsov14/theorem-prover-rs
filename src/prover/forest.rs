@@ -413,10 +413,7 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
         }
         let children_cnt = *children_cnt;
 
-        // get parent_idx before removing the node
-        let parent_idx = node.parent_idx;
-
-        if let Some(parent_idx) = parent_idx {
+        if let Some(parent_idx) = node.parent_idx {
             // if has a parent
             // increment the parent's proved children count
             nodes[parent_idx].proved_children_cnt += 1;
@@ -427,16 +424,14 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
 
         // convert all PartialTableauNode to TableauNode and add to forest_nodes
         // The last added tableau node gets the children_cnt value, others get 1
-        let tableau_nodes_len = completed_node.tableau_nodes.len();
         while let Some(partial_tableau_node) = completed_node.tableau_nodes.pop() {
-            let current_children_cnt =
-                if completed_node.tableau_nodes.is_empty() && tableau_nodes_len > 0 {
-                    // This is the last node (which was added first)
-                    children_cnt
-                } else {
-                    // Other nodes get 1
-                    1
-                };
+            let current_children_cnt = if completed_node.tableau_nodes.is_empty() {
+                // This is the last node (which was added first)
+                children_cnt
+            } else {
+                // Other nodes get 1
+                1
+            };
 
             let tableau_node = TableauNode::new(
                 partial_tableau_node.id,
