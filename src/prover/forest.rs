@@ -47,15 +47,8 @@ impl<'a> ProofNode<'a> {
     fn new_root(
         seq: Sequent<'a>,
         fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
-        added_fmls: Vec<(usize, SidedFormula<'a>)>,
+        tableau_nodes: Vec<PartialTableauNode<'a>>,
     ) -> Self {
-        // create partial tableau nodes without children_cnt
-        let mut tableau_nodes = Vec::new();
-        for (id, fml) in added_fmls {
-            tableau_nodes.push(PartialTableauNode::new(id, fml, None));
-        }
-        tableau_nodes.reverse();
-
         Self {
             seq,
             children_cnt: OnceCell::new(),
@@ -71,19 +64,10 @@ impl<'a> ProofNode<'a> {
     fn new(
         seq: Sequent<'a>,
         fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
-        added_fmls: Vec<(usize, SidedFormula<'a>)>,
+        tableau_nodes: Vec<PartialTableauNode<'a>>,
         parent_idx: usize,
         from_formula: SidedFormula<'a>,
     ) -> Self {
-        // use get_from for non-root nodes
-        let from_id = fml_to_id.get(&from_formula).copied();
-        // create partial tableau nodes without children_cnt
-        let mut tableau_nodes = Vec::new();
-        for (id, fml) in added_fmls {
-            tableau_nodes.push(PartialTableauNode::new(id, fml, from_id));
-        }
-        tableau_nodes.reverse();
-
         Self {
             seq,
             children_cnt: OnceCell::new(),
@@ -157,30 +141,31 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
     let mut id = 1;
     // create initial formula map with id assignment
     let mut fml_to_id = FxHashMap::default();
-    let mut added_fmls = Vec::new();
+    let mut tableau_nodes = Vec::new();
 
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
-        added_fmls.push((id, *p));
+        tableau_nodes.push(PartialTableauNode::new(id, *p, None));
         id += 1;
     }
+    tableau_nodes.reverse();
 
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
         // create individual forest nodes for each formula
         // TODO: 2025/08/26 ここ最初にrevでやった方がいいのでは
-        for (i, (id, fml)) in added_fmls.iter().enumerate() {
+        for (i, node) in tableau_nodes.iter().enumerate() {
             // if not the last formula, it has one child, otherwise it has no children
-            let children_cnt_val = usize::from(i != added_fmls.len() - 1);
-            let forest_node = TableauNode::new(*id, *fml, children_cnt_val, None);
+            let children_cnt_val = usize::from(i != tableau_nodes.len() - 1);
+            let forest_node = TableauNode::new(node.id, node.fml, children_cnt_val, None);
             new_nodes.push(forest_node);
         }
         new_nodes.reverse();
         return;
     }
 
-    let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, added_fmls)];
+    let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, tableau_nodes)];
 
     'main: loop {
         // write all proved nodes to forest_nodes
@@ -214,13 +199,14 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 nodes.last().unwrap().children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
                 fml_to_id.insert(p, id);
-                let added_fmls = vec![(id, p)];
+                let from_id = fml_to_id.get(&from_formula).copied();
+                let tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
                 id += 1;
                 let is_trivial = seq.is_trivial(p);
 
                 seq.push(p);
                 let new_node =
-                    ProofNode::new(seq, fml_to_id, added_fmls, nodes.len() - 1, from_formula);
+                    ProofNode::new(seq, fml_to_id, tableau_nodes, nodes.len() - 1, from_formula);
                 if is_trivial {
                     // set children_cnt to 0 for trivial case
                     new_node.children_cnt.set(0).unwrap();
@@ -232,19 +218,21 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
             (And(l), Left) | (Or(l), Right) => {
                 nodes.last().unwrap().children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
-                let mut added_fmls = Vec::new();
+                let from_id = fml_to_id.get(&from_formula).copied();
+                let mut tableau_nodes = Vec::new();
                 for p in l {
                     let p = p.with_side(side);
                     fml_to_id.insert(p, id);
-                    added_fmls.push((id, p));
+                    tableau_nodes.push(PartialTableauNode::new(id, p, from_id));
                     id += 1;
                     if seq.is_trivial(p) {
                         is_trivial = true;
                     }
                     seq.push(p);
                 }
+                tableau_nodes.reverse();
                 let new_node =
-                    ProofNode::new(seq, fml_to_id, added_fmls, nodes.len() - 1, from_formula);
+                    ProofNode::new(seq, fml_to_id, tableau_nodes, nodes.len() - 1, from_formula);
                 if is_trivial {
                     new_node.children_cnt.set(0).unwrap();
                 }
@@ -266,13 +254,14 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 }
                 nodes.last().unwrap().children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
+                let from_id = fml_to_id.get(&from_formula).copied();
                 id += l.len();
                 for p in l.iter().rev() {
                     let mut fml_to_id_clone = fml_to_id.clone();
                     let p = p.with_side(side);
                     id -= 1;
                     fml_to_id_clone.insert(p, id);
-                    let added_fmls = vec![(id, p)];
+                    let tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
                     let is_trivial = seq.is_trivial(p);
 
                     let mut seq = seq.clone();
@@ -280,7 +269,7 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                     let new_node = ProofNode::new(
                         seq,
                         fml_to_id_clone.clone(),
-                        added_fmls,
+                        tableau_nodes,
                         parent_idx,
                         from_formula,
                     );
@@ -305,10 +294,11 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
+                let from_id = formula_map1.get(&from_formula).copied();
                 formula_map1.insert(q, id + 1);
-                let added_formulas1 = vec![(id + 1, q)];
+                let tableau_nodes1 = vec![PartialTableauNode::new(id + 1, q, from_id)];
                 formula_map2.insert(p, id);
-                let added_formulas2 = vec![(id, p)];
+                let tableau_nodes2 = vec![PartialTableauNode::new(id, p, from_id)];
                 id += 2;
                 let is_trivial_q = seq.is_trivial(q);
                 let is_trivial_p = seq.is_trivial(p);
@@ -318,20 +308,10 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 seq1.push(q);
                 seq2.push(p);
                 let parent_idx = nodes.len() - 1;
-                let new_node1 = ProofNode::new(
-                    seq1,
-                    formula_map1,
-                    added_formulas1,
-                    parent_idx,
-                    from_formula,
-                );
-                let new_node2 = ProofNode::new(
-                    seq2,
-                    formula_map2,
-                    added_formulas2,
-                    parent_idx,
-                    from_formula,
-                );
+                let new_node1 =
+                    ProofNode::new(seq1, formula_map1, tableau_nodes1, parent_idx, from_formula);
+                let new_node2 =
+                    ProofNode::new(seq2, formula_map2, tableau_nodes2, parent_idx, from_formula);
 
                 if is_trivial_q {
                     new_node1.children_cnt.set(0).unwrap();
@@ -351,13 +331,17 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 id += 1;
                 fml_to_id.insert(q, id);
                 id += 1;
-                let added_fmls = vec![(id - 2, p), (id - 1, q)];
+                let from_id = fml_to_id.get(&from_formula).copied();
+                let tableau_nodes = vec![
+                    PartialTableauNode::new(id - 2, p, from_id),
+                    PartialTableauNode::new(id - 1, q, from_id),
+                ];
                 let is_trivial = seq.is_trivial2(p, q);
 
                 seq.push(p);
                 seq.push(q);
                 let new_node =
-                    ProofNode::new(seq, fml_to_id, added_fmls, nodes.len() - 1, from_formula);
+                    ProofNode::new(seq, fml_to_id, tableau_nodes, nodes.len() - 1, from_formula);
                 if is_trivial {
                     new_node.children_cnt.set(0).unwrap();
                 }
@@ -377,12 +361,19 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 };
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
+                let from_id = formula_map1.get(&from_formula).copied();
                 formula_map1.insert(fml11, id + 2);
                 formula_map1.insert(fml12, id + 3);
-                let added_formulas1 = vec![(id + 2, fml11), (id + 3, fml12)];
+                let tableau_nodes1 = vec![
+                    PartialTableauNode::new(id + 2, fml11, from_id),
+                    PartialTableauNode::new(id + 3, fml12, from_id),
+                ];
                 formula_map2.insert(fml21, id);
                 formula_map2.insert(fml22, id + 1);
-                let added_formulas2 = vec![(id, fml21), (id + 1, fml22)];
+                let tableau_nodes2 = vec![
+                    PartialTableauNode::new(id, fml21, from_id),
+                    PartialTableauNode::new(id + 1, fml22, from_id),
+                ];
                 id += 4;
                 let is_trivial_1 = seq.is_trivial2(fml11, fml12);
                 let is_trivial_2 = seq.is_trivial2(fml21, fml22);
@@ -394,20 +385,10 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let new_node1 = ProofNode::new(
-                    seq1,
-                    formula_map1,
-                    added_formulas1,
-                    parent_idx,
-                    from_formula,
-                );
-                let new_node2 = ProofNode::new(
-                    seq2,
-                    formula_map2,
-                    added_formulas2,
-                    parent_idx,
-                    from_formula,
-                );
+                let new_node1 =
+                    ProofNode::new(seq1, formula_map1, tableau_nodes1, parent_idx, from_formula);
+                let new_node2 =
+                    ProofNode::new(seq2, formula_map2, tableau_nodes2, parent_idx, from_formula);
                 if is_trivial_1 {
                     new_node1.children_cnt.set(0).unwrap();
                 }
