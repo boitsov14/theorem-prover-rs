@@ -467,17 +467,18 @@ fn check_buf_size(buf: &[u8]) {
 fn reorder(mut nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack of node vectors for processing
     let mut stack = vec![];
+
     nodes.reverse();
 
     // process nodes in reverse order (pop from end)
     while let Some(node) = nodes.pop() {
-        let children_cnt_val = node.children_cnt;
+        let children_cnt = node.children_cnt;
 
         // start with current node
         let mut combined = vec![node];
 
         // drain last children_cnt elements from stack and extend
-        for child_vec in stack.drain(stack.len() - children_cnt_val..) {
+        for child_vec in stack.drain(stack.len() - children_cnt..) {
             combined.extend(child_vec);
         }
 
@@ -487,7 +488,7 @@ fn reorder(mut nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack should contain exactly one element at the end
     assert!(stack.len() == 1);
 
-    return stack.into_iter().next().unwrap();
+    stack.into_iter().next().unwrap()
 }
 
 /// Write forest nodes to LaTeX buffer using stack-based algorithm
