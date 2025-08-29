@@ -25,6 +25,7 @@ struct ProofNode<'a> {
     tableau_nodes: Vec<PartialTableauNode<'a>>,
 }
 
+/// Intermediate tableau node during proof construction phase
 #[derive(Clone, Debug)]
 struct PartialTableauNode<'a> {
     id: usize,
@@ -60,7 +61,6 @@ impl<'a> ProofNode<'a> {
         }
     }
 
-    /// Create new child proof node with `from_formula`'s id as from value
     #[inline(always)]
     fn new(
         seq: Sequent<'a>,
@@ -80,14 +80,12 @@ impl<'a> ProofNode<'a> {
 }
 
 impl<'a> PartialTableauNode<'a> {
-    /// Create new partial tableau node for proof construction
     fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
         Self { id, fml, from_id }
     }
 }
 
 impl<'a> TableauNode<'a> {
-    /// Create new forest node for LaTeX output
     fn new(id: usize, fml: SidedFormula<'a>, from_id: usize, children_cnt: usize) -> Self {
         Self {
             id,
@@ -99,7 +97,7 @@ impl<'a> TableauNode<'a> {
 }
 
 impl SidedFormula<'_> {
-    /// Convert sided formula to tableau representation for display
+    /// Convert formula to tableau representation for display
     fn to_tableau_form(self) -> Formula {
         let fml = self.fml.clone();
         match self.side {
@@ -109,7 +107,7 @@ impl SidedFormula<'_> {
     }
 }
 
-/// Generates a LaTeX proof tree using the forest package.
+/// Generates a LaTeX proof tree using the forest package
 pub fn forest(seq: Sequent, names: &Names, out: &str) {
     let claim = &seq
         .display(names)
