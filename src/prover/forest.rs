@@ -9,7 +9,7 @@ use crate::{
 };
 use log::error;
 use rustc_hash::FxHashMap;
-use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf};
+use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf, vec};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 
@@ -116,9 +116,8 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
         .replace(',', r"{,}\,");
     // buffer for storing the proof tree string
     let mut buf = Vec::with_capacity(MAX_FILE_SIZE);
-    let mut nodes = Vec::new();
     // generate the proof tree
-    forest_impl(seq, &mut nodes);
+    let mut nodes = forest_impl(seq);
     // reorder forest nodes using stack-based algorithm
     reorder(&mut nodes);
     // Write the proof tree content
@@ -134,18 +133,18 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 }
 
 /// Implementation for generating LaTeX proof trees
-fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
+fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
     let mut fml_to_id = FxHashMap::default();
     let mut local_tableau_nodes = Vec::new();
+    let mut new_nodes = vec![];
 
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
         local_tableau_nodes.push(PartialTableauNode::new(id, *p, 0));
         id += 1;
     }
-    local_tableau_nodes.reverse();
 
     if seq.is_initially_trivial() {
         // trivial from the beginning
@@ -154,23 +153,23 @@ fn forest_impl<'a>(seq: Sequent<'a>, new_nodes: &mut Vec<TableauNode<'a>>) {
         // TODO: 2025/08/26 ここ最初にrevでやった方がいいのでは
         for (i, node) in local_tableau_nodes.iter().enumerate() {
             // if not the last formula, it has one child, otherwise it has no children
-            let children_cnt_val = usize::from(i != local_tableau_nodes.len() - 1);
-            let forest_node = TableauNode::new(node.id, node.fml, 0, children_cnt_val);
+            let children_cnt = usize::from(i != local_tableau_nodes.len() - 1);
+            let forest_node = TableauNode::new(node.id, node.fml, 0, children_cnt);
             new_nodes.push(forest_node);
         }
         new_nodes.reverse();
-        return;
+        return new_nodes;
     }
 
     let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, local_tableau_nodes)];
 
     'main: loop {
         // write all proved nodes to forest_nodes
-        flush_proved_nodes(&mut nodes, new_nodes);
+        flush_proved_nodes(&mut nodes, &mut new_nodes);
         // get the last sequent for processing
         let Some(node) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return;
+            return new_nodes;
         };
         // check if the children_cnt has been initialized
         if node.children_cnt.get().is_some() {
