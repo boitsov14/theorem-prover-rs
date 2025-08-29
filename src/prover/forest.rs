@@ -83,6 +83,11 @@ impl<'a> PartialTableauNode<'a> {
     fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
         Self { id, fml, from_id }
     }
+
+    /// Convert `PartialTableauNode` to `TableauNode` with children count
+    fn to_tableau_node(&self, children_cnt: usize) -> TableauNode<'a> {
+        TableauNode::new(self.id, self.fml, self.from_id, children_cnt)
+    }
 }
 
 impl<'a> TableauNode<'a> {
@@ -117,9 +122,9 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     // buffer for storing the proof tree string
     let mut buf = Vec::with_capacity(MAX_FILE_SIZE);
     // generate the proof tree
-    let mut nodes = forest_impl(seq);
+    let nodes = forest_impl(seq);
     // reorder forest nodes using stack-based algorithm
-    reorder(&mut nodes);
+    let nodes = reorder(nodes);
     // Write the proof tree content
     write_latex(&nodes, names, &mut buf);
     // create output LaTeX file
@@ -127,7 +132,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     // replace the placeholder with proof
     let proof = include_str!("../../templates/forest.tex")
         .replace("%CLAIM%", claim)
-        .replace("%PROOF_CONTENT%", &String::from_utf8_lossy(&buf));
+        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
 }
@@ -150,14 +155,12 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
         // create individual forest nodes for each formula
-        // TODO: 2025/08/26 ここ最初にrevでやった方がいいのでは
-        for (i, node) in local_tableau_nodes.iter().enumerate() {
-            // if not the last formula, it has one child, otherwise it has no children
-            let children_cnt = usize::from(i != local_tableau_nodes.len() - 1);
-            let forest_node = TableauNode::new(node.id, node.fml, 0, children_cnt);
-            new_nodes.push(forest_node);
+        while let Some(node) = local_tableau_nodes.pop() {
+            // if not empty, current node has one child, otherwise no children
+            let children_cnt = usize::from(!local_tableau_nodes.is_empty());
+            let node = node.to_tableau_node(children_cnt);
+            new_nodes.push(node);
         }
-        new_nodes.reverse();
         return new_nodes;
     }
 
@@ -461,10 +464,9 @@ fn check_buf_size(buf: &[u8]) {
 /// - Pop nodes from input vector in reverse order
 /// - Pop `children_cnt` elements from stack and combine with current node
 /// - Children are inserted in reverse order of popping to maintain correct structure
-fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
+fn reorder(mut nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack of node vectors for processing
-    let mut stack: Vec<Vec<TableauNode<'a>>> = Vec::new();
-
+    let mut stack = vec![];
     nodes.reverse();
 
     // process nodes in reverse order (pop from end)
@@ -485,7 +487,7 @@ fn reorder<'a>(nodes: &mut Vec<TableauNode<'a>>) {
     // stack should contain exactly one element at the end
     assert!(stack.len() == 1);
 
-    *nodes = stack.into_iter().next().unwrap();
+    return stack.into_iter().next().unwrap();
 }
 
 /// Write forest nodes to LaTeX buffer using stack-based algorithm
