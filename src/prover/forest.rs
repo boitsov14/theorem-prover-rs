@@ -100,7 +100,7 @@ impl<'a> TableauNode<'a> {
 
 impl SidedFormula<'_> {
     /// Convert sided formula to tableau representation for display
-    fn to_tableau(self) -> Formula {
+    fn to_tableau_form(self) -> Formula {
         let fml = self.fml.clone();
         match self.side {
             Left => fml,
@@ -510,7 +510,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
                     buf,
                     "{:ind$}[{},idx={id}",
                     "",
-                    fml.to_tableau().display(names),
+                    fml.to_tableau_form().display(names),
                     ind = ind * 2
                 )
                 .unwrap();
@@ -519,7 +519,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
                     buf,
                     "{:ind$}[{},idx={id},from={from_id}",
                     "",
-                    fml.to_tableau().display(names),
+                    fml.to_tableau_form().display(names),
                     ind = ind * 2
                 )
                 .unwrap();
@@ -538,7 +538,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
                 buf,
                 "{:ind$}[{},idx={id},close]",
                 "",
-                fml.to_tableau().display(names),
+                fml.to_tableau_form().display(names),
                 ind = ind * 2
             )
             .unwrap();
@@ -547,7 +547,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
                 buf,
                 "{:ind$}[{},idx={id},from={from_id},close]",
                 "",
-                fml.to_tableau().display(names),
+                fml.to_tableau_form().display(names),
                 ind = ind * 2
             )
             .unwrap();
