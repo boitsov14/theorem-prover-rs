@@ -140,23 +140,23 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 /// Implementation for generating LaTeX proof trees.
 ///
 /// `ProofNode`:
-///
+/// ```text
 ///      1            1            1            1            1            1
 ///                  / \          / \          / \          / \          / \
 ///                 2   3        2   3        2   3        2   3        2   3
 ///                             / \          / \          / \ / \      / \ / \
 ///                            4   5        4   5        4  5 6  7    4  5 6  7
-///
+/// ```
 /// `nodes`:
-///
+/// ```text
 ///                               [4]
 ///                               [5]                       [6]
 ///                  [2]          [2]                       [7]
 ///                  [3]          [3]          [3]          [3]
 ///     [1]          [1]          [1]          [1]          [1]          ___
-///
+/// ```
 /// `new_nodes`:
-///
+/// ```text
 ///                                                                      [1]
 ///                                                                      [3]
 ///                                                                      [7]
@@ -164,7 +164,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 ///                                            [2]          [2]          [2]
 ///                                            [5]          [5]          [5]
 ///     ___          ___          ___          [4]          [4]          [4]
-///
+/// ```
 fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
@@ -483,6 +483,15 @@ fn check_buf_size(buf: &[u8]) {
 /// - Pop nodes from input vector in reverse order
 /// - Pop `children_cnt` elements from stack and combine with current node
 /// - Children are inserted in reverse order of popping to maintain correct structure
+///
+/// `ProofNode`:
+/// ```text
+///     1
+///    / \
+///   2   3
+///  / \ / \
+/// 4  5 6  7
+/// ```
 fn reorder(mut nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack of node vectors for processing
     let mut stack = vec![];
