@@ -84,7 +84,7 @@ impl<'a> PartialTableauNode<'a> {
         Self { id, fml, from_id }
     }
 
-    /// Convert `PartialTableauNode` to `TableauNode` with children count
+    /// Convert `PartialTableauNode` to `TableauNode` with children count.
     fn to_tableau_node(&self, children_cnt: usize) -> TableauNode<'a> {
         TableauNode::new(self.id, self.fml, self.from_id, children_cnt)
     }
@@ -102,7 +102,7 @@ impl<'a> TableauNode<'a> {
 }
 
 impl SidedFormula<'_> {
-    /// Convert formula to tableau representation for display
+    /// Convert formula to tableau representation for display.
     fn to_tableau_form(self) -> Formula {
         let fml = self.fml.clone();
         match self.side {
@@ -112,7 +112,7 @@ impl SidedFormula<'_> {
     }
 }
 
-/// Generates a LaTeX proof tree using the forest package
+/// Generates a LaTeX proof tree using the forest package.
 pub fn forest(seq: Sequent, names: &Names, out: &str) {
     let claim = &seq
         .display(names)
@@ -137,7 +137,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     file.write_all(proof.as_bytes()).unwrap();
 }
 
-/// Implementation for generating LaTeX proof trees
+/// Implementation for generating LaTeX proof trees.
 fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
@@ -169,23 +169,14 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     'main: loop {
         // write all proved nodes to forest_nodes
         flush_proved_nodes(&mut nodes, &mut new_nodes);
-        // get the last sequent for processing
-        let Some(node) = nodes.last() else {
+        // get the last sequent
+        let Some(ProofNode { seq, fml_to_id, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
             return new_nodes;
         };
-        // check if the children_cnt has been initialized
-        if node.children_cnt.get().is_some() {
-            // already processed, continue to next iteration
-            continue 'main;
-        }
-
-        let ProofNode {
-            mut seq,
-            mut fml_to_id,
-            ..
-        } = nodes.last().unwrap().clone();
-        // get the last formula for decomposition
+        let mut seq = seq.clone();
+        let mut fml_to_id = fml_to_id.clone();
+        // get the last formula
         let fml = seq.pop().unwrap();
         let from_formula = fml;
         let SidedFormula { fml, side } = fml;
@@ -415,6 +406,7 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
             break;
         };
         if node.proved_children_cnt < *children_cnt {
+            // TODO: 2025/08/29 ここって通る？？
             // if has unproved children, stop processing
             break;
         }
