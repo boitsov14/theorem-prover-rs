@@ -492,25 +492,42 @@ fn check_buf_size(buf: &[u8]) {
 ///  / \ / \
 /// 4  5 6  7
 /// ```
-fn reorder(mut nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
+/// `nodes`:
+/// ```text
+/// [4, 5, 2, 6, 7, 3, 1]
+/// ```
+/// processing:
+/// ```text
+/// stack: []
+/// stack: [[4]]
+/// stack: [[4], [5]]
+/// stack: [[2, 4, 5]]
+/// stack: [[2, 4, 5], [6]]
+/// stack: [[2, 4, 5], [6], [7]]
+/// stack: [[2, 4, 5], [3, 6, 7]]
+/// stack: [[1, 2, 4, 5, 3, 6, 7]]
+/// ```
+/// result:
+/// ```text
+/// [1, 2, 4, 5, 3, 6, 7]
+/// ```
+fn reorder(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack of node vectors for processing
     let mut stack = vec![];
 
-    nodes.reverse();
-
     // process nodes in reverse order (pop from end)
-    while let Some(node) = nodes.pop() {
+    for node in nodes {
         let children_cnt = node.children_cnt;
 
         // start with current node
-        let mut combined = vec![node];
+        let mut new_vec = vec![node];
 
         // drain last children_cnt elements from stack and extend
-        for child_vec in stack.drain(stack.len() - children_cnt..) {
-            combined.extend(child_vec);
+        for vec in stack.drain(stack.len() - children_cnt..) {
+            new_vec.extend(vec);
         }
 
-        stack.push(combined);
+        stack.push(new_vec);
     }
 
     // stack should contain exactly one element at the end
