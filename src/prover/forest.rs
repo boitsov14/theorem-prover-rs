@@ -114,7 +114,7 @@ impl SidedFormula<'_> {
 
 /// Generates a LaTeX proof tree using the forest package.
 pub fn forest(seq: Sequent, names: &Names, out: &str) {
-    let claim = &seq
+    let claim = seq
         .display(names)
         .to_string()
         .replace(r"&\vdash", r"\vdash")
@@ -131,7 +131,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
     // replace the placeholder with proof
     let proof = include_str!("../../templates/forest.tex")
-        .replace("%CLAIM%", claim)
+        .replace("%CLAIM%", claim.trim())
         .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
