@@ -122,13 +122,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
         };
         let mut seq = seq.clone();
         // get the last formula
-        let Some(SidedFormula { fml, side }) = seq.pop() else {
-            // if `seq` has no formula, it is impossible to prove
-            // this could happen: ex. `true ⊢`, `⊢ false` goes to `⊢`
-            // write all remaining nodes
-            flush_all_nodes(&mut nodes, names, buf);
-            return;
-        };
+        let SidedFormula { fml, side } = seq.pop().unwrap();
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`

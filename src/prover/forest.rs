@@ -212,7 +212,8 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
         let mut fml_to_id = fml_to_id.clone();
         // get the last formula
         let fml = seq.pop().unwrap();
-        let from_formula = fml;
+        // get the from_id
+        let from_id = fml_to_id[&fml];
         let SidedFormula { fml, side } = fml;
 
         match (fml, side) {
@@ -223,7 +224,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
                 fml_to_id.insert(p, id);
-                let from_id = fml_to_id[&from_formula];
                 let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
                 id += 1;
                 let is_trivial = seq.is_trivial(p);
@@ -241,7 +241,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             (And(l), Left) | (Or(l), Right) => {
                 children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
-                let from_id = fml_to_id[&from_formula];
                 let mut local_tableau_nodes = Vec::new();
                 for p in l {
                     let p = p.with_side(side);
@@ -276,7 +275,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 }
                 children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
-                let from_id = fml_to_id[&from_formula];
                 id += l.len();
                 for p in l.iter().rev() {
                     let mut fml_to_id_clone = fml_to_id.clone();
@@ -315,7 +313,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
-                let from_id = formula_map1[&from_formula];
                 formula_map1.insert(q, id + 1);
                 let local_tableau_nodes1 = vec![PartialTableauNode::new(id + 1, q, from_id)];
                 formula_map2.insert(p, id);
@@ -352,7 +349,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 id += 1;
                 fml_to_id.insert(q, id);
                 id += 1;
-                let from_id = fml_to_id[&from_formula];
                 let local_tableau_nodes = vec![
                     PartialTableauNode::new(id - 2, p, from_id),
                     PartialTableauNode::new(id - 1, q, from_id),
@@ -381,7 +377,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 };
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
-                let from_id = formula_map1[&from_formula];
                 formula_map1.insert(fml11, id + 2);
                 formula_map1.insert(fml12, id + 3);
                 let local_tableau_nodes1 = vec![
