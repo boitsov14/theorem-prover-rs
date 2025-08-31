@@ -132,12 +132,12 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let seq = seq.into_node(nodes.len() - 1);
+                let node = seq.into_node(nodes.len() - 1);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
-                    seq.tactic.set(Tactic::Axiom).unwrap();
+                    node.tactic.set(Tactic::Axiom).unwrap();
                 }
-                nodes.push(seq);
+                nodes.push(node);
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`

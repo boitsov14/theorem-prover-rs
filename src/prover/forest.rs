@@ -215,26 +215,24 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
         // get the from_id
         let from_id = fml_to_id[&fml];
         let SidedFormula { fml, side } = fml;
-
         match (fml, side) {
             // convert `¬p ⊢` to `⊢ p`
             // convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
-                // set children_cnt for the last ProofNode
+                // set children_cnt
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
-                fml_to_id.insert(p, id);
-                let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
-                id += 1;
                 let is_trivial = seq.is_trivial(p);
-
                 seq.push(p);
-                let new_node = ProofNode::new(seq, nodes.len() - 1, fml_to_id, local_tableau_nodes);
+                fml_to_id.insert(p, id);
+                id += 1;
+                let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
+                let node = ProofNode::new(seq, nodes.len() - 1, fml_to_id, local_tableau_nodes);
                 if is_trivial {
-                    // set children_cnt to 0 for trivial case
-                    new_node.children_cnt.set(0).unwrap();
+                    // if trivial, set children_cnt to 0
+                    node.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node);
+                nodes.push(node);
             }
             // convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
