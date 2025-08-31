@@ -531,9 +531,9 @@ fn reorder(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     }
 
     // stack should contain exactly one element at the end
-    assert!(stack.len() == 1);
+    assert_eq!(stack.len(), 1);
 
-    stack.into_iter().next().unwrap()
+    stack.pop().unwrap()
 }
 
 /// Write forest nodes to LaTeX buffer using stack-based algorithm
