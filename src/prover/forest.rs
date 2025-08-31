@@ -169,9 +169,10 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
     let mut fml_to_id = FxHashMap::default();
-    let mut local_tableau_nodes = Vec::new();
+    let mut local_tableau_nodes = vec![];
     let mut new_nodes = vec![];
 
+    // setup initial `local_tableau_nodes`
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
         local_tableau_nodes.push(PartialTableauNode::new(id, *p, 0));
@@ -181,7 +182,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
-        // create individual forest nodes for each formula
+        // convert local tableau nodes to tableau nodes
         while let Some(node) = local_tableau_nodes.pop() {
             // if not empty, current node has one child, otherwise no children
             let children_cnt = usize::from(!local_tableau_nodes.is_empty());
@@ -194,10 +195,16 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, local_tableau_nodes)];
 
     'main: loop {
-        // write all proved nodes to forest_nodes
+        // write all proved nodes to tableau nodes
         flush_proved_nodes(&mut nodes, &mut new_nodes);
         // get the last sequent
-        let Some(ProofNode { seq, fml_to_id, .. }) = nodes.last() else {
+        let Some(ProofNode {
+            seq,
+            fml_to_id,
+            children_cnt,
+            ..
+        }) = nodes.last()
+        else {
             // if no sequent to be proved, completed the proof
             return new_nodes;
         };
@@ -213,7 +220,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
                 // set children_cnt for the last ProofNode
-                nodes.last().unwrap().children_cnt.set(1).unwrap();
+                children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
                 fml_to_id.insert(p, id);
                 let from_id = fml_to_id[&from_formula];
@@ -232,7 +239,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
-                nodes.last().unwrap().children_cnt.set(1).unwrap();
+                children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
                 let from_id = fml_to_id[&from_formula];
                 let mut local_tableau_nodes = Vec::new();
@@ -267,7 +274,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
-                nodes.last().unwrap().children_cnt.set(l.len()).unwrap();
+                children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
                 let from_id = fml_to_id[&from_formula];
                 id += l.len();
@@ -304,7 +311,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
-                nodes.last().unwrap().children_cnt.set(2).unwrap();
+                children_cnt.set(2).unwrap();
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
@@ -338,7 +345,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             }
             // convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
-                nodes.last().unwrap().children_cnt.set(1).unwrap();
+                children_cnt.set(1).unwrap();
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
                 fml_to_id.insert(p, id);
@@ -363,7 +370,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
-                nodes.last().unwrap().children_cnt.set(2).unwrap();
+                children_cnt.set(2).unwrap();
                 let p_l = p.with_side(Left);
                 let p_r = p.with_side(Right);
                 let q_l = q.with_side(Left);
@@ -422,21 +429,19 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     }
 }
 
-/// Writes all proved nodes to the LaTeX buffer.
-/// - Processes only when all their children are proved
-/// - Automatically increments parent nodes' count of proved children
-fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec<TableauNode<'a>>) {
+/// Flushes proved nodes to tableau nodes.
+fn flush_proved_nodes<'a>(
+    nodes: &mut Vec<ProofNode<'a>>,
+    tableau_nodes: &mut Vec<TableauNode<'a>>,
+) {
     while let Some(node) = nodes.last() {
-        // check if the children_cnt has been set
+        // check if the `children_cnt` has been set
         let Some(children_cnt) = node.children_cnt.get() else {
             // not processed yet
             break;
         };
-        if node.proved_children_cnt < *children_cnt {
-            // TODO: 2025/08/29 ここって通る？？
-            // if has unproved children, stop processing
-            break;
-        }
+        // all children should be proved
+        assert_eq!(*children_cnt, node.proved_children_cnt);
         let children_cnt = *children_cnt;
 
         if let Some(parent_idx) = node.parent_idx {
@@ -445,27 +450,14 @@ fn flush_proved_nodes<'a>(nodes: &mut Vec<ProofNode<'a>>, forest_nodes: &mut Vec
             nodes[parent_idx].proved_children_cnt += 1;
         }
 
-        // remove the completed node and use it directly
-        let mut completed_node = nodes.pop().unwrap();
+        let mut node = nodes.pop().unwrap();
 
-        // convert all PartialTableauNode to TableauNode and add to forest_nodes
-        // The last added tableau node gets the children_cnt value, others get 1
-        while let Some(partial_tableau_node) = completed_node.local_tableau_nodes.pop() {
-            let current_children_cnt = if completed_node.local_tableau_nodes.is_empty() {
-                // This is the last node (which was added first)
-                children_cnt
-            } else {
-                // Other nodes get 1
-                1
-            };
+        // convert local tableau nodes to tableau nodes
+        let local_tableau_node = node.local_tableau_nodes.pop().unwrap();
+        tableau_nodes.push(local_tableau_node.to_tableau_node(children_cnt));
 
-            let tableau_node = TableauNode::new(
-                partial_tableau_node.id,
-                partial_tableau_node.fml,
-                partial_tableau_node.from_id,
-                current_children_cnt,
-            );
-            forest_nodes.push(tableau_node);
+        while let Some(local_tableau_node) = node.local_tableau_nodes.pop() {
+            tableau_nodes.push(local_tableau_node.to_tableau_node(1));
         }
     }
 }
@@ -535,7 +527,7 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
 /// - Stack tracks remaining children count for each node
 /// - Indent management for proper LaTeX formatting
 /// - Automatic closing of brackets when children count reaches zero
-fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8>) {
+fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8>) {
     // stack of remaining children count
     let mut stack = vec![];
     // current indentation level
@@ -546,7 +538,7 @@ fn write_latex(forest_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8
         fml,
         from_id,
         children_cnt,
-    } in forest_nodes
+    } in tableau_nodes
     {
         check_buf_size(buf);
         if *children_cnt != 0 {
