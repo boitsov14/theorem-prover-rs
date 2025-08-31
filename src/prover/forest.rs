@@ -124,7 +124,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     // generate the proof tree
     let nodes = forest_impl(seq);
     // reorder forest nodes using stack-based algorithm
-    let nodes = reorder(nodes);
+    let nodes = mirror_tree(nodes);
     // Write the proof tree content
     write_latex(&nodes, names, &mut buf);
     // create output LaTeX file
@@ -479,10 +479,7 @@ fn check_buf_size(buf: &[u8]) {
     }
 }
 
-/// Reorder forest nodes using stack-based algorithm similar to reverse Polish notation
-/// - Pop nodes from input vector in reverse order
-/// - Pop `children_cnt` elements from stack and combine with current node
-/// - Children are inserted in reverse order of popping to maintain correct structure
+/// Mirror tableau nodes using stack-based algorithm similar to reverse Polish notation
 ///
 /// `ProofNode`:
 /// ```text
@@ -491,13 +488,11 @@ fn check_buf_size(buf: &[u8]) {
 ///   2   3
 ///  / \ / \
 /// 4  5 6  7
-/// ```
-/// `nodes`:
-/// ```text
+///
+/// input:
 /// [4, 5, 2, 6, 7, 3, 1]
-/// ```
+///
 /// processing:
-/// ```text
 /// stack: []
 /// stack: [[4]]
 /// stack: [[4], [5]]
@@ -506,12 +501,11 @@ fn check_buf_size(buf: &[u8]) {
 /// stack: [[2, 4, 5], [6], [7]]
 /// stack: [[2, 4, 5], [3, 6, 7]]
 /// stack: [[1, 2, 4, 5, 3, 6, 7]]
-/// ```
+///
 /// result:
-/// ```text
 /// [1, 2, 4, 5, 3, 6, 7]
 /// ```
-fn reorder(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
+fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     // stack of node vectors for processing
     let mut stack = vec![];
 
