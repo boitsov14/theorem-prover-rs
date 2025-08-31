@@ -506,25 +506,26 @@ fn check_buf_size(buf: &[u8]) {
 /// [1, 2, 4, 5, 3, 6, 7]
 /// ```
 fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
-    // stack of node vectors for processing
+    // stack of node vectors
+    // each vector represents a subtree
     let mut stack = vec![];
 
-    // process nodes in reverse order (pop from end)
     for node in nodes {
         let children_cnt = node.children_cnt;
 
-        // start with current node
+        // create new subtree starting with current node as root
         let mut new_vec = vec![node];
 
-        // drain last children_cnt elements from stack and extend
+        // drain last `children_cnt` subtrees from stack and combine with current node
         for vec in stack.drain(stack.len() - children_cnt..) {
             new_vec.extend(vec);
         }
 
+        // push the new combined subtree back to stack
         stack.push(new_vec);
     }
 
-    // stack should contain exactly one element at the end
+    // stack should contain exactly one subtree
     assert_eq!(stack.len(), 1);
 
     stack.pop().unwrap()
