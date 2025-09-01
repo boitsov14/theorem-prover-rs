@@ -155,7 +155,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 ///                  [3]          [3]          [3]          [3]
 ///     [1]          [1]          [1]          [1]          [1]          ___
 /// ```
-/// `new_nodes`:
+/// `tableau_nodes`:
 /// ```text
 ///                                                                      [1]
 ///                                                                      [3]
@@ -170,7 +170,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     let mut id = 1;
     let mut fml_to_id = FxHashMap::default();
     let mut local_tableau_nodes = vec![];
-    let mut new_nodes = vec![];
+    let mut tableau_nodes = vec![];
 
     // setup initial `local_tableau_nodes`
     for p in seq.iter() {
@@ -187,16 +187,16 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // if not empty, current node has one child, otherwise no children
             let children_cnt = usize::from(!local_tableau_nodes.is_empty());
             let node = node.to_tableau_node(children_cnt);
-            new_nodes.push(node);
+            tableau_nodes.push(node);
         }
-        return new_nodes;
+        return tableau_nodes;
     }
 
     let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, local_tableau_nodes)];
 
     'main: loop {
         // write all proved nodes to tableau nodes
-        flush_proved_nodes(&mut nodes, &mut new_nodes);
+        flush_proved_nodes(&mut nodes, &mut tableau_nodes);
         // get the last sequent
         let Some(ProofNode {
             seq,
@@ -206,7 +206,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
         }) = nodes.last()
         else {
             // if no sequent to be proved, completed the proof
-            return new_nodes;
+            return tableau_nodes;
         };
         let mut seq = seq.clone();
         let mut fml_to_id = fml_to_id.clone();
