@@ -545,14 +545,11 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     stack.pop().unwrap()
 }
 
-/// Write forest nodes to LaTeX buffer using stack-based algorithm
-/// - Stack tracks remaining children count for each node
-/// - Indent management for proper LaTeX formatting
-/// - Automatic closing of brackets when children count reaches zero
+/// Write tableau nodes to LaTeX buffer using stack-based algorithm
 fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u8>) {
-    // stack of remaining children count
+    // stack of remaining children count of each parent node
     let mut stack = vec![];
-    // current indentation level
+    // current indentation
     let mut ind = 1;
 
     for TableauNode {
@@ -565,8 +562,8 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
         check_buf_size(buf);
         if *children_cnt != 0 {
             // internal node - write opening bracket
-            check_buf_size(buf);
             if *from_id == 0 {
+                // root node
                 writeln!(
                     buf,
                     "{:ind$}[{},idx={id}",
@@ -576,6 +573,7 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
                 )
                 .unwrap();
             } else {
+                // child node
                 writeln!(
                     buf,
                     "{:ind$}[{},idx={id},from={from_id}",
@@ -586,7 +584,7 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
                 .unwrap();
             }
 
-            // increment indentation for children
+            // increment indentation
             ind += 1;
             // push current node's children count to stack
             stack.push(*children_cnt);
@@ -595,6 +593,7 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
 
         // leaf node - write with close attribute
         if *from_id == 0 {
+            // root node
             writeln!(
                 buf,
                 "{:ind$}[{},idx={id},close]",
@@ -604,6 +603,7 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
             )
             .unwrap();
         } else {
+            // child node
             writeln!(
                 buf,
                 "{:ind$}[{},idx={id},from={from_id},close]",
@@ -619,24 +619,22 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
 
         // process completed nodes on stack
         while let Some(&children_cnt) = stack.last() {
-            if children_cnt == 0 {
-                // node completed - pop from stack and close bracket
-                stack.pop();
-                ind -= 1;
-                check_buf_size(buf);
-                writeln!(buf, "{:ind$}]", "", ind = ind * 2).unwrap();
-
-                // decrement parent's children count if exists
-                if let Some(parent_children) = stack.last_mut() {
-                    *parent_children -= 1;
-                }
-            } else {
-                // node still has remaining children
+            if children_cnt != 0 {
+                // parent still has remaining children
                 break;
+            }
+            // all children processed
+            // pop parent from stack and close bracket
+            stack.pop();
+            ind -= 1;
+            writeln!(buf, "{:ind$}]", "", ind = ind * 2).unwrap();
+            // decrement parent's children count if exists
+            if let Some(parent_children) = stack.last_mut() {
+                *parent_children -= 1;
             }
         }
     }
 
-    // stack should be empty at the end
+    // stack should be empty
     assert!(stack.is_empty());
 }
