@@ -423,6 +423,35 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
 }
 
 /// Flushes proved nodes to tableau nodes.
+///
+/// `ProofNode`:
+/// ```text
+///     1
+///    / \
+///   2   3
+///  / \ / \
+/// 4  5 6  7
+/// ```
+/// `nodes`:
+/// ```text
+///  [4]
+/// [5-3]  [5-3]
+/// [5-2]  [5-2]
+/// [5-1]  [5-1]
+/// [2-2]  [2-2]  [2-2]
+/// [2-1]  [2-1]  [2-1]
+///  [3]    [3]    [3]    [3]
+///  [1]    [1]    [1]    [1]
+/// ```
+/// `tableau_nodes`:
+/// ```text
+///                      [2-1]
+///                      [2-2]
+///               [5-1]  [5-1]
+///               [5-2]  [5-2]
+///               [5-3]  [5-3]
+///  ___    [4]    [4]    [4]
+/// ```
 fn flush_proved_nodes<'a>(
     nodes: &mut Vec<ProofNode<'a>>,
     tableau_nodes: &mut Vec<TableauNode<'a>>,
