@@ -279,14 +279,15 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 // set children count
                 children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
-                id += l.len();
-                for p in l.iter().rev() {
+                // temp nodes
+                let mut temp_nodes = Vec::with_capacity(l.len());
+                for p in l {
                     let p = p.with_side(side);
                     // setup formula-to-id mapping
                     let mut fml_to_id = fml_to_id.clone();
-                    id -= 1;
                     fml_to_id.insert(p, id);
                     let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
+                    id += 1;
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
@@ -295,9 +296,9 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                         // if trivial, set children_cnt to 0
                         node.children_cnt.set(0).unwrap();
                     }
-                    nodes.push(node);
+                    temp_nodes.push(node);
                 }
-                id += l.len();
+                nodes.extend(temp_nodes.into_iter().rev());
             }
             // convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
