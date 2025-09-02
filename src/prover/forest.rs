@@ -417,12 +417,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 nodes.push(node2);
                 nodes.push(node1);
             }
-            (Pred(..), _) => {
-                // since formulas in 'seq' are ordered,
-                // if `fml` is predicate, no formulas can be processed
-                // thus, it is impossible to prove
-                unreachable!()
-            }
+            (Pred(..), _) => unreachable!(),
             (Ex(..) | All(..), _) => unimplemented!(),
         }
     }

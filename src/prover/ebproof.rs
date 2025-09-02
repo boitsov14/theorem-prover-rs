@@ -297,14 +297,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 nodes.push(node2);
                 nodes.push(node1);
             }
-            (Pred(..), _) => {
-                // since formulas in 'seq' are ordered,
-                // if `fml` is predicate, no formulas can be processed
-                // thus, it is impossible to prove
-                // write all remaining nodes
-                flush_all_nodes(&mut nodes, names, buf);
-                return;
-            }
+            (Pred(..), _) => unreachable!(),
             (Ex(..) | All(..), _) => unimplemented!(),
         }
     }

@@ -199,10 +199,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     seqs.push(seq1);
                 }
             }
-            // since formulas in 'seq' are ordered,
-            // if `fml` is predicate, no formulas can be processed
-            // thus, it is impossible to prove
-            (Pred(..), _) => return false,
+            (Pred(..), _) => unreachable!(),
             (Ex(..) | All(..), _) => unimplemented!(),
         }
     }
