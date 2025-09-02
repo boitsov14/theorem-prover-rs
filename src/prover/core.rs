@@ -135,11 +135,13 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     seq.push(p);
                 } else {
                     // both are yet to be proved
-                    let mut seq2 = seq.clone();
-                    seq.push(q);
-                    seq2.push(p);
-                    // `seq` is the reference to the last element, so don't need to push
-                    seqs.push(seq2);
+                    // we need to process `seq1` first, so `seq1` must come AFTER `seq2` in `seqs` stack
+                    // `seq2` is the reference to the last element, so don't need to push `seq2`
+                    let mut seq1 = seq.clone();
+                    let seq2 = seq;
+                    seq1.push(p);
+                    seq2.push(q);
+                    seqs.push(seq1);
                 }
             }
             // Convert `⊢ p → q` to `p ⊢ q`
@@ -163,35 +165,38 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                 let q_l = q.with_side(Left);
                 let q_r = q.with_side(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
-                    Left => (p_r, q_r, p_l, q_l),
-                    Right => (q_l, p_r, p_l, q_r),
+                    Left => (p_l, q_l, p_r, q_r),
+                    Right => (p_l, q_r, q_l, p_r),
                 };
-                let fml1_is_trivial = seq.is_trivial2(fml11, fml12);
-                let fml2_is_trivial = seq.is_trivial2(fml21, fml22);
-                if fml1_is_trivial && fml2_is_trivial {
+                let is_trivial1 = seq.is_trivial2(fml11, fml12);
+                let is_trivial2 = seq.is_trivial2(fml21, fml22);
+                if is_trivial1 && is_trivial2 {
                     // both are trivial
                     trace!("Trivial");
                     trace!("Trivial");
                     // drop seq
                     seqs.pop().unwrap();
-                } else if fml1_is_trivial {
+                } else if is_trivial1 {
                     trace!("Trivial");
                     // the second is yet to be proved
                     seq.push(fml21);
                     seq.push(fml22);
-                } else if fml2_is_trivial {
+                } else if is_trivial2 {
                     trace!("Trivial");
                     // the first is yet to be proved
                     seq.push(fml11);
                     seq.push(fml12);
                 } else {
                     // both are yet to be proved
-                    let mut seq2 = seq.clone();
-                    seq.push(fml11);
-                    seq.push(fml12);
+                    // we need to process `seq1` first, so `seq1` must come AFTER `seq2` in `seqs` stack
+                    // `seq2` is the reference to the last element, so don't need to push `seq2`
+                    let mut seq1 = seq.clone();
+                    let seq2 = seq;
+                    seq1.push(fml11);
+                    seq1.push(fml12);
                     seq2.push(fml21);
                     seq2.push(fml22);
-                    seqs.push(seq2);
+                    seqs.push(seq1);
                 }
             }
             // since formulas in 'seq' are ordered,
