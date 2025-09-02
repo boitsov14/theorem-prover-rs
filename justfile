@@ -88,7 +88,7 @@ cross-build:
 
 # Latex build
 tex FILE:
-    rm tex/*
+    -rm tex/*
     cp {{ FILE }}.tex tex/out.tex
     pdflatex -halt-on-error -interaction=nonstopmode -output-directory tex tex/out.tex
 
@@ -103,8 +103,13 @@ cov:
 # Insta test
 # cargo insta accept: Accept all snapshots
 # cargo insta test --test-runner nextest: no review
+# INSTA_UPDATE=unseen: if new, create .snap. if present, create .snap.new
+# --unreferenced=warn: warn if there are unused snapshots left
+# -- test_latex_snapshot::_props_expects: specify which snapshot to test
+# --review: cargo insta test + cargo insta review
+# find . -name "*.snap.new" -delete: delete .new files
 insta:
-    INSTA_UPDATE=unseen cargo insta test --test-runner nextest --review --unreferenced=reject -- test_latex_snapshot
+    INSTA_UPDATE=unseen cargo insta test --test-runner nextest --unreferenced=warn
 
 # Build all snapshots to PNG images
 tex-insta:
