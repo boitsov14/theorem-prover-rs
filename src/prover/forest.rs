@@ -225,8 +225,8 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 seq.push(p);
                 // setup formula-to-id mapping
                 fml_to_id.insert(p, id);
-                id += 1;
                 let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
+                id += 1;
                 let parent_idx = nodes.len() - 1;
                 let node = ProofNode::new(seq, parent_idx, fml_to_id, local_tableau_nodes);
                 if is_trivial {
