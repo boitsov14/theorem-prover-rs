@@ -172,6 +172,9 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     let mut local_tableau_nodes = vec![];
     let mut tableau_nodes = vec![];
 
+    // check if the sequent is initially trivial
+    let is_initially_trivial = seq.is_initially_trivial();
+
     // setup initial `local_tableau_nodes`
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
@@ -179,20 +182,16 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
         id += 1;
     }
 
-    if seq.is_initially_trivial() {
+    let root = ProofNode::new_root(seq, fml_to_id, local_tableau_nodes);
+
+    if is_initially_trivial {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
-        // convert local tableau nodes to tableau nodes
-        while let Some(node) = local_tableau_nodes.pop() {
-            // if not empty, current node has one child, otherwise no children
-            let children_cnt = usize::from(!local_tableau_nodes.is_empty());
-            let node = node.to_tableau_node(children_cnt);
-            tableau_nodes.push(node);
-        }
-        return tableau_nodes;
+        // set children_cnt to 0
+        root.children_cnt.set(0).unwrap();
     }
 
-    let mut nodes = vec![ProofNode::new_root(seq, fml_to_id, local_tableau_nodes)];
+    let mut nodes = vec![root];
 
     'main: loop {
         // write all proved nodes to tableau nodes
