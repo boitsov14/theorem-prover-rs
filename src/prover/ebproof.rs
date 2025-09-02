@@ -144,7 +144,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
                 // set the tactic
-                let initial_tactic = match side {
+                let tactic_to_apply = match side {
                     Left => Tactic::And {
                         side,
                         children_cnt: 1,
@@ -154,7 +154,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                         children_cnt: 1,
                     },
                 };
-                tactic.set(initial_tactic).unwrap();
+                tactic.set(tactic_to_apply).unwrap();
                 let mut is_trivial = false;
                 for p in l {
                     let p = p.with_side(side);
@@ -164,12 +164,12 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                     seq.push(p);
                 }
                 let parent_idx = nodes.len() - 1;
-                let seq = seq.into_node(parent_idx);
+                let node = seq.into_node(parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
-                    seq.tactic.set(Tactic::Axiom).unwrap();
+                    node.tactic.set(Tactic::Axiom).unwrap();
                 }
-                nodes.push(seq);
+                nodes.push(node);
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
@@ -187,7 +187,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 }
                 // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
-                let initial_tactic = match side {
+                let tactic_to_apply = match side {
                     Right => Tactic::And {
                         side,
                         children_cnt: l.len(),
@@ -197,7 +197,7 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                         children_cnt: l.len(),
                     },
                 };
-                tactic.set(initial_tactic).unwrap();
+                tactic.set(tactic_to_apply).unwrap();
                 let parent_idx = nodes.len() - 1;
                 for p in l.iter().rev() {
                     let p = p.with_side(side);

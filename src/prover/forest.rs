@@ -238,13 +238,16 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
             (And(l), Left) | (Or(l), Right) => {
+                // set children_cnt to 1
                 children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
-                let mut local_tableau_nodes = Vec::new();
+                let mut local_tableau_nodes = vec![];
                 for p in l {
                     let p = p.with_side(side);
+                    // setup formula-to-id mapping
                     fml_to_id.insert(p, id);
-                    local_tableau_nodes.push(PartialTableauNode::new(id, p, from_id));
+                    let local_tableau_node = PartialTableauNode::new(id, p, from_id);
+                    local_tableau_nodes.push(local_tableau_node);
                     id += 1;
                     if seq.is_trivial(p) {
                         is_trivial = true;
@@ -252,11 +255,12 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                     seq.push(p);
                 }
                 let parent_idx = nodes.len() - 1;
-                let new_node = ProofNode::new(seq, parent_idx, fml_to_id, local_tableau_nodes);
+                let node = ProofNode::new(seq, parent_idx, fml_to_id, local_tableau_nodes);
                 if is_trivial {
-                    new_node.children_cnt.set(0).unwrap();
+                    // if trivial, set children_cnt to 0
+                    node.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node);
+                nodes.push(node);
             }
             // convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
