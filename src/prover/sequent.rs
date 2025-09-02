@@ -57,7 +57,7 @@ impl Side {
 
 impl Formula {
     #[inline(always)]
-    pub fn with_side(&self, side: Side) -> SidedFormula {
+    pub fn with_side(&'_ self, side: Side) -> SidedFormula<'_> {
         SidedFormula { fml: self, side }
     }
 }
