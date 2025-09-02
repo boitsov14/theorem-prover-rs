@@ -271,11 +271,11 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let q_l = q.with_side(Left);
                 let q_r = q.with_side(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
-                    Left => (p_r, q_r, p_l, q_l),
-                    Right => (q_l, p_r, p_l, q_r),
+                    Left => (p_l, q_l, p_r, q_r),
+                    Right => (p_l, q_r, q_l, p_r),
                 };
-                let is_trivial_1 = seq.is_trivial2(fml11, fml12);
-                let is_trivial_2 = seq.is_trivial2(fml21, fml22);
+                let is_trivial1 = seq.is_trivial2(fml11, fml12);
+                let is_trivial2 = seq.is_trivial2(fml21, fml22);
                 let mut seq1 = seq.clone();
                 let mut seq2 = seq;
                 seq1.push(fml11);
@@ -283,18 +283,19 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.into_node(parent_idx);
-                let seq2 = seq2.into_node(parent_idx);
-                if is_trivial_1 {
+                let node1 = seq1.into_node(parent_idx);
+                let node2 = seq2.into_node(parent_idx);
+                if is_trivial1 {
                     // if trivial, set the Axiom tactic
-                    seq1.tactic.set(Tactic::Axiom).unwrap();
+                    node1.tactic.set(Tactic::Axiom).unwrap();
                 }
-                if is_trivial_2 {
+                if is_trivial2 {
                     // if trivial, set the Axiom tactic
-                    seq2.tactic.set(Tactic::Axiom).unwrap();
+                    node2.tactic.set(Tactic::Axiom).unwrap();
                 }
-                nodes.push(seq1);
-                nodes.push(seq2);
+                // we need to process `node1` first, so push `node1` later
+                nodes.push(node2);
+                nodes.push(node1);
             }
             (Pred(..), _) => {
                 // since formulas in 'seq' are ordered,

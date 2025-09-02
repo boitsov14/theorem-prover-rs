@@ -367,33 +367,35 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
+                // setup children count to 2
                 children_cnt.set(2).unwrap();
                 let p_l = p.with_side(Left);
                 let p_r = p.with_side(Right);
                 let q_l = q.with_side(Left);
                 let q_r = q.with_side(Right);
                 let (fml11, fml12, fml21, fml22) = match side {
-                    Left => (p_r, q_r, p_l, q_l),
-                    Right => (q_l, p_r, p_l, q_r),
+                    Left => (p_l, q_l, p_r, q_r),
+                    Right => (p_l, q_r, q_l, p_r),
                 };
-                let mut formula_map1 = fml_to_id.clone();
-                let mut formula_map2 = fml_to_id;
-                formula_map1.insert(fml11, id + 2);
-                formula_map1.insert(fml12, id + 3);
-                let local_tableau_nodes1 = vec![
-                    PartialTableauNode::new(id + 2, fml11, from_id),
-                    PartialTableauNode::new(id + 3, fml12, from_id),
-                ];
-                formula_map2.insert(fml21, id);
-                formula_map2.insert(fml22, id + 1);
-                let local_tableau_nodes2 = vec![
-                    PartialTableauNode::new(id, fml21, from_id),
-                    PartialTableauNode::new(id + 1, fml22, from_id),
-                ];
-                id += 4;
-                let is_trivial_1 = seq.is_trivial2(fml11, fml12);
-                let is_trivial_2 = seq.is_trivial2(fml21, fml22);
-
+                // setup formula-to-id mappings
+                let mut fml_to_id1 = fml_to_id.clone();
+                let mut fml_to_id2 = fml_to_id;
+                fml_to_id1.insert(fml11, id);
+                let local_tableau_node11 = PartialTableauNode::new(id, fml11, from_id);
+                id += 1;
+                fml_to_id1.insert(fml12, id);
+                let local_tableau_node12 = PartialTableauNode::new(id, fml12, from_id);
+                id += 1;
+                let local_tableau_nodes1 = vec![local_tableau_node11, local_tableau_node12];
+                fml_to_id2.insert(fml21, id);
+                let local_tableau_node21 = PartialTableauNode::new(id, fml21, from_id);
+                id += 1;
+                fml_to_id2.insert(fml22, id);
+                let local_tableau_node22 = PartialTableauNode::new(id, fml22, from_id);
+                id += 1;
+                let local_tableau_nodes2 = vec![local_tableau_node21, local_tableau_node22];
+                let is_trivial1 = seq.is_trivial2(fml11, fml12);
+                let is_trivial2 = seq.is_trivial2(fml21, fml22);
                 let mut seq1 = seq.clone();
                 let mut seq2 = seq;
                 seq1.push(fml11);
@@ -401,18 +403,19 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let new_node1 =
-                    ProofNode::new(seq1, parent_idx, formula_map1, local_tableau_nodes1);
-                let new_node2 =
-                    ProofNode::new(seq2, parent_idx, formula_map2, local_tableau_nodes2);
-                if is_trivial_1 {
-                    new_node1.children_cnt.set(0).unwrap();
+                let node1 = ProofNode::new(seq1, parent_idx, fml_to_id1, local_tableau_nodes1);
+                let node2 = ProofNode::new(seq2, parent_idx, fml_to_id2, local_tableau_nodes2);
+                if is_trivial1 {
+                    // if trivial, set children count to 0
+                    node1.children_cnt.set(0).unwrap();
                 }
-                if is_trivial_2 {
-                    new_node2.children_cnt.set(0).unwrap();
+                if is_trivial2 {
+                    // if trivial, set children count to 0
+                    node2.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node2);
-                nodes.push(new_node1);
+                // we need to process `node1` first, so push `node1` later
+                nodes.push(node2);
+                nodes.push(node1);
             }
             (Pred(..), _) => {
                 // since formulas in 'seq' are ordered,
