@@ -212,36 +212,39 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
+                // `q ⊢`
                 let q = q.with_side(Left);
+                // check if `fml` is redundant
                 if q.is_atom() && seq.contains_atom(&q) {
-                    // when `fml` is redundant
                     // ex. `p → q, q ⊢`
-                    // drop `fml` and continue to the next sequent
+                    // drop this `fml` and continue to the next sequent
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
                 // set the tactic
                 tactic.set(Tactic::To { side }).unwrap();
+                // `p ⊢`
                 let p = p.with_side(Right);
-                let is_trivial_q = seq.is_trivial(q);
                 let is_trivial_p = seq.is_trivial(p);
+                let is_trivial_q = seq.is_trivial(q);
                 let mut seq1 = seq.clone();
                 let mut seq2 = seq;
-                seq1.push(q);
-                seq2.push(p);
+                seq1.push(p);
+                seq2.push(q);
                 let parent_idx = nodes.len() - 1;
-                let seq1 = seq1.into_node(parent_idx);
-                let seq2 = seq2.into_node(parent_idx);
-                if is_trivial_q {
-                    // if trivial, set the Axiom tactic
-                    seq1.tactic.set(Tactic::Axiom).unwrap();
-                }
+                let node1 = seq1.into_node(parent_idx);
+                let node2 = seq2.into_node(parent_idx);
                 if is_trivial_p {
                     // if trivial, set the Axiom tactic
-                    seq2.tactic.set(Tactic::Axiom).unwrap();
+                    node1.tactic.set(Tactic::Axiom).unwrap();
                 }
-                nodes.push(seq1);
-                nodes.push(seq2);
+                if is_trivial_q {
+                    // if trivial, set the Axiom tactic
+                    node2.tactic.set(Tactic::Axiom).unwrap();
+                }
+                // we need to process `node1` first, so push `node1` later
+                nodes.push(node2);
+                nodes.push(node1);
             }
             // Convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {

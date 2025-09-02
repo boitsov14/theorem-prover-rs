@@ -109,6 +109,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
+                // `q ⊢`
                 let q = q.with_side(Left);
                 if q.is_atom() && seq.contains_atom(&q) {
                     trace!("The formula is redundant.");
@@ -116,20 +117,21 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
                     // `fml` is already popped out, so nothing to do.
                     continue 'main;
                 }
+                // `p ⊢`
                 let p = p.with_side(Right);
-                let p_is_trivial = seq.is_trivial(p);
-                let q_is_trivial = seq.is_trivial(q);
-                if p_is_trivial && q_is_trivial {
+                let is_trivial_p = seq.is_trivial(p);
+                let is_trivial_q = seq.is_trivial(q);
+                if is_trivial_p && is_trivial_q {
                     // both are trivial
                     trace!("Trivial");
                     trace!("Trivial");
                     // drop seq
                     seqs.pop().unwrap();
-                } else if p_is_trivial {
+                } else if is_trivial_p {
                     trace!("Trivial");
                     // q is yet to be proved
                     seq.push(q);
-                } else if q_is_trivial {
+                } else if is_trivial_q {
                     trace!("Trivial");
                     // p is yet to be proved
                     seq.push(p);

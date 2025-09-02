@@ -218,7 +218,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `¬p ⊢` to `⊢ p`
             // convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
-                // set children_cnt
+                // set children_cnt to 1
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
@@ -297,44 +297,48 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             }
             // convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
+                // `q ⊢`
                 let q = q.with_side(Left);
+                // check if `fml` is redundant
                 if q.is_atom() && seq.contains_atom(&q) {
-                    // when `fml` is redundant
                     // ex. `p → q, q ⊢`
-                    // drop `fml` and continue to the next sequent
+                    // drop this `fml` and continue to the next sequent
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
+                // set children count to 2
                 children_cnt.set(2).unwrap();
+                // `p ⊢`
                 let p = p.with_side(Right);
-                let mut formula_map1 = fml_to_id.clone();
-                let mut formula_map2 = fml_to_id;
-                formula_map1.insert(p, id);
+                // setup each fml-to-id mappings
+                let mut fml_to_id1 = fml_to_id.clone();
+                let mut fml_to_id2 = fml_to_id;
+                fml_to_id1.insert(p, id);
                 let local_tableau_nodes1 = vec![PartialTableauNode::new(id, p, from_id)];
-                formula_map2.insert(q, id + 1);
-                let local_tableau_nodes2 = vec![PartialTableauNode::new(id + 1, q, from_id)];
-                id += 2;
+                id += 1;
+                fml_to_id2.insert(q, id);
+                let local_tableau_nodes2 = vec![PartialTableauNode::new(id, q, from_id)];
+                id += 1;
                 let is_trivial_p = seq.is_trivial(p);
                 let is_trivial_q = seq.is_trivial(q);
-
                 let mut seq1 = seq.clone();
                 let mut seq2 = seq;
                 seq1.push(p);
                 seq2.push(q);
                 let parent_idx = nodes.len() - 1;
-                let new_node1 =
-                    ProofNode::new(seq1, parent_idx, formula_map1, local_tableau_nodes1);
-                let new_node2 =
-                    ProofNode::new(seq2, parent_idx, formula_map2, local_tableau_nodes2);
-
+                let node1 = ProofNode::new(seq1, parent_idx, fml_to_id1, local_tableau_nodes1);
+                let node2 = ProofNode::new(seq2, parent_idx, fml_to_id2, local_tableau_nodes2);
                 if is_trivial_p {
-                    new_node1.children_cnt.set(0).unwrap();
+                    // if trivial, set children count to 0
+                    node1.children_cnt.set(0).unwrap();
                 }
                 if is_trivial_q {
-                    new_node2.children_cnt.set(0).unwrap();
+                    // if trivial, set children count to 0
+                    node2.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node2);
-                nodes.push(new_node1);
+                // we need to process `node1` first, so push `node1` later
+                nodes.push(node2);
+                nodes.push(node1);
             }
             // convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
