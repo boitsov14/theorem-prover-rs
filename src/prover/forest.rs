@@ -249,7 +249,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                     }
                     seq.push(p);
                 }
-                local_tableau_nodes.reverse();
                 let new_node = ProofNode::new(seq, nodes.len() - 1, fml_to_id, local_tableau_nodes);
                 if is_trivial {
                     new_node.children_cnt.set(0).unwrap();
@@ -310,32 +309,32 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 let p = p.with_side(Right);
                 let mut formula_map1 = fml_to_id.clone();
                 let mut formula_map2 = fml_to_id;
-                formula_map1.insert(q, id + 1);
-                let local_tableau_nodes1 = vec![PartialTableauNode::new(id + 1, q, from_id)];
-                formula_map2.insert(p, id);
-                let local_tableau_nodes2 = vec![PartialTableauNode::new(id, p, from_id)];
+                formula_map1.insert(p, id);
+                let local_tableau_nodes1 = vec![PartialTableauNode::new(id, p, from_id)];
+                formula_map2.insert(q, id + 1);
+                let local_tableau_nodes2 = vec![PartialTableauNode::new(id + 1, q, from_id)];
                 id += 2;
-                let is_trivial_q = seq.is_trivial(q);
                 let is_trivial_p = seq.is_trivial(p);
+                let is_trivial_q = seq.is_trivial(q);
 
                 let mut seq1 = seq.clone();
                 let mut seq2 = seq;
-                seq1.push(q);
-                seq2.push(p);
+                seq1.push(p);
+                seq2.push(q);
                 let parent_idx = nodes.len() - 1;
                 let new_node1 =
                     ProofNode::new(seq1, parent_idx, formula_map1, local_tableau_nodes1);
                 let new_node2 =
                     ProofNode::new(seq2, parent_idx, formula_map2, local_tableau_nodes2);
 
-                if is_trivial_q {
+                if is_trivial_p {
                     new_node1.children_cnt.set(0).unwrap();
                 }
-                if is_trivial_p {
+                if is_trivial_q {
                     new_node2.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node1);
                 nodes.push(new_node2);
+                nodes.push(new_node1);
             }
             // convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
@@ -407,8 +406,8 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 if is_trivial_2 {
                     new_node2.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node1);
                 nodes.push(new_node2);
+                nodes.push(new_node1);
             }
             (Pred(..), _) => {
                 // since formulas in 'seq' are ordered,
