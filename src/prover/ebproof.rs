@@ -132,7 +132,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let p = p.with_side(side.opposite());
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
-                let node = seq.into_node(nodes.len() - 1);
+                let parent_idx = nodes.len() - 1;
+                let node = seq.into_node(parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     node.tactic.set(Tactic::Axiom).unwrap();
@@ -162,7 +163,8 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                     }
                     seq.push(p);
                 }
-                let seq = seq.into_node(nodes.len() - 1);
+                let parent_idx = nodes.len() - 1;
+                let seq = seq.into_node(parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     seq.tactic.set(Tactic::Axiom).unwrap();
