@@ -297,7 +297,6 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             }
             // convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
-                // `q ⊢`
                 let q = q.with_side(Left);
                 // check if `fml` is redundant
                 if q.is_atom() && seq.contains_atom(&q) {
@@ -308,9 +307,8 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                 }
                 // set children count to 2
                 children_cnt.set(2).unwrap();
-                // `p ⊢`
                 let p = p.with_side(Right);
-                // setup each fml-to-id mappings
+                // setup each formula-to-id mappings
                 let mut fml_to_id1 = fml_to_id.clone();
                 let mut fml_to_id2 = fml_to_id;
                 fml_to_id1.insert(p, id);
@@ -342,26 +340,29 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             }
             // convert `⊢ p → q` to `p ⊢ q`
             (To(p, q), Right) => {
+                // set children count to 1
                 children_cnt.set(1).unwrap();
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
+                // setup formula-to-id mappings
                 fml_to_id.insert(p, id);
+                let local_tableau_node1 = PartialTableauNode::new(id, p, from_id);
                 id += 1;
                 fml_to_id.insert(q, id);
+                let local_tableau_node2 = PartialTableauNode::new(id, q, from_id);
                 id += 1;
-                let local_tableau_nodes = vec![
-                    PartialTableauNode::new(id - 2, p, from_id),
-                    PartialTableauNode::new(id - 1, q, from_id),
-                ];
+                // setup local tableau nodes
+                let local_tableau_nodes = vec![local_tableau_node1, local_tableau_node2];
                 let is_trivial = seq.is_trivial2(p, q);
-
                 seq.push(p);
                 seq.push(q);
-                let new_node = ProofNode::new(seq, nodes.len() - 1, fml_to_id, local_tableau_nodes);
+                let parent_idx = nodes.len() - 1;
+                let node = ProofNode::new(seq, parent_idx, fml_to_id, local_tableau_nodes);
                 if is_trivial {
-                    new_node.children_cnt.set(0).unwrap();
+                    // if trivial, set children count to 0
+                    node.children_cnt.set(0).unwrap();
                 }
-                nodes.push(new_node);
+                nodes.push(node);
             }
             // convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
@@ -456,7 +457,7 @@ fn flush_proved_nodes<'a>(
     tableau_nodes: &mut Vec<TableauNode<'a>>,
 ) {
     while let Some(node) = nodes.last() {
-        // check if the `children_cnt` has been set
+        // check if the children count has been set
         let Some(children_cnt) = node.children_cnt.get() else {
             // not processed yet
             break;
@@ -529,7 +530,7 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
         // create new subtree starting with current node as root
         let mut new_vec = vec![node];
 
-        // drain last `children_cnt` subtrees from stack and combine with current node
+        // drain last children count subtrees from stack and combine with current node
         for vec in stack.drain(stack.len() - children_cnt..) {
             new_vec.extend(vec);
         }

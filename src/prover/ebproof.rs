@@ -212,7 +212,6 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
             }
             // Convert `p → q ⊢` to `⊢ p` and `q ⊢`
             (To(p, q), Left) => {
-                // `q ⊢`
                 let q = q.with_side(Left);
                 // check if `fml` is redundant
                 if q.is_atom() && seq.contains_atom(&q) {
@@ -223,7 +222,6 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 }
                 // set the tactic
                 tactic.set(Tactic::To { side }).unwrap();
-                // `p ⊢`
                 let p = p.with_side(Right);
                 let is_trivial_p = seq.is_trivial(p);
                 let is_trivial_q = seq.is_trivial(q);
@@ -255,12 +253,13 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
                 let is_trivial = seq.is_trivial2(p, q);
                 seq.push(p);
                 seq.push(q);
-                let seq = seq.into_node(nodes.len() - 1);
+                let parent_idx = nodes.len() - 1;
+                let node = seq.into_node(parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
-                    seq.tactic.set(Tactic::Axiom).unwrap();
+                    node.tactic.set(Tactic::Axiom).unwrap();
                 }
-                nodes.push(seq);
+                nodes.push(node);
             }
             // Convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // Convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
