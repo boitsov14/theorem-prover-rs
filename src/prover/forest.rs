@@ -276,29 +276,26 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
+                // set children count
                 children_cnt.set(l.len()).unwrap();
                 let parent_idx = nodes.len() - 1;
                 id += l.len();
                 for p in l.iter().rev() {
-                    let mut fml_to_id_clone = fml_to_id.clone();
                     let p = p.with_side(side);
+                    // setup formula-to-id mapping
+                    let mut fml_to_id = fml_to_id.clone();
                     id -= 1;
-                    fml_to_id_clone.insert(p, id);
+                    fml_to_id.insert(p, id);
                     let local_tableau_nodes = vec![PartialTableauNode::new(id, p, from_id)];
                     let is_trivial = seq.is_trivial(p);
-
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let new_node = ProofNode::new(
-                        seq,
-                        parent_idx,
-                        fml_to_id_clone.clone(),
-                        local_tableau_nodes,
-                    );
+                    let node = ProofNode::new(seq, parent_idx, fml_to_id, local_tableau_nodes);
                     if is_trivial {
-                        new_node.children_cnt.set(0).unwrap();
+                        // if trivial, set children_cnt to 0
+                        node.children_cnt.set(0).unwrap();
                     }
-                    nodes.push(new_node);
+                    nodes.push(node);
                 }
                 id += l.len();
             }
@@ -374,7 +371,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // convert `p ↔ q ⊢` to `p, q ⊢` and `⊢ p, q`
             // convert `⊢ p ↔ q` to `p ⊢ q` and `q ⊢ p`
             (Iff(p, q), side) => {
-                // setup children count to 2
+                // set children count to 2
                 children_cnt.set(2).unwrap();
                 let p_l = p.with_side(Left);
                 let p_r = p.with_side(Right);
