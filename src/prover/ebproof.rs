@@ -85,10 +85,8 @@ impl<'a> Sequent<'a> {
 
 /// Generates a LaTeX proof tree using the ebproof package.
 pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
-    // buffer for storing the proof tree string
-    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     // generate the proof tree
-    ebproof_impl(seq, names, &mut buf);
+    let buf = ebproof_impl(seq, names);
     // create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
     // replace the placeholder with proof
@@ -99,7 +97,9 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
+fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
+    // buffer for storing the proof tree string
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
@@ -109,19 +109,20 @@ fn ebproof_impl(seq: Sequent, names: &Names, buf: &mut Vec<u8>) {
             seq.display(names)
         )
         .unwrap();
-        return;
+        return buf;
     }
     let mut nodes = vec![ProofNode::new_root(seq)];
     'main: loop {
         // write all proved nodes
-        flush_proved_nodes(&mut nodes, names, buf);
+        flush_proved_nodes(&mut nodes, names, &mut buf);
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return;
+            return buf;
         };
         let mut seq = seq.clone();
         // get the last formula
+        // safe unwrap: provable sequents contain processable formulas
         let SidedFormula { fml, side } = seq.pop().unwrap();
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`

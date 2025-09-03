@@ -20,7 +20,7 @@ struct ProofNode<'a> {
     proved_children_cnt: usize,
     /// None if root
     parent_idx: Option<usize>,
-    /// Maps formula to its unique tableau node id
+    /// Maps formula to its tableau node id
     fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
     local_tableau_nodes: Vec<PartialTableauNode<'a>>,
 }
@@ -168,6 +168,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
 fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
+    // formula-to-id mapping
     let mut fml_to_id = FxHashMap::default();
     let mut local_tableau_nodes = vec![];
     let mut tableau_nodes = vec![];
@@ -175,7 +176,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // check if the sequent is initially trivial
     let is_initially_trivial = seq.is_initially_trivial();
 
-    // setup initial `local_tableau_nodes`
+    // setup initial local tableau nodes
     for p in seq.iter() {
         fml_to_id.insert(*p, id);
         local_tableau_nodes.push(PartialTableauNode::new(id, *p, 0));
@@ -194,7 +195,7 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     let mut nodes = vec![root];
 
     'main: loop {
-        // write all proved nodes to tableau nodes
+        // flushes proved nodes to tableau nodes
         flush_proved_nodes(&mut nodes, &mut tableau_nodes);
         // get the last sequent
         let Some(ProofNode {
@@ -207,9 +208,11 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             // if no sequent to be proved, completed the proof
             return tableau_nodes;
         };
+        // clone for new proof node
         let mut seq = seq.clone();
         let mut fml_to_id = fml_to_id.clone();
         // get the last formula
+        // safe unwrap: provable sequents contain processable formulas
         let fml = seq.pop().unwrap();
         // get the from_id
         let from_id = fml_to_id[&fml];
