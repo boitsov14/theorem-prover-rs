@@ -240,7 +240,15 @@ fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
             }
             // convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
+            // Drop `true` or `false` in `true ⊢` or `⊢ false`
             (And(l), Left) | (Or(l), Right) => {
+                if l.is_empty() {
+                    // `true ⊢` and `⊢ false`
+                    // avoid showing trivial true/false elimination step
+                    // drop `fml` and continue to the next sequent
+                    nodes.last_mut().unwrap().seq.pop();
+                    continue 'main;
+                }
                 // set children_cnt to 1
                 children_cnt.set(1).unwrap();
                 let mut is_trivial = false;
