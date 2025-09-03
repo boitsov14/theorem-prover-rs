@@ -62,7 +62,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
-            // Drop `true ⊢` and `false ⊢`
+            // Drop `⊢ true` and `false ⊢`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.with_side(side))

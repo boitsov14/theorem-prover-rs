@@ -143,10 +143,10 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
-            // Drop `true` and `false` in `true ⊢` and `false ⊢`
+            // Drop `true` or `false` in `true ⊢` or `⊢ false`
             (And(l), Left) | (Or(l), Right) => {
                 if l.is_empty() {
-                    // `true ⊢` and `false ⊢`
+                    // `true ⊢` and `⊢ false`
                     // avoid showing trivial true/false elimination step
                     // drop `fml` and continue to the next sequent
                     nodes.last_mut().unwrap().seq.pop();
@@ -182,6 +182,7 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
             }
             // Convert `p ∨ q ∨ r ⊢` to `p ⊢` and `q ⊢` and `r ⊢`
             // Convert `⊢ p ∧ q ∧ r` to `⊢ p` and `⊢ q` and `⊢ r`
+            // Set Axiom tactic for `⊢ true` and `false ⊢`
             (And(l), Right) | (Or(l), Left) => {
                 if l.iter()
                     .map(|p| p.with_side(side))
@@ -194,17 +195,21 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
                     nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
-                // TODO: 2025/02/13 if l is empty, set the Axiom tactic
                 // set the tactic
-                let tactic_to_apply = match side {
-                    Right => Tactic::And {
-                        side,
-                        children_cnt: l.len(),
-                    },
-                    Left => Tactic::Or {
-                        side,
-                        children_cnt: l.len(),
-                    },
+                let tactic_to_apply = if l.is_empty() {
+                    // `⊢ true` and `false ⊢`
+                    Tactic::Axiom
+                } else {
+                    match side {
+                        Right => Tactic::And {
+                            side,
+                            children_cnt: l.len(),
+                        },
+                        Left => Tactic::Or {
+                            side,
+                            children_cnt: l.len(),
+                        },
+                    }
                 };
                 tactic.set(tactic_to_apply).unwrap();
                 let parent_idx = nodes.len() - 1;
