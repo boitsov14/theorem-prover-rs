@@ -628,12 +628,11 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
             .unwrap();
         }
 
-        // decrement children count of parent on stack
-        *stack.last_mut().unwrap() -= 1;
-
         // process completed nodes on stack
-        while let Some(&children_cnt) = stack.last() {
-            if children_cnt != 0 {
+        while let Some(children_cnt) = stack.last_mut() {
+            // decrement parent's children count
+            *children_cnt -= 1;
+            if *children_cnt != 0 {
                 // parent still has remaining children
                 break;
             }
@@ -642,10 +641,6 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
             stack.pop();
             ind -= 1;
             writeln!(buf, "{:ind$}]", "", ind = ind * 2).unwrap();
-            // decrement parent's children count if exists
-            if let Some(parent_children) = stack.last_mut() {
-                *parent_children -= 1;
-            }
         }
     }
 
