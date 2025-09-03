@@ -148,8 +148,8 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
                 if l.is_empty() {
                     // `true ⊢` and `false ⊢`
                     // avoid showing trivial true/false elimination step
-                    // `fml` in `seq` is already poped out, so just use `seq` instead
-                    nodes.last_mut().unwrap().seq = seq;
+                    // drop `fml` and continue to the next sequent
+                    nodes.last_mut().unwrap().seq.pop();
                     continue 'main;
                 }
                 // set the tactic
