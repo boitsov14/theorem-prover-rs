@@ -143,10 +143,11 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
-            // Drop `true ⊢` and `false ⊢`
+            // Drop `true` and `false` in `true ⊢` and `false ⊢`
             (And(l), Left) | (Or(l), Right) => {
                 if l.is_empty() {
                     // `true ⊢` and `false ⊢`
+                    // avoid showing trivial true/false elimination step
                     // `fml` in `seq` is already poped out, so just use `seq` instead
                     nodes.last_mut().unwrap().seq = seq;
                     continue 'main;
