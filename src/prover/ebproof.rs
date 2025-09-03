@@ -143,7 +143,14 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
             }
             // Convert `p ∧ q ∧ r ⊢` to `p, q, r ⊢`
             // Convert `⊢ p ∨ q ∨ r` to `⊢ p, q, r`
+            // Drop `true ⊢` and `false ⊢`
             (And(l), Left) | (Or(l), Right) => {
+                if l.is_empty() {
+                    // `true ⊢` and `false ⊢`
+                    // `fml` in `seq` is already poped out, so just use `seq` instead
+                    nodes.last_mut().unwrap().seq = seq;
+                    continue 'main;
+                }
                 // set the tactic
                 let tactic_to_apply = match side {
                     Left => Tactic::And {
