@@ -19,8 +19,8 @@ enum Tactic {
     Or { side: Side, children_cnt: usize },
     To { side: Side },
     Iff { side: Side },
-    All { side: Side },
-    Ex { side: Side },
+    // All { side: Side },
+    // Ex { side: Side },
 }
 
 impl Tactic {
@@ -29,7 +29,7 @@ impl Tactic {
         use Tactic::*;
         match self {
             Axiom => 0,
-            Not { .. } | All { .. } | Ex { .. } | To { side: Right } => 1,
+            Not { .. } | To { side: Right } /*| All { .. } | Ex { .. }*/ => 1,
             And { children_cnt, .. } | Or { children_cnt, .. } => *children_cnt,
             To { side: Left } | Iff { .. } => 2,
         }
@@ -46,8 +46,8 @@ impl fmt::Display for Tactic {
             Or { side, .. } => write!(f, r"$\lor$: {side}"),
             To { side } => write!(f, r"$\lif$: {side}"),
             Iff { side } => write!(f, r"$\liff$: {side}"),
-            All { side } => write!(f, r"$\lall$: {side}"),
-            Ex { side } => write!(f, r"$\lis$: {side}"),
+            // All { side } => write!(f, r"$\lall$: {side}"),
+            // Ex { side } => write!(f, r"$\lis$: {side}"),
         }
     }
 }
@@ -361,37 +361,5 @@ fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u
         }
         // remove the written node
         nodes.pop().unwrap();
-    }
-}
-
-/// Writes all remaining nodes to the LaTeX buffer.
-/// When proof construction fails (e.g., when encountering atomic formulas,
-/// which cannot be processed further), this function writes the current state of the
-/// proof tree to give users insight into where and why the proof attempt failed.
-/// - Non-leaf nodes: Written as inference rules
-/// - Leaf nodes: Written as hypotheses
-fn flush_all_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) {
-    while let Some(ProofNode { seq, tactic, .. }) = nodes.pop() {
-        // check if the buffer size exceeds the limit
-        if buf.len() > MAX_FILE_SIZE {
-            // terminate the entire process immediately
-            error!("Failed: File size exceeded the limit.");
-            panic!("File size exceeded the limit.");
-        }
-        if let Some(tactic) = tactic.get() {
-            // when it has children
-            // write the inference rule
-            writeln!(
-                buf,
-                r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
-                tactic.children_cnt(),
-                seq.display(names)
-            )
-            .unwrap();
-        } else {
-            // when it is leaf
-            // write the sequent as a hypothesis
-            writeln!(buf, r"\hypo{{{}}}", seq.display(names)).unwrap();
-        }
     }
 }
