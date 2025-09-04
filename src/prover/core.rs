@@ -1,5 +1,8 @@
-use super::sequent::{Sequent, Side::*, SidedFormula};
-use crate::{intern::Names, lang::Formula::*};
+use crate::{
+    intern::Names,
+    lang::Formula::*,
+    prover::sequent::{Sequent, Side::*, SidedFormula},
+};
 use log::trace;
 use std::vec;
 
