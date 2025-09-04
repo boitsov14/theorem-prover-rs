@@ -23,7 +23,7 @@ pub struct CliOptions {
     pub out: String,
 }
 
-pub fn cli() {
+pub fn run() {
     // parse command line arguments
     let options = CliOptions::parse();
 

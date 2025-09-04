@@ -3,7 +3,7 @@ mod ebproof;
 mod forest;
 mod sequent;
 
-use crate::{cli::CliOptions, intern::Names, parser::parse_sequent};
+use crate::{app::CliOptions, intern::Names, parser::parse_sequent};
 use core::prove_prop;
 use ebproof::ebproof;
 use forest::forest;

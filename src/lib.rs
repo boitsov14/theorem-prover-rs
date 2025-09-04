@@ -1,4 +1,4 @@
-mod cli;
+mod app;
 mod intern;
 mod lang;
 mod parser;
@@ -9,6 +9,6 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-pub fn main_prover() {
-    cli::cli();
+pub fn run() {
+    app::run();
 }
