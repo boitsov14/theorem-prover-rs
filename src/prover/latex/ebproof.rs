@@ -1,9 +1,12 @@
-use super::sequent::{
-    Sequent,
-    Side::{self, Left, Right},
-    SidedFormula,
+use crate::{
+    intern::Names,
+    lang::Formula::*,
+    prover::sequent::{
+        Sequent,
+        Side::{self, Left, Right},
+        SidedFormula,
+    },
 };
-use crate::{intern::Names, lang::Formula::*};
 use log::error;
 use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
 
@@ -90,7 +93,7 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
     // create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
     // replace the placeholder with proof
-    let proof = include_str!("../../templates/ebproof.tex")
+    let proof = include_str!("../../../templates/ebproof.tex")
         .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();

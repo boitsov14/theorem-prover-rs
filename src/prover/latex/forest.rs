@@ -1,11 +1,11 @@
-use super::sequent::{
-    Sequent,
-    Side::{Left, Right},
-    SidedFormula,
-};
 use crate::{
     intern::Names,
     lang::Formula::{self, *},
+    prover::sequent::{
+        Sequent,
+        Side::{Left, Right},
+        SidedFormula,
+    },
 };
 use log::error;
 use rustc_hash::FxHashMap;
@@ -130,7 +130,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) {
     // create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
     // replace the placeholder with proof
-    let proof = include_str!("../../templates/forest.tex")
+    let proof = include_str!("../../../templates/forest.tex")
         .replace("%CLAIM%", claim.trim())
         .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
