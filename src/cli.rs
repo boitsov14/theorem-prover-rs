@@ -2,7 +2,7 @@ use crate::prover::prove;
 use clap::Parser;
 use itertools::Itertools;
 use log::{info, trace};
-use std::{fs, path::PathBuf};
+use std::{fs, fs::File, path::PathBuf};
 
 #[derive(Parser)]
 pub struct CliOptions {
@@ -50,7 +50,10 @@ pub fn cli() {
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join(" ");
-    info!("Input: {s}");
+    info!("Input: {}", s.trim());
 
-    prove(&s, &options);
+    // create result.log file for output
+    let result = File::create(PathBuf::from(&options.out).join("result.log")).unwrap();
+
+    prove(s.trim(), &options, result);
 }

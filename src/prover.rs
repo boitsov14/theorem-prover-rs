@@ -9,28 +9,9 @@ use ebproof::ebproof;
 use forest::forest;
 use log::info;
 use sequent::Sequent;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use std::{fs::File, path::PathBuf, time::Instant};
+use std::{fs::File, io::Write, time::Instant};
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default)]
-struct Result {
-    sequent: Option<String>,
-    provability: Option<String>,
-    proof_time: Option<String>,
-    ebproof_time: Option<String>,
-}
-
-pub fn prove(s: &str, options: &CliOptions) {
-    // set up result
-    let mut result = Result::default();
-    let write_json = |result: &Result| {
-        let path = PathBuf::from(&options.out).join("result.json");
-        let file = File::create(path).unwrap();
-        serde_json::to_writer_pretty(file, result).unwrap();
-    };
-    write_json(&result);
+pub fn prove(s: &str, options: &CliOptions, mut result: File) {
     // parse
     info!("Parsing...");
     let mut names = Names::default();
@@ -38,14 +19,14 @@ pub fn prove(s: &str, options: &CliOptions) {
         Ok(seq) => seq,
         Err(e) => {
             info!("Failed: {e}");
+            writeln!(result, "error: {e}").unwrap();
             return;
         }
     };
     let seq = Sequent::init(&seq);
     // log the parsed sequent
     info!("Parsed sequent: {}", seq.display(&names).to_unicode());
-    result.sequent = Some(seq.display(&names).to_string());
-    write_json(&result);
+    writeln!(result, "sequent: {}", seq.display(&names)).unwrap();
 
     // prove
     info!("Proving...");
@@ -53,12 +34,11 @@ pub fn prove(s: &str, options: &CliOptions) {
     let provability = prove_prop(seq.clone(), &names);
     let end_time = Instant::now();
     info!("Result: {provability}");
-    result.provability = Some(provability.to_string());
+    writeln!(result, "provability: {provability}").unwrap();
     #[allow(clippy::cast_precision_loss)]
     let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
     info!("Proof time: {proof_time} ms");
-    result.proof_time = Some(format!("{proof_time} ms"));
-    write_json(&result);
+    writeln!(result, "proof_time: {proof_time} ms").unwrap();
 
     // ebproof
     if options.ebproof {
@@ -69,8 +49,7 @@ pub fn prove(s: &str, options: &CliOptions) {
         #[allow(clippy::cast_precision_loss)]
         let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
         info!("Ebproof time: {ebproof_time} ms");
-        result.ebproof_time = Some(format!("{ebproof_time} ms"));
-        write_json(&result);
+        writeln!(result, "ebproof_time: {ebproof_time} ms").unwrap();
     }
 
     // forest
@@ -82,6 +61,7 @@ pub fn prove(s: &str, options: &CliOptions) {
         #[allow(clippy::cast_precision_loss)]
         let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
         info!("Forest time: {forest_time} ms");
+        writeln!(result, "forest_time: {forest_time} ms").unwrap();
     }
 }
 
