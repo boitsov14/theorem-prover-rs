@@ -15,6 +15,7 @@ mod tests {
 
     #[case("props")]
     #[case("constants")]
+    #[case("iltp-props")]
     fn test_latex_snapshot(file: &str) {
         // read snapshot file
         let content = fs::read_to_string(format!("examples/snapshots/{file}.txt")).unwrap();
@@ -32,7 +33,7 @@ mod tests {
                 // short file names
                 settings.set_prepend_module_to_snapshot(false);
                 // snapshot path
-                settings.set_snapshot_path(format!("../snapshots/{file}"));
+                settings.set_snapshot_path(format!("../../../snapshots/{file}"));
 
                 // create temporary directory for each test case
                 let temp = TempDir::new().unwrap();
