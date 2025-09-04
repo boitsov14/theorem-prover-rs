@@ -5,7 +5,7 @@ mod benches {
         intern::Names,
         lang::SplitSequent,
         parser::parse_sequent,
-        prover::{core::prove_prop, sequent::Sequent},
+        prover::{kernel::prove_prop, sequent::Sequent},
     };
     use divan::Bencher;
     use std::fs;

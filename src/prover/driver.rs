@@ -3,7 +3,7 @@ use crate::{
     intern::Names,
     parser::parse_sequent,
     prover::{
-        core::prove_prop,
+        kernel::prove_prop,
         latex::{ebproof, forest},
         sequent::Sequent,
     },

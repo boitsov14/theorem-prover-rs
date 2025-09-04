@@ -1,6 +1,6 @@
 mod bench;
-mod core;
 mod driver;
+mod kernel;
 mod latex;
 mod sequent;
 
