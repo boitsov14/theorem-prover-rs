@@ -1,7 +1,5 @@
 mod app;
-mod intern;
-mod lang;
-mod parser;
+mod core;
 mod prover;
 
 use mimalloc::MiMalloc;

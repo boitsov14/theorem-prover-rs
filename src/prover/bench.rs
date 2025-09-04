@@ -2,9 +2,7 @@
 #[divan::bench_group(max_time = 1)]
 mod benches {
     use crate::{
-        intern::Names,
-        lang::SplitSequent,
-        parser::parse_sequent,
+        core::{names::Names, parser::parse_sequent, syntax::SplitSequent},
         prover::{kernel::prove_prop, sequent::Sequent},
     };
     use divan::Bencher;

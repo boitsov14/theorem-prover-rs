@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        intern::Names,
-        parser::parse_sequent,
+        core::{names::Names, parser::parse_sequent},
         prover::{
             kernel::prove_prop,
             latex::{ebproof, forest},

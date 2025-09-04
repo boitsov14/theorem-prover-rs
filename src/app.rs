@@ -1,6 +1,5 @@
 use crate::{
-    intern::Names,
-    parser::parse_sequent,
+    core::{names::Names, parser::parse_sequent},
     prover::{Sequent, ebproof, forest, prove_prop},
 };
 use clap::Parser;

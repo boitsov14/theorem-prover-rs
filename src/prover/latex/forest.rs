@@ -1,6 +1,8 @@
 use crate::{
-    intern::Names,
-    lang::Formula::{self, *},
+    core::{
+        names::Names,
+        syntax::Formula::{self, *},
+    },
     prover::sequent::{
         Sequent,
         Side::{Left, Right},

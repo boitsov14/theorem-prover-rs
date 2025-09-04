@@ -1,6 +1,6 @@
-use crate::{
-    intern::{Names, to_unicode},
-    lang::{
+use crate::core::{
+    names::{Names, to_unicode},
+    syntax::{
         Formula::{self, *},
         SplitSequent,
     },
@@ -208,7 +208,7 @@ impl<'a> Sequent<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse_sequent;
+    use crate::core::parser::parse_sequent;
     use test_case::case;
 
     #[case("P ⊢ Q")]
