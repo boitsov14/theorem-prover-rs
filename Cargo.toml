@@ -48,13 +48,10 @@ debug = true
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 # pedantic
-similar_names = "allow"
-enum_glob_use = "allow"
-too_many_lines = "allow"
-missing_panics_doc = "allow"
-missing_errors_doc = "allow"
-match_wildcard_for_single_variants = "allow"
-inline_always = "allow"
+similar_names = "allow"                      # it's ok to have similar names
+enum_glob_use = "allow"                      # want to use `use Formula::*;` for example
+too_many_lines = "allow"                     # it's ok to have long code
+match_wildcard_for_single_variants = "allow" # want to use `_` in matches
+inline_always = "allow"                      # want to use `#[inline(always)]`
 # nursery
-missing_const_for_fn = "allow"
-cognitive_complexity = "allow"
+cognitive_complexity = "allow" # it's ok to have complex code
