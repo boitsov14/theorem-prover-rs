@@ -1,7 +1,25 @@
 mod app;
-mod core;
-mod prover;
-
+mod core {
+    pub mod names;
+    pub mod parser;
+    pub mod syntax;
+}
+mod prover {
+    mod bench;
+    mod kernel;
+    mod latex {
+        mod ebproof;
+        mod forest;
+        #[cfg(test)]
+        mod test;
+        pub use ebproof::ebproof;
+        pub use forest::forest;
+    }
+    mod sequent;
+    pub use kernel::prove_prop;
+    pub use latex::{ebproof, forest};
+    pub use sequent::Sequent;
+}
 use mimalloc::MiMalloc;
 
 #[global_allocator]
