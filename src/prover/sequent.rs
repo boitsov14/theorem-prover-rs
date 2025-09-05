@@ -126,11 +126,7 @@ impl<'a> Sequent<'a> {
     /// Pop minimum cost formula efficiently
     pub fn pop(&mut self) -> Option<SidedFormula<'a>> {
         // Check buckets in cost order
-        if let Some(fml) = self.single.pop() {
-            Some(fml)
-        } else {
-            self.multi.pop()
-        }
+        self.single.pop().or_else(|| self.multi.pop())
     }
 
     #[inline(always)]

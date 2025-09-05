@@ -31,6 +31,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
             trace!("Unprovable: No formula in the sequent.");
             // all the following examples go to `⊢` eventually
             // ex. `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
+            // TODO: 2025/09/05 fix comment: all unprovable fml comes here
             return false;
         };
         match (fml, side) {
