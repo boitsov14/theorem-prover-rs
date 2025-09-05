@@ -25,7 +25,7 @@ enum Tactic {
 
 impl Tactic {
     #[inline(always)]
-    fn children_cnt(&self) -> usize {
+    const fn children_cnt(&self) -> usize {
         use Tactic::*;
         match self {
             Axiom => 0,
@@ -62,7 +62,7 @@ struct ProofNode<'a> {
 
 impl<'a> ProofNode<'a> {
     #[inline(always)]
-    fn new_root(seq: Sequent<'a>) -> Self {
+    const fn new_root(seq: Sequent<'a>) -> Self {
         Self {
             seq,
             tactic: OnceCell::new(),
@@ -75,7 +75,7 @@ impl<'a> ProofNode<'a> {
 impl<'a> Sequent<'a> {
     // TODO: 2025/05/30 forestを参考にするか
     #[inline(always)]
-    fn into_node(self, parent_idx: usize) -> ProofNode<'a> {
+    const fn into_node(self, parent_idx: usize) -> ProofNode<'a> {
         ProofNode {
             seq: self,
             tactic: OnceCell::new(),

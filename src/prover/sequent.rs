@@ -47,7 +47,7 @@ pub struct Sequent<'a> {
 impl Side {
     #[must_use]
     #[inline(always)]
-    pub fn opposite(self) -> Self {
+    pub const fn opposite(self) -> Self {
         match self {
             Left => Right,
             Right => Left,
@@ -57,7 +57,7 @@ impl Side {
 
 impl Formula {
     #[inline(always)]
-    pub fn with_side(&'_ self, side: Side) -> SidedFormula<'_> {
+    pub const fn with_side(&'_ self, side: Side) -> SidedFormula<'_> {
         SidedFormula { fml: self, side }
     }
 }
@@ -75,12 +75,12 @@ impl SidedFormula<'_> {
 
     #[must_use]
     #[inline(always)]
-    fn opposite(&self) -> Self {
+    const fn opposite(&self) -> Self {
         self.fml.with_side(self.side.opposite())
     }
 
     #[inline(always)]
-    pub fn is_atom(&self) -> bool {
+    pub const fn is_atom(&self) -> bool {
         self.fml.is_atom()
     }
 }
@@ -196,7 +196,7 @@ impl SequentDisplay<'_> {
 
 impl<'a> Sequent<'a> {
     /// Returns a `SequentDisplay` used to display the sequent with the given names.
-    pub fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
+    pub const fn display(&'a self, names: &'a Names) -> SequentDisplay<'a> {
         SequentDisplay { seq: self, names }
     }
 }

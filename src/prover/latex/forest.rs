@@ -48,7 +48,7 @@ struct TableauNode<'a> {
 
 impl<'a> ProofNode<'a> {
     #[inline(always)]
-    fn new_root(
+    const fn new_root(
         seq: Sequent<'a>,
         fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
         local_tableau_nodes: Vec<PartialTableauNode<'a>>,
@@ -64,7 +64,7 @@ impl<'a> ProofNode<'a> {
     }
 
     #[inline(always)]
-    fn new(
+    const fn new(
         seq: Sequent<'a>,
         parent_idx: usize,
         fml_to_id: FxHashMap<SidedFormula<'a>, usize>,
@@ -82,18 +82,18 @@ impl<'a> ProofNode<'a> {
 }
 
 impl<'a> PartialTableauNode<'a> {
-    fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
+    const fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
         Self { id, fml, from_id }
     }
 
     /// Convert `PartialTableauNode` to `TableauNode` with children count.
-    fn to_tableau_node(&self, children_cnt: usize) -> TableauNode<'a> {
+    const fn to_tableau_node(&self, children_cnt: usize) -> TableauNode<'a> {
         TableauNode::new(self.id, self.fml, self.from_id, children_cnt)
     }
 }
 
 impl<'a> TableauNode<'a> {
-    fn new(id: usize, fml: SidedFormula<'a>, from_id: usize, children_cnt: usize) -> Self {
+    const fn new(id: usize, fml: SidedFormula<'a>, from_id: usize, children_cnt: usize) -> Self {
         Self {
             id,
             fml,

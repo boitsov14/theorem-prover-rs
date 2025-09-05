@@ -76,7 +76,7 @@ impl Term {
 
 impl Formula {
     /// Returns `true` if the formula is an atom.
-    pub fn is_atom(&self) -> bool {
+    pub const fn is_atom(&self) -> bool {
         matches!(self, Self::Pred(..))
     }
 
