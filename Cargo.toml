@@ -48,13 +48,19 @@ debug = true
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 # pedantic
-similar_names = "allow"                      # it's ok to have similar names
-enum_glob_use = "allow"                      # want to use `use Formula::*;` for example
-too_many_lines = "allow"                     # it's ok to have long code
+similar_names = "allow" # it's ok to have similar names
+enum_glob_use = "allow" # want to use `use Formula::*;` for example
+too_many_lines = "allow" # it's ok to have long code
 match_wildcard_for_single_variants = "allow" # want to use `_` in matches
-inline_always = "allow"                      # want to use `#[inline(always)]`
+inline_always = "allow" # want to use `#[inline(always)]`
 # nursery
 cognitive_complexity = "allow" # it's ok to have complex code
 # restriction
 absolute_paths = "warn" # avoid full paths
 allow_attributes = "warn" # use `#[expect(...)]` instead of `#[allow(...)]`
+as_conversions = "warn" # avoid `as`
+assertions_on_result_states = "warn" # use `.unwrap()` instead of `assert!(result.is_ok())`
+empty_enum_variants_with_brackets = "warn" # avoid unnecessary brackets
+empty_structs_with_brackets = "warn" # avoid unnecessary brackets
+get_unwrap = "warn" # use [] instead of `.get().unwrap()`
+if_then_some_else_none = "warn" # use `bool::then_some` or `bool::then` instead of `if ... { Some(..) } else { None }`
