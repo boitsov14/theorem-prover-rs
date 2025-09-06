@@ -478,8 +478,10 @@ fn flush_proved_nodes<'a>(
             // not processed yet
             break;
         };
-        // all children should be proved
-        assert_eq!(*children_cnt, node.proved_children_cnt);
+        assert_eq!(
+            *children_cnt, node.proved_children_cnt,
+            "all children should be proved"
+        );
         let children_cnt = *children_cnt;
 
         if let Some(parent_idx) = node.parent_idx {
@@ -555,8 +557,7 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
         stack.push(new_vec);
     }
 
-    // stack should contain exactly one subtree
-    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.len(), 1, "stack should contain exactly one subtree");
 
     stack.pop().unwrap()
 }
@@ -646,6 +647,5 @@ fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names, buf: &mut Vec<u
         }
     }
 
-    // stack should be empty
-    assert!(stack.is_empty());
+    assert!(stack.is_empty(), "stack should be empty at the end");
 }

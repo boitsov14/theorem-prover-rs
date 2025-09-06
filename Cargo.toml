@@ -64,3 +64,7 @@ empty_enum_variants_with_brackets = "warn" # avoid unnecessary brackets
 empty_structs_with_brackets = "warn" # avoid unnecessary brackets
 get_unwrap = "warn" # use [] instead of `.get().unwrap()`
 if_then_some_else_none = "warn" # use `bool::then_some` or `bool::then` instead of `if ... { Some(..) } else { None }`
+integer_division = "warn" # avoid integer division
+large_include_file = "warn" # avoid too large `include_str!`
+map_with_unused_argument_over_ranges = "warn" # use `repeat` and `take` instead of `map(|_| ...)`
+missing_assert_message = "warn" # must have messages in `assert!()`
