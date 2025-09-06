@@ -81,3 +81,10 @@ string_lit_chars_any = "warn" # use `matches!` instead of `.chars().any(...)`
 tests_outside_test_module = "warn" # put tests in `#[cfg(test)]`
 unneeded_field_pattern = "warn" # use `..` instead of `_`
 use_debug = "warn" # avoid debug formatting
+
+[lints.rust]
+explicit-outlives-requirements = "warn" # avoid unnecessary lifetime bounds
+redundant-lifetimes = "warn" # avoid redundant lifetime parameters
+
+[lints.rustdoc]
+unescaped_backticks = "warn" # avoid unescaped backticks in doc comments
