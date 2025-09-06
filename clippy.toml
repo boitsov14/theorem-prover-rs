@@ -1,1 +1,2 @@
 absolute-paths-allowed-crates = ["peg"] # allow absolute paths in "peg"
+allow-print-in-tests = true # allow `println!` in tests
