@@ -324,6 +324,7 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
+#[expect(clippy::panic)]
 fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) {
     while let Some(ProofNode {
         seq,
@@ -344,6 +345,7 @@ fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u
         if buf.len() > MAX_FILE_SIZE {
             // terminate the entire process immediately
             error!("Failed: File size exceeded the limit.");
+            // TODO: 2025/09/06 panicやめる
             panic!("File size exceeded the limit.");
         }
         // write the inference rule

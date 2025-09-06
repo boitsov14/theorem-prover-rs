@@ -68,3 +68,5 @@ integer_division = "warn" # avoid integer division
 large_include_file = "warn" # avoid too large `include_str!`
 map_with_unused_argument_over_ranges = "warn" # use `repeat` and `take` instead of `map(|_| ...)`
 missing_assert_message = "warn" # must have messages in `assert!()`
+needless_raw_strings = "warn" # avoid unnecessary raw strings
+panic = "warn" # avoid `panic!()`

@@ -503,10 +503,12 @@ fn flush_proved_nodes<'a>(
 }
 
 /// check buffer size and panic if it exceeds `MAX_FILE_SIZE`
+#[expect(clippy::panic)]
 fn check_buf_size(buf: &[u8]) {
     if buf.len() > MAX_FILE_SIZE {
         // terminate the entire process immediately
         error!("Failed: File size exceeded the limit.");
+        // TODO: 2025/09/06 panicやめる
         panic!("File size exceeded the limit.");
     }
 }
