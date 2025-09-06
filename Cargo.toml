@@ -70,3 +70,4 @@ map_with_unused_argument_over_ranges = "warn" # use `repeat` and `take` instead 
 missing_assert_message = "warn" # must have messages in `assert!()`
 needless_raw_strings = "warn" # avoid unnecessary raw strings
 panic = "warn" # avoid `panic!()`
+partial_pub_fields = "warn" # avoid partial public fields

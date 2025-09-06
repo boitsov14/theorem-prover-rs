@@ -13,14 +13,14 @@ use std::{
 };
 
 #[derive(Parser)]
-pub struct CliOptions {
+struct CliOptions {
     /// Output LaTeX in ebproof format
     #[arg(long)]
-    pub ebproof: bool,
+    ebproof: bool,
 
     /// Output LaTeX in forest format  
     #[arg(long)]
-    pub forest: bool,
+    forest: bool,
 
     /// Enable trace level logging
     #[arg(long)]
@@ -28,7 +28,7 @@ pub struct CliOptions {
 
     /// Output directory path
     #[arg(long, default_value = "")]
-    pub out: String,
+    out: String,
 }
 
 pub fn run() {
