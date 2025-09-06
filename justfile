@@ -21,6 +21,10 @@ fmt:
 lint:
     cargo clippy --all-targets --all-features
 
+# Lint code allowing dead_code warnings
+lint2:
+    RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
+
 # Run the project with arguments
 # Use -- to separate cargo arguments from application arguments
 run *ARGS:
