@@ -56,4 +56,5 @@ inline_always = "allow"                      # want to use `#[inline(always)]`
 # nursery
 cognitive_complexity = "allow" # it's ok to have complex code
 # restriction
-absolute_paths = "warn"
+absolute_paths = "warn" # avoid full paths
+allow_attributes = "warn" # use `#[expect(...)]` instead of `#[allow(...)]`

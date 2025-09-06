@@ -58,60 +58,64 @@ pub fn run() {
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join(" ");
-    info!("Input: {}", s.trim());
+    info!("input: {}", s.trim());
 
     // create result.log file for output
     let mut result = File::create(PathBuf::from(&options.out).join("result.log")).unwrap();
 
     // parse
-    info!("Parsing...");
+    info!("parsing...");
     let mut names = Names::default();
     let seq = match parse_sequent(&s, &mut names, true, false) {
         Ok(seq) => seq,
         Err(e) => {
-            info!("Failed: {e}");
+            info!("failed");
             writeln!(result, "error: {e}").unwrap();
             return;
         }
     };
+    info!("done");
     let seq = Sequent::init(&seq);
     // log the parsed sequent
-    info!("Parsed sequent: {}", seq.display(&names).to_unicode());
-    writeln!(result, "sequent: {}", seq.display(&names)).unwrap();
+    writeln!(
+        result,
+        "sequent: {}",
+        seq.display(&names)
+            .to_string()
+            .replace(r"&\vdash", r"\vdash")
+            .trim()
+    )
+    .unwrap();
 
     // prove
-    info!("Proving...");
+    info!("proving...");
     let start_time = Instant::now();
     let provability = prove_prop(seq.clone(), &names);
     let end_time = Instant::now();
-    info!("Result: {provability}");
+    info!("done");
     writeln!(result, "provability: {provability}").unwrap();
-    #[allow(clippy::cast_precision_loss)]
-    let proof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
-    info!("Proof time: {proof_time} ms");
-    writeln!(result, "proof_time: {proof_time} ms").unwrap();
+    let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+    writeln!(result, "proof_time: {proof_time:.3} ms").unwrap();
 
     // ebproof
     if options.ebproof {
-        info!("Generating ebproof...");
+        info!("generating ebproof...");
         let start_time = Instant::now();
         ebproof(seq.clone(), &names, &options.out);
         let end_time = Instant::now();
-        #[allow(clippy::cast_precision_loss)]
-        let ebproof_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
-        info!("Ebproof time: {ebproof_time} ms");
-        writeln!(result, "ebproof_time: {ebproof_time} ms").unwrap();
+        info!("done");
+        let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        writeln!(result, "ebproof_time: {ebproof_time:.3} ms").unwrap();
     }
 
     // forest
     if provability && options.forest {
-        info!("Generating forest...");
+        info!("generating forest...");
         let start_time = Instant::now();
         forest(seq, &names, &options.out);
         let end_time = Instant::now();
-        #[allow(clippy::cast_precision_loss)]
-        let forest_time = end_time.duration_since(start_time).as_micros() as f32 / 1000.0;
-        info!("Forest time: {forest_time} ms");
-        writeln!(result, "forest_time: {forest_time} ms").unwrap();
+        info!("done");
+        let forest_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        writeln!(result, "forest_time: {forest_time:.3} ms").unwrap();
     }
 }
