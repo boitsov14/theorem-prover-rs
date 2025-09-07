@@ -503,6 +503,7 @@ fn flush_proved_nodes<'a>(
 }
 
 /// check buffer size and panic if it exceeds `MAX_FILE_SIZE`
+// TODO: 2025/09/07 remove expect
 #[expect(clippy::panic)]
 fn check_buf_size(buf: &[u8]) {
     if buf.len() > MAX_FILE_SIZE {

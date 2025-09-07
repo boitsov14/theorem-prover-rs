@@ -84,7 +84,7 @@ pub fn parse_sequent(
     modify_formula: bool,
     tptp: bool,
 ) -> Result<SplitSequent, Error> {
-    let s = if tptp { modify_tptp(s) } else { s.to_string() };
+    let s = if tptp { modify_tptp(s) } else { s.into() };
     let s = modify_string(&s);
     check_parentheses(&s)?;
     let pseq = parser::sequent(&s).map_err(|e| Error::Peg { s, e })?;
@@ -100,7 +100,7 @@ pub fn parse_sequent(
 /// Modifies the string.
 fn modify_string(s: &str) -> String {
     // Normalize the string.
-    let s = s.nfkc().collect::<String>().trim().to_string();
+    let s = s.nfkc().collect::<String>();
     // Replace all whitespaces with a single space.
     Regex::new(r"\s+").unwrap().replace_all(&s, " ").to_string()
 }
@@ -126,15 +126,13 @@ fn modify_tptp(s: &str) -> String {
     let axioms = Regex::new(r"fof\(([^,]+),axiom,(.+?)\)\.")
         .unwrap()
         .captures_iter(&s)
-        .map(|cap| cap[2].trim().to_string())
+        .map(|cap| cap[2].to_string())
         .join(", ");
 
-    let conjecture = Regex::new(r"fof\(([^,]+),conjecture,(.+?)\)\.")
+    let conjecture = &Regex::new(r"fof\(([^,]+),conjecture,(.+?)\)\.")
         .unwrap()
         .captures(&s)
-        .unwrap()[2]
-        .trim()
-        .to_string();
+        .unwrap()[2];
 
     format!("{axioms} ⊢ {conjecture}").replace('$', "")
 }
@@ -145,16 +143,16 @@ peg::parser!( grammar parser() for str {
 
     /// Parses a term.
     pub rule term() -> PTerm = quiet!{
-        f:$func_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.to_string(), ts) } /
-        v:$var_id() { Var(v.to_string()) } /
+        f:$func_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Func(f.into(), ts) } /
+        v:$var_id() { Var(v.into()) } /
         "(" t:term() ")" { t }
     } / expected!("term")
 
     rule predicate() -> PFormula =
         p_true() { True.clone() } /
         p_false() { False.clone() } /
-        p:$pred_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Pred(p.to_string(), ts) } /
-        p:$pred_id() { Pred(p.to_string(), vec![]) }
+        p:$pred_id() _ "(" _ ts:(term() ++ (_ "," _)) _ ")" { Pred(p.into(), ts) } /
+        p:$pred_id() { Pred(p.into(), vec![]) }
 
     /// Parses a formula.
     ///
