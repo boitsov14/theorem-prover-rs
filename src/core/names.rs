@@ -203,6 +203,7 @@ impl Formula {
 impl FormulaDisplay<'_> {
     /// Returns the unicode representation of the formula
     /// by converting LaTeX commands to symbols
+    #[cfg(test)]
     pub fn to_unicode(&self) -> String {
         to_unicode(&self.to_string())
     }

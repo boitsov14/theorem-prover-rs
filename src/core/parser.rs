@@ -58,6 +58,7 @@ struct PSequent {
 }
 
 /// Parses a term.
+#[cfg(test)]
 pub fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;
@@ -66,6 +67,7 @@ pub fn parse_term(s: &str, names: &mut Names) -> Result<Term, Error> {
 }
 
 /// Parses a formula.
+#[cfg(test)]
 pub fn parse_formula(s: &str, names: &mut Names, modify_formula: bool) -> Result<Formula, Error> {
     let s = modify_string(s);
     check_parentheses(&s)?;

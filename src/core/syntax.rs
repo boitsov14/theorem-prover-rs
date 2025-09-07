@@ -172,6 +172,8 @@ impl Formula {
     /// Substitutes variables with terms.
     /// # Warning
     /// This method is implemented naively and may cause variable capture.
+    // TODO: 2025/09/07 不要なら削除する
+    #[cfg_attr(not(test), expect(dead_code))]
     pub fn subst_map(&mut self, map: &HashMap<usize, Term>) {
         self.visit_terms_mut(|t| t.subst_map(map));
     }
