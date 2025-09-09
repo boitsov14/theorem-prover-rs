@@ -5,6 +5,7 @@ use crate::{
 use clap::Parser;
 use itertools::Itertools;
 use log::{info, trace};
+use serde::Deserialize;
 use std::{
     fs::{self, File},
     io::Write,
@@ -12,28 +13,36 @@ use std::{
     time::Instant,
 };
 
+/// Options from command line arguments
 #[derive(Parser)]
 struct CliOptions {
-    /// Output LaTeX in ebproof format
-    #[arg(long)]
-    ebproof: bool,
-
-    /// Output LaTeX in forest format  
-    #[arg(long)]
-    forest: bool,
-
-    /// Enable trace level logging
-    #[arg(long)]
-    trace: bool,
-
     /// Output directory path
     #[arg(long, default_value = "")]
     out: String,
 }
 
+/// Options from options.json
+#[derive(Deserialize)]
+struct FileOptions {
+    /// Output LaTeX in ebproof format
+    ebproof: bool,
+    /// Output LaTeX in forest format
+    forest: bool,
+    /// Enable trace level logging
+    trace: bool,
+}
+
 pub fn run() {
     // parse command line arguments
     let options = CliOptions::parse();
+
+    // output directory
+    let out = options.out;
+
+    // load file options from options.json
+    let s = fs::read_to_string(PathBuf::from(&out).join("options.json"))
+        .expect("options.json not found");
+    let options = serde_json::from_str::<FileOptions>(&s).expect("invalid options.json format");
 
     // initialize logger
     let s = if options.trace {
@@ -53,15 +62,15 @@ pub fn run() {
 
     // read formula from file
     // but ignore lines starting with #
-    let s = fs::read_to_string(PathBuf::from(&options.out).join("formula.txt"))
-        .expect("Failed to read formula.txt")
+    let s = fs::read_to_string(PathBuf::from(&out).join("formula.txt"))
+        .expect("formula.txt not found")
         .lines()
         .filter(|l| !l.trim_start().starts_with('#'))
         .join(" ");
     info!("input: {}", s.trim());
 
     // create result.log file for output
-    let mut result = File::create(PathBuf::from(&options.out).join("result.log")).unwrap();
+    let mut result = File::create(PathBuf::from(&out).join("result.log")).unwrap();
 
     // parse
     info!("parsing...");
@@ -101,7 +110,7 @@ pub fn run() {
     if options.ebproof {
         info!("generating ebproof...");
         let start_time = Instant::now();
-        ebproof(seq.clone(), &names, &options.out);
+        ebproof(seq.clone(), &names, &out);
         let end_time = Instant::now();
         info!("done");
         let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
@@ -112,7 +121,7 @@ pub fn run() {
     if provability && options.forest {
         info!("generating forest...");
         let start_time = Instant::now();
-        forest(seq, &names, &options.out);
+        forest(seq, &names, &out);
         let end_time = Instant::now();
         info!("done");
         let forest_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;

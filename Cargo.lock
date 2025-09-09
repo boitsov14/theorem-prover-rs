@@ -921,6 +921,8 @@ dependencies = [
  "peg",
  "regex",
  "rustc-hash",
+ "serde",
+ "serde_json",
  "serde_yml",
  "tempfile",
  "test-case",
