@@ -25,10 +25,13 @@ struct CliOptions {
 #[derive(Deserialize)]
 struct FileOptions {
     /// Output LaTeX in ebproof format
+    #[serde(default)]
     ebproof: bool,
     /// Output LaTeX in forest format
+    #[serde(default)]
     forest: bool,
     /// Enable trace level logging
+    #[serde(default)]
     trace: bool,
 }
 
@@ -79,7 +82,7 @@ pub fn run() {
         Ok(seq) => seq,
         Err(e) => {
             info!("failed");
-            writeln!(result, "error: {e}").unwrap();
+            writeln!(result, "parseError: {e}").unwrap();
             return;
         }
     };
@@ -104,7 +107,7 @@ pub fn run() {
     info!("done");
     writeln!(result, "provability: {provability}").unwrap();
     let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-    writeln!(result, "proof_time: {proof_time:.3} ms").unwrap();
+    writeln!(result, "proofTime: {proof_time:.3} ms").unwrap();
 
     // ebproof
     if options.ebproof {
@@ -114,7 +117,7 @@ pub fn run() {
         let end_time = Instant::now();
         info!("done");
         let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "ebproof_time: {ebproof_time:.3} ms").unwrap();
+        writeln!(result, "ebproofTime: {ebproof_time:.3} ms").unwrap();
     }
 
     // forest
@@ -125,6 +128,6 @@ pub fn run() {
         let end_time = Instant::now();
         info!("done");
         let forest_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "forest_time: {forest_time:.3} ms").unwrap();
+        writeln!(result, "forestTime: {forest_time:.3} ms").unwrap();
     }
 }
