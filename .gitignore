@@ -2,6 +2,7 @@
 /tmp/*.tex
 /tmp/*.log
 /tmp/result.yaml
+/tmp/parse.err
 /flamegraph.svg
 /profile.json.gz
 /tex

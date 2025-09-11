@@ -91,7 +91,9 @@ pub fn run() {
         Ok(seq) => seq,
         Err(e) => {
             info!("failed");
-            writeln!(result, "parseError: {e}").unwrap();
+            // write error message to parse.err
+            let mut f = File::create(PathBuf::from(&out).join("parse.err")).unwrap();
+            writeln!(f, "{e}").unwrap();
             return;
         }
     };
