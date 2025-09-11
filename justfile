@@ -27,7 +27,7 @@ lint2:
 
 # Run the project
 run:
-    cargo run -- --out "out"
+    cargo run -- --out "tmp"
 
 # Run tests
 # --no-fail-fast: Do not exit the test run until all tests complete.

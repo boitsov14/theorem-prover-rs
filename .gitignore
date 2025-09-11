@@ -1,7 +1,7 @@
 /target
-/out/*.tex
+/tmp/*.tex
 /*.log
-/out/result.yaml
+/tmp/result.yaml
 /flamegraph.svg
 /profile.json.gz
 /tex
