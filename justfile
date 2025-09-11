@@ -25,14 +25,9 @@ lint:
 lint2:
     RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
 
-# Run the project with arguments
-# Use -- to separate cargo arguments from application arguments
-run *ARGS:
-    cargo run -- {{ ARGS }}
-
-# Run the project with arguments in release mode
-run-release *ARGS:
-    cargo run --release -- {{ ARGS }}
+# Run the project
+run:
+    cargo run -- --out "out"
 
 # Run tests
 # --no-fail-fast: Do not exit the test run until all tests complete.

@@ -1,9 +1,7 @@
-/.idea
 /target
-/callgrind.out.*
-/*.tex
+/out/*.tex
 /*.log
-/result.json
+/out/result.yaml
 /flamegraph.svg
 /profile.json.gz
 /tex

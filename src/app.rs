@@ -72,8 +72,8 @@ pub fn run() {
         .join(" ");
     info!("input: {}", s.trim());
 
-    // create result.log file for output
-    let mut result = File::create(PathBuf::from(&out).join("result.log")).unwrap();
+    // create result.yaml file for output
+    let mut result = File::create(PathBuf::from(&out).join("result.yaml")).unwrap();
 
     // parse
     info!("parsing...");
@@ -107,7 +107,7 @@ pub fn run() {
     info!("done");
     writeln!(result, "provability: {provability}").unwrap();
     let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-    writeln!(result, "proofTime: {proof_time:.3} ms").unwrap();
+    writeln!(result, "proofTime: {proof_time:.3}").unwrap();
 
     // ebproof
     if options.ebproof {
@@ -117,7 +117,7 @@ pub fn run() {
         let end_time = Instant::now();
         info!("done");
         let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "ebproofTime: {ebproof_time:.3} ms").unwrap();
+        writeln!(result, "ebproofTime: {ebproof_time:.3}").unwrap();
     }
 
     // forest
@@ -128,6 +128,6 @@ pub fn run() {
         let end_time = Instant::now();
         info!("done");
         let forest_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "forestTime: {forest_time:.3} ms").unwrap();
+        writeln!(result, "forestTime: {forest_time:.3}").unwrap();
     }
 }
