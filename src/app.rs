@@ -48,12 +48,21 @@ pub fn run() {
     let options = serde_json::from_str::<FileOptions>(&s).expect("invalid options.json format");
 
     // initialize logger
-    let s = if options.trace {
-        include_str!("../logger/trace.yaml")
-    } else {
-        include_str!("../logger/info.yaml")
-    };
-    let logger_config = serde_yml::from_str(s).unwrap();
+    let s = include_str!("../logger.yaml")
+        .replace("{{LOG_DIR}}", &out)
+        .replace(
+            "{{LOG_LEVEL}}",
+            if options.trace { "trace" } else { "info" },
+        )
+        .replace(
+            "appenders: []",
+            if options.trace {
+                "appenders: [log_file, trace_file]"
+            } else {
+                "appenders: [log_file]"
+            },
+        );
+    let logger_config = serde_yml::from_str(&s).unwrap();
     log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {

@@ -1,6 +1,6 @@
 /target
 /tmp/*.tex
-/*.log
+/tmp/*.log
 /tmp/result.yaml
 /flamegraph.svg
 /profile.json.gz

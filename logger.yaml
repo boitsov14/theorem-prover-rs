@@ -1,11 +1,11 @@
-# Enhanced config for verbose mode with trace level logging
+# Config for info and trace logging
 appenders:
   # Standard log file config
   log_file:
     # File appender writes logs to a file
     kind: file
     # Path to the log file
-    path: "prover.log"
+    path: "{{LOG_DIR}}/info.log"
     # Format config - {m} = message content, {n} = newline
     encoder:
       pattern: "{m}{n}"
@@ -21,7 +21,7 @@ appenders:
     # Rolling file appender handles file rotation based on policies
     kind: rolling_file
     # Path to the trace log file
-    path: "prover-trace.log"
+    path: "{{LOG_DIR}}/trace.log"
     # Format config - {f} = filename, {L} = line number, {m} = message content, {n} = newline
     encoder:
       # pattern: "[{f}:{L}] {m}{n}"
@@ -41,9 +41,7 @@ appenders:
 
 # Root logger config
 root:
-  # Log level threshold - trace allows all log levels
-  level: trace
+  # Log level threshold
+  level: "{{LOG_LEVEL}}"
   # List of appenders to use
-  appenders:
-    - log_file
-    - trace_file
+  appenders: []

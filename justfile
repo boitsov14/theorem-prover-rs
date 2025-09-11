@@ -27,6 +27,7 @@ lint2:
 
 # Run the project
 run:
+    -rm tmp/*.{log,tex}
     cargo run -- --out "tmp"
 
 # Run tests
