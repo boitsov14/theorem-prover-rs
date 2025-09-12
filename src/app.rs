@@ -121,7 +121,7 @@ pub fn run() {
     writeln!(result, "proofTime: {proof_time:.3}").unwrap();
 
     // ebproof
-    if options.ebproof {
+    if provability && options.ebproof {
         info!("generating ebproof...");
         let start_time = Instant::now();
         ebproof(seq.clone(), &names, &out);
