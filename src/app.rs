@@ -62,7 +62,7 @@ pub fn run() {
                 "appenders: [log_file]"
             },
         );
-    let logger_config = serde_yml::from_str(&s).unwrap();
+    let logger_config = serde_yaml_bw::from_str(&s).unwrap();
     log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {
