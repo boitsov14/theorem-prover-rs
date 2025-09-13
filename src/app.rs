@@ -49,20 +49,17 @@ pub fn run() {
 
     // initialize logger
     let s = include_str!("../logger.yaml")
-        .replace("{{LOG_DIR}}", &out)
+        .replace("LOG_DIR", &out)
+        .replace("LOG_LEVEL", if options.trace { "trace" } else { "info" })
         .replace(
-            "{{LOG_LEVEL}}",
-            if options.trace { "trace" } else { "info" },
-        )
-        .replace(
-            "appenders: []",
+            "APPENDERS",
             if options.trace {
-                "appenders: [log_file, trace_file]"
+                "[log_file, trace_file]"
             } else {
-                "appenders: [log_file]"
+                "[log_file]"
             },
         );
-    let logger_config = serde_yaml_bw::from_str(&s).unwrap();
+    let logger_config = serde_yaml_ng::from_str(&s).unwrap();
     log4rs::init_raw_config(logger_config).unwrap();
 
     if options.ebproof {

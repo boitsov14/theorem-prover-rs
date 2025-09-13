@@ -19,6 +19,7 @@ fmt:
 
 # Lint code
 lint:
+    just fmt
     cargo clippy --all-targets --all-features
 
 # Lint code allowing dead_code warnings

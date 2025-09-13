@@ -5,7 +5,7 @@ appenders:
     # File appender writes logs to a file
     kind: file
     # Path to the log file
-    path: "{{LOG_DIR}}/info.log"
+    path: "LOG_DIR/info.log"
     # Format config - {m} = message content, {n} = newline
     encoder:
       pattern: "{m}{n}"
@@ -21,7 +21,7 @@ appenders:
     # Rolling file appender handles file rotation based on policies
     kind: rolling_file
     # Path to the trace log file
-    path: "{{LOG_DIR}}/trace.log"
+    path: "LOG_DIR/trace.log"
     # Format config - {f} = filename, {L} = line number, {m} = message content, {n} = newline
     encoder:
       # pattern: "[{f}:{L}] {m}{n}"
@@ -42,6 +42,6 @@ appenders:
 # Root logger config
 root:
   # Log level threshold
-  level: "{{LOG_LEVEL}}"
+  level: "LOG_LEVEL"
   # List of appenders to use
-  appenders: []
+  appenders: APPENDERS
