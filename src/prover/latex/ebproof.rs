@@ -6,7 +6,7 @@ use crate::{
         SidedFormula,
     },
 };
-use log::error;
+use log::warn;
 use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
@@ -85,10 +85,17 @@ impl<'a> Sequent<'a> {
     }
 }
 
+/// Error types for LaTeX generation
+#[derive(Debug)]
+pub enum EbproofLatexError {
+    /// File size exceeded the maximum limit
+    FileSizeExceeded,
+}
+
 /// Generates a LaTeX proof tree using the ebproof package.
-pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
+pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> Result<(), EbproofLatexError> {
     // generate the proof tree
-    let buf = ebproof_impl(seq, names);
+    let buf = ebproof_impl(seq, names)?;
     // create output LaTeX file
     let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
     // replace the placeholder with proof
@@ -96,10 +103,11 @@ pub fn ebproof(seq: Sequent, names: &Names, out: &str) {
         .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
+    Ok(())
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
+fn ebproof_impl(seq: Sequent, names: &Names) -> Result<Vec<u8>, EbproofLatexError> {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     if seq.is_initially_trivial() {
@@ -111,16 +119,16 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
             seq.display(names)
         )
         .unwrap();
-        return buf;
+        return Ok(buf);
     }
     let mut nodes = vec![ProofNode::new_root(seq)];
     'main: loop {
         // write all proved nodes
-        flush_proved_nodes(&mut nodes, names, &mut buf);
+        flush_proved_nodes(&mut nodes, names, &mut buf)?;
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
-            return buf;
+            return Ok(buf);
         };
         let mut seq = seq.clone();
         // get the last formula
@@ -324,9 +332,11 @@ fn ebproof_impl(seq: Sequent, names: &Names) -> Vec<u8> {
 /// Writes all proved nodes to the LaTeX buffer.
 /// - Processes only when all their children are proved
 /// - Automatically increments parent nodes' count of proved children
-// TODO: 2025/09/07 remove expect
-#[expect(clippy::panic)]
-fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u8>) {
+fn flush_proved_nodes(
+    nodes: &mut Vec<ProofNode>,
+    names: &Names,
+    buf: &mut Vec<u8>,
+) -> Result<(), EbproofLatexError> {
     while let Some(ProofNode {
         seq,
         tactic,
@@ -344,10 +354,8 @@ fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u
         }
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
-            // terminate the entire process immediately
-            error!("Failed: File size exceeded the limit.");
-            // TODO: 2025/09/06 panicやめる
-            panic!("File size exceeded the limit.");
+            warn!("Failed: File size exceeded the limit.");
+            return Err(EbproofLatexError::FileSizeExceeded);
         }
         // write the inference rule
         writeln!(
@@ -365,4 +373,5 @@ fn flush_proved_nodes(nodes: &mut Vec<ProofNode>, names: &Names, buf: &mut Vec<u
         // remove the written node
         nodes.pop().unwrap();
     }
+    Ok(())
 }

@@ -51,7 +51,7 @@ fn test_latex_snapshot(file: &str) {
             // ebproof
             println!("ebproof...");
             // generate ebproof latex file
-            ebproof(seq.clone(), &names, temp.to_str().unwrap());
+            ebproof(seq.clone(), &names, temp.to_str().unwrap()).unwrap();
             let ebproof_content = fs::read_to_string(temp.join("ebproof.tex")).unwrap();
             // snapshot test for ebproof
             settings.bind(|| {
@@ -66,7 +66,7 @@ fn test_latex_snapshot(file: &str) {
             // forest
             println!("forest...");
             // generate forest latex file
-            forest(seq, &names, temp.to_str().unwrap());
+            forest(seq, &names, temp.to_str().unwrap()).unwrap();
             let forest_content = fs::read_to_string(temp.join("forest.tex")).unwrap();
             // snapshot test for forest
             settings.bind(|| {

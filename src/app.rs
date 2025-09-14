@@ -1,6 +1,6 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{Sequent, ebproof, forest, prove_prop},
+    prover::{EbproofLatexError, ForestLatexError, Sequent, ebproof, forest, prove_prop},
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -114,28 +114,38 @@ pub fn run() {
     let end_time = Instant::now();
     info!("done");
     writeln!(result, "provability: {provability}").unwrap();
-    let proof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-    writeln!(result, "proofTime: {proof_time:.3}").unwrap();
+    let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+    writeln!(result, "proofTime: {time:.3}").unwrap();
 
     // ebproof
     if provability && options.ebproof {
         info!("generating ebproof...");
         let start_time = Instant::now();
-        ebproof(seq.clone(), &names, &out);
+        match ebproof(seq.clone(), &names, &out) {
+            Ok(()) => {}
+            Err(EbproofLatexError::FileSizeExceeded) => {
+                writeln!(result, "fileSizeError: true").unwrap();
+            }
+        }
         let end_time = Instant::now();
         info!("done");
-        let ebproof_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "ebproofTime: {ebproof_time:.3}").unwrap();
+        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        writeln!(result, "ebproofTime: {time:.3}").unwrap();
     }
 
     // forest
     if provability && options.forest {
         info!("generating forest...");
         let start_time = Instant::now();
-        forest(seq, &names, &out);
+        match forest(seq, &names, &out) {
+            Ok(()) => {}
+            Err(ForestLatexError::FileSizeExceeded) => {
+                writeln!(result, "fileSizeError: true").unwrap();
+            }
+        }
         let end_time = Instant::now();
         info!("done");
-        let forest_time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
-        writeln!(result, "forestTime: {forest_time:.3}").unwrap();
+        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        writeln!(result, "forestTime: {time:.3}").unwrap();
     }
 }

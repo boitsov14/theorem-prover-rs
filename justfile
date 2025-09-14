@@ -24,6 +24,7 @@ lint:
 
 # Lint code allowing dead_code warnings
 lint2:
+    just fmt
     RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
 
 # Run the project
