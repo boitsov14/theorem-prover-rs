@@ -91,7 +91,7 @@ cross-build:
 # Latex build
 tex FILE:
     -rm tex/*
-    cp {{ FILE }}.tex tex/out.tex
+    cp tmp/{{ FILE }}.tex tex/out.tex
     pdflatex -halt-on-error -interaction=nonstopmode -output-directory tex tex/out.tex
 
 # Detect unused dependencies

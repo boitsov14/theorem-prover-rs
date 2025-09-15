@@ -114,7 +114,9 @@ pub fn sequent_calculus(
         Ebproof => include_str!("../../../templates/ebproof.tex"),
         Bussproofs => include_str!("../../../templates/bussproofs.tex"),
     };
-    let proof = s.replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
+    let proof = s
+        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim())
+        .replace(r"&\vdash", r"\fCenter");
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
     Ok(())
