@@ -1,14 +1,6 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{
-        ForestLatexError,
-        Latex,
-        Sequent,
-        SequentCalculusLatexError,
-        forest,
-        prove_prop,
-        sequent_calculus,
-    },
+    prover::{Latex, Sequent, forest, prove_prop, sequent_calculus},
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -45,6 +37,13 @@ struct FileOptions {
     /// Enable trace level logging
     #[serde(default)]
     trace: bool,
+}
+
+/// Error types for LaTeX generation
+#[derive(Debug)]
+pub enum LatexError {
+    /// File size exceeded the maximum limit
+    FileSizeExceeded,
 }
 
 pub fn run() {
@@ -135,7 +134,7 @@ pub fn run() {
         let start_time = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Ebproof) {
             Ok(()) => {}
-            Err(SequentCalculusLatexError::FileSizeExceeded) => {
+            Err(LatexError::FileSizeExceeded) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
         }
@@ -151,7 +150,7 @@ pub fn run() {
         let start_time = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Bussproofs) {
             Ok(()) => {}
-            Err(SequentCalculusLatexError::FileSizeExceeded) => {
+            Err(LatexError::FileSizeExceeded) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
         }
@@ -167,7 +166,7 @@ pub fn run() {
         let start_time = Instant::now();
         match forest(seq, &names, &out) {
             Ok(()) => {}
-            Err(ForestLatexError::FileSizeExceeded) => {
+            Err(LatexError::FileSizeExceeded) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
         }

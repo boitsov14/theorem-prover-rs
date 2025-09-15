@@ -12,12 +12,12 @@ mod prover {
         mod forest;
         #[cfg(test)]
         mod test;
-        pub use ebproof::{Latex, SequentCalculusLatexError, sequent_calculus};
-        pub use forest::{ForestLatexError, forest};
+        pub use ebproof::{Latex, sequent_calculus};
+        pub use forest::forest;
     }
     mod sequent;
     pub use kernel::prove_prop;
-    pub use latex::{ForestLatexError, Latex, SequentCalculusLatexError, forest, sequent_calculus};
+    pub use latex::{Latex, forest, sequent_calculus};
     pub use sequent::Sequent;
 }
 use mimalloc::MiMalloc;

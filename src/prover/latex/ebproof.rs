@@ -1,4 +1,5 @@
 use crate::{
+    app::LatexError,
     core::{names::Names, syntax::Formula::*},
     prover::sequent::{
         Sequent,
@@ -95,20 +96,13 @@ impl<'a> Sequent<'a> {
     }
 }
 
-/// Error types for LaTeX generation
-#[derive(Debug)]
-pub enum SequentCalculusLatexError {
-    /// File size exceeded the maximum limit
-    FileSizeExceeded,
-}
-
 /// Generates a LaTeX proof tree using sequent calculus.
 pub fn sequent_calculus(
     seq: Sequent,
     names: &Names,
     out: &str,
     latex: Latex,
-) -> Result<(), SequentCalculusLatexError> {
+) -> Result<(), LatexError> {
     // generate the proof tree
     let buf = sequent_calculus_impl(seq, names, latex)?;
     // create output LaTeX file
@@ -129,11 +123,7 @@ pub fn sequent_calculus(
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn sequent_calculus_impl(
-    seq: Sequent,
-    names: &Names,
-    latex: Latex,
-) -> Result<Vec<u8>, SequentCalculusLatexError> {
+fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Vec<u8>, LatexError> {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     if seq.is_initially_trivial() {
@@ -376,7 +366,7 @@ fn flush_proved_nodes(
     names: &Names,
     buf: &mut Vec<u8>,
     latex: Latex,
-) -> Result<(), SequentCalculusLatexError> {
+) -> Result<(), LatexError> {
     while let Some(ProofNode {
         seq,
         tactic,
@@ -395,7 +385,7 @@ fn flush_proved_nodes(
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             warn!("Failed: File size exceeded the limit.");
-            return Err(SequentCalculusLatexError::FileSizeExceeded);
+            return Err(LatexError::FileSizeExceeded);
         }
         // write the inference rule
         match latex {

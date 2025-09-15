@@ -1,4 +1,5 @@
 use crate::{
+    app::LatexError,
     core::{
         names::Names,
         syntax::Formula::{self, *},
@@ -114,15 +115,8 @@ impl SidedFormula<'_> {
     }
 }
 
-/// Error types for LaTeX generation
-#[derive(Debug)]
-pub enum ForestLatexError {
-    /// File size exceeded the maximum limit
-    FileSizeExceeded,
-}
-
 /// Generates a LaTeX proof tree using the forest package.
-pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), ForestLatexError> {
+pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> {
     let claim = seq
         .display(names)
         .to_string()
@@ -511,11 +505,11 @@ fn flush_proved_nodes<'a>(
 }
 
 /// check buffer size and return error if it exceeds `MAX_FILE_SIZE`
-fn check_buf_size(buf: &[u8]) -> Result<(), ForestLatexError> {
+fn check_buf_size(buf: &[u8]) -> Result<(), LatexError> {
     if buf.len() > MAX_FILE_SIZE {
         // terminate the entire process immediately
         warn!("Failed: File size exceeded the limit.");
-        return Err(ForestLatexError::FileSizeExceeded);
+        return Err(LatexError::FileSizeExceeded);
     }
     Ok(())
 }
@@ -576,7 +570,7 @@ fn write_latex(
     tableau_nodes: &[TableauNode<'_>],
     names: &Names,
     buf: &mut Vec<u8>,
-) -> Result<(), ForestLatexError> {
+) -> Result<(), LatexError> {
     // stack of remaining children count of each parent node
     let mut stack = vec![];
     // current indentation
