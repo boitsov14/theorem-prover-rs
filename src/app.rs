@@ -1,6 +1,14 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{EbproofLatexError, ForestLatexError, Sequent, ebproof, forest, prove_prop},
+    prover::{
+        ForestLatexError,
+        Latex,
+        Sequent,
+        SequentCalculusLatexError,
+        forest,
+        prove_prop,
+        sequent_calculus,
+    },
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -23,10 +31,14 @@ struct CliOptions {
 
 /// Options from options.json
 #[derive(Deserialize)]
+#[expect(clippy::struct_excessive_bools)]
 struct FileOptions {
     /// Output LaTeX in ebproof format
     #[serde(default)]
     ebproof: bool,
+    /// Output LaTeX in bussproofs format
+    #[serde(default)]
+    bussproofs: bool,
     /// Output LaTeX in forest format
     #[serde(default)]
     forest: bool,
@@ -121,9 +133,9 @@ pub fn run() {
     if provability && options.ebproof {
         info!("generating ebproof...");
         let start_time = Instant::now();
-        match ebproof(seq.clone(), &names, &out) {
+        match sequent_calculus(seq.clone(), &names, &out, Latex::Ebproof) {
             Ok(()) => {}
-            Err(EbproofLatexError::FileSizeExceeded) => {
+            Err(SequentCalculusLatexError::FileSizeExceeded) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
         }
@@ -131,6 +143,22 @@ pub fn run() {
         info!("done");
         let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
         writeln!(result, "ebproofTime: {time:.3}").unwrap();
+    }
+
+    // bussproofs
+    if provability && options.bussproofs {
+        info!("generating bussproofs...");
+        let start_time = Instant::now();
+        match sequent_calculus(seq.clone(), &names, &out, Latex::Bussproofs) {
+            Ok(()) => {}
+            Err(SequentCalculusLatexError::FileSizeExceeded) => {
+                writeln!(result, "fileSizeError: true").unwrap();
+            }
+        }
+        let end_time = Instant::now();
+        info!("done");
+        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        writeln!(result, "bussproofsTime: {time:.3}").unwrap();
     }
 
     // forest

@@ -2,7 +2,7 @@ use crate::{
     core::{names::Names, parser::parse_sequent},
     prover::{
         kernel::prove_prop,
-        latex::{ebproof, forest},
+        latex::{Latex, forest, sequent_calculus},
         sequent::Sequent,
     },
 };
@@ -51,7 +51,7 @@ fn test_latex_snapshot(file: &str) {
             // ebproof
             println!("ebproof...");
             // generate ebproof latex file
-            ebproof(seq.clone(), &names, temp.to_str().unwrap()).unwrap();
+            sequent_calculus(seq.clone(), &names, temp.to_str().unwrap(), Latex::Ebproof).unwrap();
             let ebproof_content = fs::read_to_string(temp.join("ebproof.tex")).unwrap();
             // snapshot test for ebproof
             settings.bind(|| {

@@ -6,10 +6,20 @@ use crate::{
         SidedFormula,
     },
 };
+use Latex::*;
 use log::warn;
 use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
 
 const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
+
+/// Represents different LaTeX packages.
+#[derive(Clone, Copy, Debug)]
+pub enum Latex {
+    /// Use the ebproof package
+    Ebproof,
+    /// Use the bussproofs package
+    Bussproofs,
+}
 
 #[derive(Clone, Debug)]
 enum Tactic {
@@ -87,44 +97,73 @@ impl<'a> Sequent<'a> {
 
 /// Error types for LaTeX generation
 #[derive(Debug)]
-pub enum EbproofLatexError {
+pub enum SequentCalculusLatexError {
     /// File size exceeded the maximum limit
     FileSizeExceeded,
 }
 
-/// Generates a LaTeX proof tree using the ebproof package.
-pub fn ebproof(seq: Sequent, names: &Names, out: &str) -> Result<(), EbproofLatexError> {
+/// Generates a LaTeX proof tree using sequent calculus.
+pub fn sequent_calculus(
+    seq: Sequent,
+    names: &Names,
+    out: &str,
+    latex: Latex,
+) -> Result<(), SequentCalculusLatexError> {
     // generate the proof tree
-    let buf = ebproof_impl(seq, names)?;
+    let buf = sequent_calculus_impl(seq, names, latex)?;
     // create output LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("ebproof.tex")).unwrap();
-    // replace the placeholder with proof
-    let proof = include_str!("../../../templates/ebproof.tex")
-        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
+    let file = match latex {
+        Ebproof => "ebproof.tex",
+        Bussproofs => "bussproofs.tex",
+    };
+    let mut file = File::create(PathBuf::from(out).join(file)).unwrap();
+    // replace the template placeholder with proof
+    let s = match latex {
+        Ebproof => include_str!("../../../templates/ebproof.tex"),
+        Bussproofs => include_str!("../../../templates/bussproofs.tex"),
+    };
+    let proof = s.replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
     // write proof
     file.write_all(proof.as_bytes()).unwrap();
     Ok(())
 }
 
 /// Implementation for generating LaTeX proof trees.
-fn ebproof_impl(seq: Sequent, names: &Names) -> Result<Vec<u8>, EbproofLatexError> {
+fn sequent_calculus_impl(
+    seq: Sequent,
+    names: &Names,
+    latex: Latex,
+) -> Result<Vec<u8>, SequentCalculusLatexError> {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
-        writeln!(
-            buf,
-            r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-            seq.display(names)
-        )
-        .unwrap();
+        match latex {
+            Ebproof => {
+                writeln!(
+                    buf,
+                    r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                    seq.display(names)
+                )
+                .unwrap();
+            }
+            Bussproofs => {
+                // TODO: implement bussproofs LaTeX output format
+                writeln!(
+                    buf,
+                    r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
+                    seq.display(names)
+                )
+                .unwrap();
+            }
+        }
         return Ok(buf);
     }
     let mut nodes = vec![ProofNode::new_root(seq)];
     'main: loop {
         // write all proved nodes
-        flush_proved_nodes(&mut nodes, names, &mut buf)?;
+        flush_proved_nodes(&mut nodes, names, &mut buf, latex)?;
         // get the last sequent
         let Some(ProofNode { seq, tactic, .. }) = nodes.last() else {
             // if no sequent to be proved, completed the proof
@@ -336,7 +375,8 @@ fn flush_proved_nodes(
     nodes: &mut Vec<ProofNode>,
     names: &Names,
     buf: &mut Vec<u8>,
-) -> Result<(), EbproofLatexError> {
+    latex: Latex,
+) -> Result<(), SequentCalculusLatexError> {
     while let Some(ProofNode {
         seq,
         tactic,
@@ -355,16 +395,30 @@ fn flush_proved_nodes(
         // check if the buffer size exceeds the limit
         if buf.len() > MAX_FILE_SIZE {
             warn!("Failed: File size exceeded the limit.");
-            return Err(EbproofLatexError::FileSizeExceeded);
+            return Err(SequentCalculusLatexError::FileSizeExceeded);
         }
         // write the inference rule
-        writeln!(
-            buf,
-            r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
-            tactic.children_cnt(),
-            seq.display(names)
-        )
-        .unwrap();
+        match latex {
+            Ebproof => {
+                writeln!(
+                    buf,
+                    r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
+                    tactic.children_cnt(),
+                    seq.display(names)
+                )
+                .unwrap();
+            }
+            Bussproofs => {
+                // TODO: implement bussproofs LaTeX output format
+                writeln!(
+                    buf,
+                    r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
+                    tactic.children_cnt(),
+                    seq.display(names)
+                )
+                .unwrap();
+            }
+        }
         if let Some(parent_idx) = *parent_idx {
             // if has a parent
             // increment parent's proved children count
