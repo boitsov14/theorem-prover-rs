@@ -39,11 +39,16 @@ struct FileOptions {
     trace: bool,
 }
 
+/// Maximum output size limit for LaTeX generation
+pub const MAX_OUTPUT_SIZE: usize = 1_000_000; // 1MB
+
 /// Error types for LaTeX generation
 #[derive(Debug)]
 pub enum LatexError {
-    /// File size exceeded the maximum limit
-    FileSizeExceeded,
+    /// Output size exceeded the maximum limit
+    OutputTooLarge,
+    /// Too many branches for bussproofs package
+    TooManyBranches,
 }
 
 pub fn run() {
@@ -134,9 +139,10 @@ pub fn run() {
         let start_time = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Ebproof) {
             Ok(()) => {}
-            Err(LatexError::FileSizeExceeded) => {
+            Err(LatexError::OutputTooLarge) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
+            Err(LatexError::TooManyBranches) => unreachable!(),
         }
         let end_time = Instant::now();
         info!("done");
@@ -150,8 +156,11 @@ pub fn run() {
         let start_time = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Bussproofs) {
             Ok(()) => {}
-            Err(LatexError::FileSizeExceeded) => {
+            Err(LatexError::OutputTooLarge) => {
                 writeln!(result, "fileSizeError: true").unwrap();
+            }
+            Err(LatexError::TooManyBranches) => {
+                writeln!(result, "tooManyBranches: true").unwrap();
             }
         }
         let end_time = Instant::now();
@@ -166,9 +175,10 @@ pub fn run() {
         let start_time = Instant::now();
         match forest(seq, &names, &out) {
             Ok(()) => {}
-            Err(LatexError::FileSizeExceeded) => {
+            Err(LatexError::OutputTooLarge) => {
                 writeln!(result, "fileSizeError: true").unwrap();
             }
+            Err(LatexError::TooManyBranches) => unreachable!(),
         }
         let end_time = Instant::now();
         info!("done");

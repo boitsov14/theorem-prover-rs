@@ -63,6 +63,9 @@ fn test_latex_snapshot(file: &str) {
             });
             println!("done");
 
+            // bussproofs
+            // TODO: 2025/09/15 implement bussproofs test
+
             // forest
             println!("forest...");
             // generate forest latex file

@@ -1,5 +1,5 @@
 use crate::{
-    app::LatexError,
+    app::{LatexError, MAX_OUTPUT_SIZE},
     core::{
         names::Names,
         syntax::Formula::{self, *},
@@ -13,8 +13,6 @@ use crate::{
 use log::warn;
 use rustc_hash::FxHashMap;
 use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf, vec};
-
-const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 
 #[derive(Clone, Debug)]
 struct ProofNode<'a> {
@@ -123,7 +121,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> 
         .replace(r"&\vdash", r"\vdash")
         .replace(',', r"{,}\,");
     // buffer for storing the proof tree string
-    let mut buf = Vec::with_capacity(MAX_FILE_SIZE);
+    let mut buf = Vec::with_capacity(MAX_OUTPUT_SIZE);
     // generate the proof tree
     let nodes = forest_impl(seq);
     // reorder forest nodes using stack-based algorithm
@@ -506,10 +504,10 @@ fn flush_proved_nodes<'a>(
 
 /// check buffer size and return error if it exceeds `MAX_FILE_SIZE`
 fn check_buf_size(buf: &[u8]) -> Result<(), LatexError> {
-    if buf.len() > MAX_FILE_SIZE {
+    if buf.len() > MAX_OUTPUT_SIZE {
         // terminate the entire process immediately
         warn!("Failed: File size exceeded the limit.");
-        return Err(LatexError::FileSizeExceeded);
+        return Err(LatexError::OutputTooLarge);
     }
     Ok(())
 }

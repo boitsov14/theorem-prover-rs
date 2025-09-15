@@ -1,5 +1,5 @@
 use crate::{
-    app::LatexError,
+    app::{LatexError, MAX_OUTPUT_SIZE},
     core::{names::Names, syntax::Formula::*},
     prover::sequent::{
         Sequent,
@@ -10,8 +10,6 @@ use crate::{
 use Latex::*;
 use log::warn;
 use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
-
-const MAX_FILE_SIZE: usize = 1_000_000; // 1MB
 
 /// Represents different LaTeX packages.
 #[derive(Clone, Copy, Debug)]
@@ -125,7 +123,7 @@ pub fn sequent_calculus(
 /// Implementation for generating LaTeX proof trees.
 fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Vec<u8>, LatexError> {
     // buffer for storing the proof tree string
-    let mut buf: Vec<u8> = Vec::with_capacity(MAX_FILE_SIZE);
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_OUTPUT_SIZE);
     if seq.is_initially_trivial() {
         // trivial from the beginning
         // ex. p, q ⊢ r, p
@@ -139,13 +137,9 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                 .unwrap();
             }
             Bussproofs => {
-                // TODO: implement bussproofs LaTeX output format
-                writeln!(
-                    buf,
-                    r"\infer{{0}}[\scriptsize Axiom]{{{}}}",
-                    seq.display(names)
-                )
-                .unwrap();
+                writeln!(buf, r"\AxiomC{{}}").unwrap();
+                writeln!(buf, r"\RightLabel{{\scriptsize Axiom}}").unwrap();
+                writeln!(buf, r"\UnaryInf${}$", seq.display(names)).unwrap();
             }
         }
         return Ok(buf);
@@ -383,9 +377,9 @@ fn flush_proved_nodes(
             break;
         }
         // check if the buffer size exceeds the limit
-        if buf.len() > MAX_FILE_SIZE {
+        if buf.len() > MAX_OUTPUT_SIZE {
             warn!("Failed: File size exceeded the limit.");
-            return Err(LatexError::FileSizeExceeded);
+            return Err(LatexError::OutputTooLarge);
         }
         // write the inference rule
         match latex {
@@ -398,16 +392,36 @@ fn flush_proved_nodes(
                 )
                 .unwrap();
             }
-            Bussproofs => {
-                // TODO: implement bussproofs LaTeX output format
-                writeln!(
-                    buf,
-                    r"\infer{{{}}}[\scriptsize {tactic}]{{{}}}",
-                    tactic.children_cnt(),
-                    seq.display(names)
-                )
-                .unwrap();
-            }
+            Bussproofs => match tactic.children_cnt() {
+                0 => {
+                    writeln!(buf, r"\AxiomC{{}}").unwrap();
+                    writeln!(buf, r"\RightLabel{{\scriptsize Axiom}}").unwrap();
+                    writeln!(buf, r"\UnaryInf${}$", seq.display(names)).unwrap();
+                }
+                1 => {
+                    writeln!(buf, r"\RightLabel{{\scriptsize {tactic}}}").unwrap();
+                    writeln!(buf, r"\UnaryInf${}$", seq.display(names)).unwrap();
+                }
+                2 => {
+                    writeln!(buf, r"\RightLabel{{\scriptsize {tactic}}}").unwrap();
+                    writeln!(buf, r"\BinaryInf${}$", seq.display(names)).unwrap();
+                }
+                3 => {
+                    writeln!(buf, r"\RightLabel{{\scriptsize {tactic}}}").unwrap();
+                    writeln!(buf, r"\TrinaryInf${}$", seq.display(names)).unwrap();
+                }
+                4 => {
+                    writeln!(buf, r"\RightLabel{{\scriptsize {tactic}}}").unwrap();
+                    writeln!(buf, r"\QuaternaryInf${}$", seq.display(names)).unwrap();
+                }
+                5 => {
+                    writeln!(buf, r"\RightLabel{{\scriptsize {tactic}}}").unwrap();
+                    writeln!(buf, r"\QuinaryInf${}$", seq.display(names)).unwrap();
+                }
+                _ => {
+                    return Err(LatexError::TooManyBranches);
+                }
+            },
         }
         if let Some(parent_idx) = *parent_idx {
             // if has a parent
