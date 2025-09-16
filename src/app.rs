@@ -81,6 +81,9 @@ pub fn run() {
     if options.ebproof {
         trace!("Using ebproof format");
     }
+    if options.bussproofs {
+        trace!("Using bussproofs format");
+    }
     if options.forest {
         trace!("Using forest format");
     }
