@@ -1,6 +1,6 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{Latex, Sequent, forest, prove_prop, sequent_calculus},
+    prover::{Latex, Sequent, tableau_method, prove_prop, sequent_calculus},
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -173,7 +173,7 @@ pub fn run() {
     if provability && options.forest {
         info!("generating forest...");
         let start_time = Instant::now();
-        match forest(seq, &names, &out) {
+        match tableau_method(seq, &names, &out) {
             Ok(()) => {}
             Err(LatexError::OutputTooLarge) => {
                 writeln!(result, "fileSizeError: true").unwrap();

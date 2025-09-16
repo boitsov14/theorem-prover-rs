@@ -69,7 +69,7 @@ fn test_latex_snapshot(file: &str) {
             // forest
             println!("forest...");
             // generate forest latex file
-            forest(seq, &names, temp.to_str().unwrap()).unwrap();
+            tableau_method(seq, &names, temp.to_str().unwrap()).unwrap();
             let forest_content = fs::read_to_string(temp.join("forest.tex")).unwrap();
             // snapshot test for forest
             settings.bind(|| {

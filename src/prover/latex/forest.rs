@@ -114,7 +114,7 @@ impl SidedFormula<'_> {
 }
 
 /// Generates a LaTeX proof tree using the forest package.
-pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> {
+pub fn tableau_method(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> {
     let claim = seq
         .display(names)
         .to_string()
@@ -123,8 +123,8 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> 
     // buffer for storing the proof tree string
     let mut buf = Vec::with_capacity(MAX_OUTPUT_SIZE);
     // generate the proof tree
-    let nodes = forest_impl(seq);
-    // reorder forest nodes using stack-based algorithm
+    let nodes = tableau_method_impl(seq);
+    // reorder tableau nodes using stack-based algorithm
     let nodes = mirror_tree(nodes);
     // Write the proof tree content
     write_latex(&nodes, names, &mut buf)?;
@@ -167,7 +167,7 @@ pub fn forest(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> 
 ///                                            [5]          [5]          [5]
 ///     ___          ___          ___          [4]          [4]          [4]
 /// ```
-fn forest_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
+fn tableau_method_impl(seq: Sequent<'_>) -> Vec<TableauNode<'_>> {
     // global unique id counter for tableau node id
     let mut id = 1;
     // formula-to-id mapping

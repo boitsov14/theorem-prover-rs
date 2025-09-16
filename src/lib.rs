@@ -13,11 +13,11 @@ mod prover {
         #[cfg(test)]
         mod test;
         pub use ebproof::{Latex, sequent_calculus};
-        pub use forest::forest;
+        pub use forest::tableau_method;
     }
     mod sequent;
     pub use kernel::prove_prop;
-    pub use latex::{Latex, forest, sequent_calculus};
+    pub use latex::{Latex, sequent_calculus, tableau_method};
     pub use sequent::Sequent;
 }
 use mimalloc::MiMalloc;
