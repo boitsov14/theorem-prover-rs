@@ -4,7 +4,7 @@ use crate::{
 };
 use clap::Parser;
 use itertools::Itertools;
-use log::{info, trace};
+use log::{info, warn};
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -54,17 +54,16 @@ pub enum LatexError {
 pub fn run() {
     // parse command line arguments
     let options = CliOptions::parse();
-
     // output directory
     let out = options.out;
 
-    // load file options from options.json
+    // load options from options.json
     let s = fs::read_to_string(PathBuf::from(&out).join("options.json"))
         .expect("options.json not found");
     let options = serde_json::from_str::<FileOptions>(&s).expect("invalid options.json format");
 
-    // initialize logger
-    let s = include_str!("../logger.yaml")
+    // setup logger
+    let logger = include_str!("../logger.yaml")
         .replace("LOG_DIR", &out)
         .replace("LOG_LEVEL", if options.trace { "trace" } else { "info" })
         .replace(
@@ -75,18 +74,8 @@ pub fn run() {
                 "[log_file]"
             },
         );
-    let logger_config = serde_yaml_ng::from_str(&s).unwrap();
-    log4rs::init_raw_config(logger_config).unwrap();
-
-    if options.ebproof {
-        trace!("Using ebproof format");
-    }
-    if options.bussproofs {
-        trace!("Using bussproofs format");
-    }
-    if options.forest {
-        trace!("Using forest format");
-    }
+    let logger = serde_yaml_ng::from_str(&logger).unwrap();
+    log4rs::init_raw_config(logger).unwrap();
 
     // read formula from file
     // but ignore lines starting with #
@@ -97,7 +86,7 @@ pub fn run() {
         .join(" ");
     info!("input: {}", s.trim());
 
-    // create result.yaml file for output
+    // create result.yaml file
     let mut result = File::create(PathBuf::from(&out).join("result.yaml")).unwrap();
 
     // parse
@@ -107,7 +96,7 @@ pub fn run() {
         Ok(seq) => seq,
         Err(e) => {
             info!("failed");
-            // write error message to parse.err
+            // write error to parse.err
             let mut f = File::create(PathBuf::from(&out).join("parse.err")).unwrap();
             writeln!(f, "{e}").unwrap();
             return;
@@ -125,64 +114,70 @@ pub fn run() {
 
     // prove
     info!("proving...");
-    let start_time = Instant::now();
+    let start = Instant::now();
     let provability = prove_prop(seq.clone(), &names);
-    let end_time = Instant::now();
+    let end = Instant::now();
     info!("done");
     writeln!(result, "provability: {provability}").unwrap();
-    let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+    let time = end.duration_since(start).as_secs_f32() * 1000.0;
     writeln!(result, "proofTime: {time:.3}").unwrap();
 
     // ebproof
     if provability && options.ebproof {
         info!("generating ebproof...");
-        let start_time = Instant::now();
+        let start = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Ebproof) {
             Ok(()) => {}
             Err(LatexError::OutputTooLarge) => {
-                writeln!(result, "fileSizeError: true").unwrap();
+                warn!("ebproof output too large");
+                writeln!(result, "outputTooLarge: true").unwrap();
+                return;
             }
             Err(LatexError::TooManyBranches) => unreachable!(),
         }
-        let end_time = Instant::now();
+        let end = Instant::now();
         info!("done");
-        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        let time = end.duration_since(start).as_secs_f32() * 1000.0;
         writeln!(result, "ebproofTime: {time:.3}").unwrap();
     }
 
     // bussproofs
     if provability && options.bussproofs {
         info!("generating bussproofs...");
-        let start_time = Instant::now();
+        let start = Instant::now();
         match sequent_calculus(seq.clone(), &names, &out, Latex::Bussproofs) {
             Ok(()) => {}
             Err(LatexError::OutputTooLarge) => {
-                writeln!(result, "fileSizeError: true").unwrap();
+                warn!("bussproofs output too large");
+                writeln!(result, "outputTooLarge: true").unwrap();
+                return;
             }
             Err(LatexError::TooManyBranches) => {
                 writeln!(result, "tooManyBranches: true").unwrap();
             }
         }
-        let end_time = Instant::now();
+        let end = Instant::now();
         info!("done");
-        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        let time = end.duration_since(start).as_secs_f32() * 1000.0;
         writeln!(result, "bussproofsTime: {time:.3}").unwrap();
     }
 
     // forest
     if provability && options.forest {
         info!("generating forest...");
-        let start_time = Instant::now();
+        let start = Instant::now();
         match tableau_method(seq, &names, &out) {
             Ok(()) => {}
             Err(LatexError::OutputTooLarge) => {
-                writeln!(result, "fileSizeError: true").unwrap();
+                warn!("forest output too large");
+                writeln!(result, "outputTooLarge: true").unwrap();
+                return;
             }
             Err(LatexError::TooManyBranches) => unreachable!(),
         }
-        let end_time = Instant::now();
+        let end = Instant::now();
         info!("done");
-        let time = end_time.duration_since(start_time).as_secs_f32() * 1000.0;
+        let time = end.duration_since(start).as_secs_f32() * 1000.0;
         writeln!(result, "forestTime: {time:.3}").unwrap();
     }
 }
