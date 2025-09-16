@@ -2,7 +2,7 @@ use crate::{
     core::{names::Names, parser::parse_sequent},
     prover::{
         kernel::prove_prop,
-        latex::{Latex, forest, sequent_calculus},
+        latex::{Latex, sequent_calculus, tableau_method},
         sequent::Sequent,
     },
 };

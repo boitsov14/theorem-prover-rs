@@ -8,12 +8,12 @@ mod prover {
     mod bench;
     mod kernel;
     mod latex {
-        mod ebproof;
-        mod forest;
+        mod sequent_calculus;
+        mod tableau_method;
         #[cfg(test)]
         mod test;
-        pub use ebproof::{Latex, sequent_calculus};
-        pub use forest::tableau_method;
+        pub use sequent_calculus::{Latex, sequent_calculus};
+        pub use tableau_method::tableau_method;
     }
     mod sequent;
     pub use kernel::prove_prop;

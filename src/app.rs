@@ -1,6 +1,6 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{Latex, Sequent, tableau_method, prove_prop, sequent_calculus},
+    prover::{Latex, Sequent, prove_prop, sequent_calculus, tableau_method},
 };
 use clap::Parser;
 use itertools::Itertools;
