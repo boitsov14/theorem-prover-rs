@@ -174,7 +174,7 @@ impl fmt::Display for SequentDisplay<'_> {
             }
             write!(f, "{}", fml.display(self.names))?;
         }
-        write!(f, r" &\vdash ")?;
+        write!(f, r" \vdash ")?;
         for (i, SidedFormula { fml, .. }) in self.seq.iter().filter(|p| p.side == Right).enumerate()
         {
             if i > 0 {

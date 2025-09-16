@@ -221,7 +221,7 @@ pub fn to_unicode(s: &str) -> String {
         .replace(r"\lif", "→")
         .replace(r"\lall ", "∀")
         .replace(r"\lis ", "∃")
-        .replace(r"&\vdash", "⊢")
+        .replace(r"\vdash", "⊢")
     // TODO: 2025/02/13 これは必要か
     // .replace(r"\_", "_")
 }

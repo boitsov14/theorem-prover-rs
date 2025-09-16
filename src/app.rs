@@ -119,10 +119,7 @@ pub fn run() {
     writeln!(
         result,
         "sequent: {}",
-        seq.display(&names)
-            .to_string()
-            .replace(r"&\vdash", r"\vdash")
-            .trim()
+        seq.display(&names).to_string().trim()
     )
     .unwrap();
 

@@ -115,26 +115,19 @@ impl SidedFormula<'_> {
 
 /// Generates a LaTeX proof tree using the forest package.
 pub fn tableau_method(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> {
-    let claim = seq
-        .display(names)
-        .to_string()
-        .replace(r"&\vdash", r"\vdash")
-        .replace(',', r"{,}\,");
-    // buffer for storing the proof tree string
-    let mut buf = Vec::with_capacity(MAX_OUTPUT_SIZE);
+    let claim = seq.display(names).to_string().replace(',', r"{,}\,");
     // generate the proof tree
     let nodes = tableau_method_impl(seq);
     // reorder tableau nodes using stack-based algorithm
     let nodes = mirror_tree(nodes);
-    // Write the proof tree content
-    write_latex(&nodes, names, &mut buf)?;
-    // create output LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
-    // replace the placeholder with proof
+    // create proof tree in LaTeX
+    let proof = write_latex(&nodes, names)?;
+    // embed proof into LaTeX template
     let proof = include_str!("../../../templates/forest.tex")
         .replace("%CLAIM%", claim.trim())
-        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim());
-    // write proof
+        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&proof).trim());
+    // save LaTeX file
+    let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
     file.write_all(proof.as_bytes()).unwrap();
     Ok(())
 }
@@ -564,11 +557,9 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
 }
 
 /// Write tableau nodes to LaTeX buffer using stack-based algorithm
-fn write_latex(
-    tableau_nodes: &[TableauNode<'_>],
-    names: &Names,
-    buf: &mut Vec<u8>,
-) -> Result<(), LatexError> {
+fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names) -> Result<Vec<u8>, LatexError> {
+    // buffer for storing the proof tree string
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_OUTPUT_SIZE);
     // stack of remaining children count of each parent node
     let mut stack = vec![];
     // current indentation
@@ -581,7 +572,7 @@ fn write_latex(
         children_cnt,
     } in tableau_nodes
     {
-        check_buf_size(buf)?;
+        check_buf_size(&buf)?;
         if *children_cnt != 0 {
             // internal node - write opening bracket
             if *from_id == 0 {
@@ -653,5 +644,5 @@ fn write_latex(
     }
 
     assert!(stack.is_empty(), "stack should be empty at the end");
-    Ok(())
+    Ok(buf)
 }

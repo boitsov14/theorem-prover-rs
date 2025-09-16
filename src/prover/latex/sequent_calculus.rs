@@ -101,23 +101,28 @@ pub fn sequent_calculus(
     out: &str,
     latex: Latex,
 ) -> Result<(), LatexError> {
-    // generate the proof tree
-    let buf = sequent_calculus_impl(seq, names, latex)?;
-    // create output LaTeX file
+    // create proof tree in LaTeX
+    let proof = sequent_calculus_impl(seq, names, latex)?;
+    // replace turnstile symbol based on LaTeX package
+    let proof = String::from_utf8_lossy(&proof).replace(
+        r"\vdash",
+        match latex {
+            Ebproof => r"&\vdash",
+            Bussproofs => r"\fCenter",
+        },
+    );
+    // embed proof into LaTeX template
+    let template = match latex {
+        Ebproof => include_str!("../../../templates/ebproof.tex"),
+        Bussproofs => include_str!("../../../templates/bussproofs.tex"),
+    };
+    let proof = template.replace("%PROOF_CONTENT%", proof.trim());
+    // save LaTeX file
     let file = match latex {
         Ebproof => "ebproof.tex",
         Bussproofs => "bussproofs.tex",
     };
     let mut file = File::create(PathBuf::from(out).join(file)).unwrap();
-    // replace the template placeholder with proof
-    let s = match latex {
-        Ebproof => include_str!("../../../templates/ebproof.tex"),
-        Bussproofs => include_str!("../../../templates/bussproofs.tex"),
-    };
-    let proof = s
-        .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&buf).trim())
-        .replace(r"&\vdash", r"\fCenter");
-    // write proof
     file.write_all(proof.as_bytes()).unwrap();
     Ok(())
 }
