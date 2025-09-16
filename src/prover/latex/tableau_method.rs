@@ -121,7 +121,7 @@ pub fn tableau_method(seq: Sequent, names: &Names, out: &str) -> Result<(), Late
     // reorder tableau nodes using stack-based algorithm
     let nodes = mirror_tree(nodes);
     // create proof tree in LaTeX
-    let proof = write_latex(&nodes, names)?;
+    let proof = generate_latex(&nodes, names)?;
     // embed proof into LaTeX template
     let proof = include_str!("../../../templates/forest.tex")
         .replace("%CLAIM%", claim.trim())
@@ -556,8 +556,8 @@ fn mirror_tree(nodes: Vec<TableauNode<'_>>) -> Vec<TableauNode<'_>> {
     stack.pop().unwrap()
 }
 
-/// Write tableau nodes to LaTeX buffer using stack-based algorithm
-fn write_latex(tableau_nodes: &[TableauNode<'_>], names: &Names) -> Result<Vec<u8>, LatexError> {
+/// Generate tableau nodes as LaTeX buffer using stack-based algorithm
+fn generate_latex(tableau_nodes: &[TableauNode<'_>], names: &Names) -> Result<Vec<u8>, LatexError> {
     // buffer for storing the proof tree string
     let mut buf: Vec<u8> = Vec::with_capacity(MAX_OUTPUT_SIZE);
     // stack of remaining children count of each parent node
