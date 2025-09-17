@@ -1,18 +1,30 @@
 use crate::{
     core::{names::Names, syntax::Formula::*},
-    prover::sequent::{Sequent, Side::*, SidedFormula},
+    prover::{
+        countermodel::{CounterModel, get_countermodel},
+        sequent::{Sequent, Side::*, SidedFormula},
+    },
 };
 use log::trace;
 use std::vec;
 
-pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
+/// Result of a proof attempt
+#[derive(Clone, Debug)]
+pub enum ProofResult {
+    /// The sequent is provable
+    Proved,
+    /// The sequent is not provable, includes countermodel
+    Unprovable(CounterModel),
+}
+
+pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
     if seq.is_initially_trivial() {
         trace!(
             "Trivial from the beginning: {}",
             seq.display(names).to_unicode()
         );
         // ex. p, q ⊢ r, p
-        return true;
+        return ProofResult::Proved;
     }
     let mut seqs = vec![seq];
     let mut temp_fmls = vec![];
@@ -24,15 +36,13 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> bool {
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
             trace!("All sequents are proved.");
-            return true;
+            return ProofResult::Proved;
         };
         // pop the last formula
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             trace!("Unprovable: No formula in the sequent.");
-            // all the following examples go to `⊢` eventually
-            // ex. `true ⊢`, `true ∧ true ⊢`, `⊢ false`, `⊢ false ∨ false ∨ false`
-            // TODO: 2025/09/05 fix comment: all unprovable fml comes here
-            return false;
+            let model = get_countermodel(seq);
+            return ProofResult::Unprovable(model);
         };
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
