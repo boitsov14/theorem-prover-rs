@@ -134,10 +134,10 @@ pub fn run() {
         // generate and output truth table for the counterexample
         let table = countermodel.evaluate(&seq);
         for FormulaEvaluation { fml, val } in table {
-            info!("{} : {val}", fml.display(&names));
+            info!("{} : {val}", fml.display(&names).to_unicode());
         }
         // Show that the overall sequent evaluates to false
-        info!("{} : False", seq.display(&names));
+        info!("{} : False", seq.display(&names).to_unicode());
         return;
     }
     let time = end.duration_since(start).as_secs_f32() * 1000.0;

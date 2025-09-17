@@ -191,6 +191,9 @@ impl SequentDisplay<'_> {
     /// by converting LaTeX commands to symbols
     pub fn to_unicode(&self) -> String {
         to_unicode(&self.to_string())
+            .replace(r"\vdash", "⊢")
+            .trim()
+            .into()
     }
 }
 

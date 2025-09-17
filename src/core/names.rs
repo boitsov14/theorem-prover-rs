@@ -203,7 +203,8 @@ impl Formula {
 impl FormulaDisplay<'_> {
     /// Returns the unicode representation of the formula
     /// by converting LaTeX commands to symbols
-    #[cfg(test)]
+    // TODO: 2025/09/17 今だけtest以外で使用
+    // #[cfg(test)]
     pub fn to_unicode(&self) -> String {
         to_unicode(&self.to_string())
     }
@@ -221,7 +222,6 @@ pub fn to_unicode(s: &str) -> String {
         .replace(r"\lif", "→")
         .replace(r"\lall ", "∀")
         .replace(r"\lis ", "∃")
-        .replace(r"\vdash", "⊢")
     // TODO: 2025/02/13 これは必要か
     // .replace(r"\_", "_")
 }
