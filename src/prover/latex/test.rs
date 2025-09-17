@@ -1,7 +1,7 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
     prover::{
-        kernel::prove_prop,
+        kernel::{ProofResult, prove_prop},
         latex::{Latex, sequent_calculus, tableau_method},
         sequent::Sequent,
     },
@@ -44,7 +44,8 @@ fn test_latex_snapshot(file: &str) {
             let seq_unicode = seq.display(&names).to_unicode();
 
             // check provability
-            let provability = prove_prop(seq.clone(), &names);
+            let proof_result = prove_prop(seq.clone(), &names);
+            let provability = matches!(proof_result, ProofResult::Proved);
             println!("{provability}");
             assert!(provability);
 

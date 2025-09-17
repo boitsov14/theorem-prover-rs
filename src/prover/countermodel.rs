@@ -97,10 +97,25 @@ impl CounterModel {
         }
     }
 
-    /// Evaluates a formula and creates a truth table, showing all subformula evaluations
-    pub fn evaluate<'a>(&self, formula: &'a Formula) -> Vec<FormulaEvaluation<'a>> {
+    /// Evaluates a sequent and creates a truth table, showing all subformula evaluations
+    /// Left-side formulas should evaluate to True, right-side formulas should evaluate to False
+    pub fn evaluate<'a>(&self, seq: &'a Sequent) -> Vec<FormulaEvaluation<'a>> {
         let mut table = vec![];
-        self.evaluate_recursive(formula, &mut table);
+
+        for SidedFormula { fml, side } in seq.iter() {
+            // evaluate the formula
+            let val = self.evaluate_recursive(fml, &mut table);
+
+            let expected = match side {
+                Left => ThreeValue::True,
+                Right => ThreeValue::False,
+            };
+            assert_eq!(
+                val, expected,
+                "Countermodel evaluation failed: formula on {side} side should be {expected}, but got {val}"
+            );
+        }
+
         table
     }
 
@@ -228,28 +243,33 @@ mod tests {
     }
 
     #[test]
-    fn test_formula_evaluation() {
+    fn test_sequent_evaluation() {
+        use crate::core::syntax::SplitSequent;
+
         let mut model = CounterModel::new();
         model.true_atoms.insert(0); // P is true
-        model.true_atoms.insert(1); // Q is true
-        model.false_atoms.insert(2); // R is false
+        model.false_atoms.insert(1); // Q is false
 
-        // test P ∧ Q → R (should be False since P∧Q is True but R is False)
-        let formula = To(
-            Box::new(And(vec![
+        // Create a split sequent: P ⊢ Q
+        // This should be unprovable since P is true but Q is false
+        // So P → Q evaluates to True → False = False
+        let split_seq = SplitSequent {
+            ant: vec![
                 Pred(0, vec![]), // P
+            ],
+            suc: vec![
                 Pred(1, vec![]), // Q
-            ])),
-            Box::new(Pred(2, vec![])), // R
-        );
+            ],
+        };
 
-        let truth_table = model.evaluate(&formula);
+        let seq = crate::prover::sequent::Sequent::init(&split_seq);
+        let truth_table = model.evaluate(&seq);
 
-        // should have evaluations for P, Q, P∧Q, R, and the full formula
-        assert!(!truth_table.is_empty());
+        // Should have evaluations for P and Q
+        assert_eq!(truth_table.len(), 2);
 
-        // the final result should be False
-        let final_evaluation = truth_table.last().unwrap();
-        assert_eq!(final_evaluation.val, ThreeValue::False);
+        // P (left side) should be True, Q (right side) should be False
+        assert_eq!(truth_table[0].val, ThreeValue::True); // P
+        assert_eq!(truth_table[1].val, ThreeValue::False); // Q
     }
 }

@@ -6,6 +6,7 @@ mod core {
 }
 mod prover {
     mod bench;
+    mod countermodel;
     mod kernel;
     mod latex {
         mod sequent_calculus;
@@ -16,7 +17,8 @@ mod prover {
         pub use tableau_method::tableau_method;
     }
     mod sequent;
-    pub use kernel::prove_prop;
+    pub use countermodel::FormulaEvaluation;
+    pub use kernel::{ProofResult, prove_prop};
     pub use latex::{Latex, sequent_calculus, tableau_method};
     pub use sequent::Sequent;
 }

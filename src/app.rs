@@ -1,6 +1,14 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
-    prover::{Latex, Sequent, prove_prop, sequent_calculus, tableau_method},
+    prover::{
+        FormulaEvaluation,
+        Latex,
+        ProofResult,
+        Sequent,
+        prove_prop,
+        sequent_calculus,
+        tableau_method,
+    },
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -115,10 +123,23 @@ pub fn run() {
     // prove
     info!("proving...");
     let start = Instant::now();
-    let provability = prove_prop(seq.clone(), &names);
+    let proof_result = prove_prop(seq.clone(), &names);
+    let provability = matches!(proof_result, ProofResult::Proved);
     let end = Instant::now();
     info!("done");
     writeln!(result, "provability: {provability}").unwrap();
+
+    // output countermodel if unprovable
+    if let ProofResult::Unprovable(countermodel) = &proof_result {
+        // generate and output truth table for the counterexample
+        let table = countermodel.evaluate(&seq);
+        for FormulaEvaluation { fml, val } in table {
+            info!("{} : {val}", fml.display(&names));
+        }
+        // Show that the overall sequent evaluates to false
+        info!("{} : False", seq.display(&names));
+        return;
+    }
     let time = end.duration_since(start).as_secs_f32() * 1000.0;
     writeln!(result, "proofTime: {time:.3}").unwrap();
 
