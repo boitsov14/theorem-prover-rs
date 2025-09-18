@@ -1,10 +1,10 @@
 use crate::{
     core::{names::Names, parser::parse_sequent},
     prover::{
-        FormulaEvaluation,
         Latex,
         ProofResult,
         Sequent,
+        generate_latex,
         prove_prop,
         sequent_calculus,
         tableau_method,
@@ -131,13 +131,12 @@ pub fn run() {
 
     // output countermodel if unprovable
     if let ProofResult::Unprovable(countermodel) = &proof_result {
-        // generate and output truth table for the counterexample
+        info!("generating countermodel LaTeX...");
+        // generate and output truth table for the countermodel
         let table = countermodel.evaluate(&seq);
-        for FormulaEvaluation { fml, val } in table {
-            info!("{} : {val}", fml.display(&names).to_unicode());
-        }
-        // Show that the overall sequent evaluates to false
-        info!("{} : False", seq.display(&names).to_unicode());
+        // generate LaTeX countermodel table
+        generate_latex(&seq, &names, &table, &out);
+        info!("done");
         return;
     }
     let time = end.duration_since(start).as_secs_f32() * 1000.0;

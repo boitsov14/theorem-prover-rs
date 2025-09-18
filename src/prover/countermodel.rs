@@ -1,10 +1,10 @@
 use crate::{
-    core::syntax::Formula,
+    core::{names::Names, syntax::Formula},
     prover::sequent::{Sequent, Side::*, SidedFormula},
 };
 use ThreeValue::*;
 use rustc_hash::FxHashSet;
-use std::fmt;
+use std::{fmt, fs, io::Write, path::Path, vec};
 
 /// Three-valued logic
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -199,6 +199,41 @@ pub fn get_countermodel(seq: &Sequent) -> CounterModel {
         }
     }
     model
+}
+
+/// Generates LaTeX table for countermodel truth table
+pub fn generate_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation], out: &str) {
+    // prepare formula row and value row
+    let mut fmls = vec![];
+    let mut vals = vec![];
+
+    for FormulaEvaluation { fml, val } in table {
+        fmls.push(format!("${}$", fml.display(names)));
+        vals.push(val.to_string());
+    }
+
+    // add the overall sequent evaluation (should be False for countermodel)
+    fmls.push(format!("${}$", seq.display(names)));
+    vals.push(False.to_string());
+
+    // create column specification
+    // centered columns with vertical lines
+    let spec = "|c".repeat(table.len() + 1) + "|";
+
+    // join rows with & separator
+    let fmls = fmls.join(" & ");
+    let vals = vals.join(" & ");
+
+    // replace placeholders
+    let output = include_str!("../../templates/countermodel.tex")
+        .replace("SPEC", &spec)
+        .replace("FMLS", &fmls)
+        .replace("VALS", &vals);
+
+    // write to output file
+    let output_path = Path::new(out).join("countermodel.tex");
+    let mut file = fs::File::create(output_path).unwrap();
+    file.write_all(output.as_bytes()).unwrap();
 }
 
 #[cfg(test)]
