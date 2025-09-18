@@ -4,7 +4,7 @@ use crate::{
 };
 use ThreeValue::*;
 use rustc_hash::FxHashSet;
-use std::{fmt, fs, io::Write, path::Path, vec};
+use std::{fmt, fs::File, io::Write, path::PathBuf, vec};
 
 /// Three-valued logic
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -122,17 +122,15 @@ impl CounterModel {
         for SidedFormula { fml, side } in seq.iter() {
             // evaluate the formula
             let val = self.evaluate_recursive(fml, &mut table);
-
-            let expected = match side {
-                Left => ThreeValue::True,
-                Right => ThreeValue::False,
-            };
             assert_eq!(
-                val, expected,
-                "Countermodel evaluation failed: formula on {side} side should be {expected}, but got {val}"
+                val,
+                match side {
+                    Left => ThreeValue::True,
+                    Right => ThreeValue::False,
+                },
+                "Countermodel evaluation failed"
             );
         }
-
         table
     }
 
@@ -215,7 +213,7 @@ pub fn generate_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation],
         vals.push(val.to_string());
     }
 
-    // add the overall sequent evaluation (should be False for countermodel)
+    // add the overall sequent evaluation (should be False)
     fmls.push(format!("${}$", seq.display(names)));
     vals.push(False.to_string());
 
@@ -227,14 +225,13 @@ pub fn generate_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation],
     let fmls = fmls.join(" & ");
     let vals = vals.join(" & ");
 
-    // replace placeholders
-    let output = include_str!("../../templates/countermodel.tex")
+    // embed proof into LaTeX template
+    let table = include_str!("../../templates/countermodel.tex")
         .replace("SPEC", &spec)
         .replace("FMLS", &fmls)
         .replace("VALS", &vals);
 
-    // write to output file
-    let output_path = Path::new(out).join("countermodel.tex");
-    let mut file = fs::File::create(output_path).unwrap();
-    file.write_all(output.as_bytes()).unwrap();
+    // save LaTeX file
+    let mut file = File::create(PathBuf::from(out).join("countermodel.tex")).unwrap();
+    file.write_all(table.as_bytes()).unwrap();
 }
