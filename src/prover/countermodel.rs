@@ -53,9 +53,9 @@ impl ThreeValue {
 impl fmt::Display for ThreeValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            True => write!(f, "True"),
-            False => write!(f, "False"),
-            Undefined => write!(f, "Undefined"),
+            True => write!(f, "T"),
+            False => write!(f, "F"),
+            Undefined => write!(f, "-"),
         }
     }
 }
