@@ -1,7 +1,7 @@
 use crate::{
     core::{names::Names, syntax::Formula::*},
     prover::{
-        countermodel::{CounterModel, get_countermodel},
+        countermodel::CounterModel,
         sequent::{Sequent, Side::*, SidedFormula},
     },
 };
@@ -41,7 +41,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
         // pop the last formula
         let Some(SidedFormula { fml, side }) = seq.pop() else {
             trace!("Unprovable: No formula in the sequent.");
-            let model = get_countermodel(seq);
+            let model = CounterModel::new(seq);
             return ProofResult::Unprovable(model);
         };
         match (fml, side) {
