@@ -127,6 +127,13 @@ impl CounterModel {
     ) -> ThreeValue {
         use Formula::*;
 
+        // check if this formula is already evaluated
+        for FormulaEvaluation { fml: fml0, val } in table.iter() {
+            if fml == *fml0 {
+                return *val;
+            }
+        }
+
         let val = match fml {
             // get its value from the countermodel
             Pred(id, _) => self.get_value(*id),
