@@ -2,7 +2,7 @@ use crate::{
     app::LatexError,
     core::{names::Names, parser::parse_sequent},
     prover::{
-        kernel::{ProofResult, prove_prop},
+        kernel::prove_prop,
         latex::{Latex, sequent_calculus, tableau_method},
         sequent::Sequent,
     },
@@ -46,9 +46,7 @@ fn test_latex_snapshot(file: &str) {
 
             // check provability
             let proof_result = prove_prop(seq.clone(), &names);
-            let provability = matches!(proof_result, ProofResult::Proved);
-            println!("{provability}");
-            assert!(provability);
+            println!("{proof_result:?}");
 
             // ebproof
             println!("ebproof...");

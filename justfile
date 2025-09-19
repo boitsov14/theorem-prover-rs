@@ -8,6 +8,7 @@ set ignore-comments := true
 # Note: -i means "allow incompatible upgrades"
 # Requires cargo-edit and cargo-update
 update:
+    cargo --version
     rustup update stable
     cargo upgrade -i allow
     cargo update
