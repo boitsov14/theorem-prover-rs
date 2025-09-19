@@ -68,29 +68,28 @@ fn test_latex_snapshot(file: &str) {
             // bussproofs
             println!("bussproofs...");
             // generate bussproofs latex file
-            match sequent_calculus(
-                seq.clone(),
-                &names,
-                temp.to_str().unwrap(),
-                Latex::Bussproofs,
+            if matches!(
+                sequent_calculus(
+                    seq.clone(),
+                    &names,
+                    temp.to_str().unwrap(),
+                    Latex::Bussproofs,
+                ),
+                Err(LatexError::TooManyBranches)
             ) {
-                Ok(()) => {
-                    let bussproofs_content =
-                        fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
-                    // snapshot test for bussproofs
-                    settings.bind(|| {
-                        assert_snapshot!(
-                            format!("{idx}-bussproofs-{name}"),
-                            bussproofs_content,
-                            &seq_unicode
-                        );
-                    });
-                    println!("done");
-                }
-                Err(LatexError::TooManyBranches) => {
-                    println!("skipped (too many branches)");
-                }
-                Err(_) => unreachable!(),
+                // skip when too many branches
+                println!("skipped (too many branches)");
+            } else {
+                let bussproofs_content = fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
+                // snapshot test for bussproofs
+                settings.bind(|| {
+                    assert_snapshot!(
+                        format!("{idx}-bussproofs-{name}"),
+                        bussproofs_content,
+                        &seq_unicode
+                    );
+                });
+                println!("done");
             }
 
             // forest
