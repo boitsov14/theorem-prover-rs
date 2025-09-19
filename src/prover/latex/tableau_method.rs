@@ -84,19 +84,14 @@ impl<'a> PartialTableauNode<'a> {
     const fn new(id: usize, fml: SidedFormula<'a>, from_id: usize) -> Self {
         Self { id, fml, from_id }
     }
-
-    /// Convert `PartialTableauNode` to `TableauNode` with children count.
-    const fn to_tableau_node(&self, children_cnt: usize) -> TableauNode<'a> {
-        TableauNode::new(self.id, self.fml, self.from_id, children_cnt)
-    }
 }
 
 impl<'a> TableauNode<'a> {
-    const fn new(id: usize, fml: SidedFormula<'a>, from_id: usize, children_cnt: usize) -> Self {
-        Self {
-            id,
-            fml,
-            from_id,
+    const fn new(partial_tableau_node: &PartialTableauNode<'a>, children_cnt: usize) -> Self {
+        TableauNode {
+            id: partial_tableau_node.id,
+            fml: partial_tableau_node.fml,
+            from_id: partial_tableau_node.from_id,
             children_cnt,
         }
     }
@@ -487,10 +482,10 @@ fn flush_proved_nodes<'a>(
 
         // convert local tableau nodes to tableau nodes
         let local_tableau_node = node.local_tableau_nodes.pop().unwrap();
-        tableau_nodes.push(local_tableau_node.to_tableau_node(children_cnt));
+        tableau_nodes.push(TableauNode::new(&local_tableau_node, children_cnt));
 
         while let Some(local_tableau_node) = node.local_tableau_nodes.pop() {
-            tableau_nodes.push(local_tableau_node.to_tableau_node(1));
+            tableau_nodes.push(TableauNode::new(&local_tableau_node, 1));
         }
     }
 }
