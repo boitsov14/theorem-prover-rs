@@ -34,12 +34,11 @@ run:
 
 # Run tests
 # --no-fail-fast: Do not exit the test run until all tests complete.
-# --cargo-quiet ×2: Suppress cargo output.
 # cargo nextest run -p my-package
 # cargo nextest run <test-name1> <test-name2>...
 # cargo nextest run --no-capture
-test:
-    cargo nextest run --no-fail-fast --cargo-quiet --cargo-quiet
+test FILTER='':
+    cargo nextest run --no-fail-fast {{ FILTER }}
 
 # Run benchmarks
 bench FILTER='':

@@ -86,7 +86,7 @@ impl SidedFormula<'_> {
 }
 
 impl<'a> Sequent<'a> {
-    pub fn init(SplitSequent { ant, suc }: &'a SplitSequent) -> Self {
+    pub fn new(SplitSequent { ant, suc }: &'a SplitSequent) -> Self {
         let mut seq = Self::default();
         for fml in ant {
             seq.push(fml.with_side(Left));
@@ -210,13 +210,20 @@ mod tests {
     use crate::core::parser::parse_sequent;
     use test_case::case;
 
-    #[case("P ⊢ Q")]
-    #[case("P, Q, R ⊢ S, T, U")]
-    #[case(" ⊢ ")]
-    fn sequent_display(s: &str) {
+    #[case("P ⊢ Q" => "P ⊢ Q")]
+    #[case("⊢" => "⊢")]
+    #[case("P, Q, R ⊢ S, T, U" => "P, R, Q ⊢ U, T, S")]
+    #[case("⊢ P" => "⊢ P")]
+    #[case("Q ⊢" => "Q ⊢")]
+    #[case("P ∧ Q ⊢ R ∨ S" => "P ∧ Q ⊢ R ∨ S")]
+    #[case("P → Q, Q → R ⊢ P → R" => "P → Q, Q → R ⊢ P → R")]
+    // TODO: 2025/09/19 あとで有効化
+    // #[case("∀x P(x) ⊢ ∃y Q(y)" => "∀x P(x) ⊢ ∃y Q(y)")]
+    // #[case("∀x,y P(x,y), ∃z,w Q(z,w) ⊢ ∃z,w Q(z,w), ∀x,y P(x,y)" => "∀x,y P(x,y), ∃z,w Q(z,w) ⊢ ∃z,w Q(z,w), ∀x,y P(x,y)")]
+    fn sequent_display(s: &str) -> String {
         let mut names = Names::default();
-        let _seq = parse_sequent(s, &mut names, true, false).unwrap();
-        // TODO: 2025/06/08 移動
-        // assert_eq!(seq.to_seq().display(&names).to_string(), s);
+        let seq = parse_sequent(s, &mut names, true, false).unwrap();
+        let seq = Sequent::new(&seq);
+        seq.display(&names).to_unicode()
     }
 }

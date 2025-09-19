@@ -40,7 +40,7 @@ fn test_latex_snapshot(file: &str) {
             // parse sequent
             let mut names = Names::default();
             let seq = parse_sequent(line, &mut names, true, false).unwrap();
-            let seq = Sequent::init(&seq);
+            let seq = Sequent::new(&seq);
             let seq_unicode = seq.display(&names).to_unicode();
 
             // check provability

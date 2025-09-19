@@ -22,7 +22,7 @@ mod benches {
             .map(|s| {
                 let mut names = Names::default();
                 let seq = arena.alloc(parse_sequent(s, &mut names, true, false).unwrap());
-                (Sequent::init(seq), names)
+                (Sequent::new(seq), names)
             })
     }
 

@@ -111,7 +111,7 @@ pub fn run() {
         }
     };
     info!("done");
-    let seq = Sequent::init(&seq);
+    let seq = Sequent::new(&seq);
     // log the parsed sequent
     writeln!(
         result,
