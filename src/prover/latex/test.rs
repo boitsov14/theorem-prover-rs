@@ -65,7 +65,25 @@ fn test_latex_snapshot(file: &str) {
             println!("done");
 
             // bussproofs
-            // TODO: 2025/09/15 implement bussproofs test
+            println!("bussproofs...");
+            // generate bussproofs latex file
+            sequent_calculus(
+                seq.clone(),
+                &names,
+                temp.to_str().unwrap(),
+                Latex::Bussproofs,
+            )
+            .unwrap();
+            let bussproofs_content = fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
+            // snapshot test for bussproofs
+            settings.bind(|| {
+                assert_snapshot!(
+                    format!("{idx}-bussproofs-{name}"),
+                    bussproofs_content,
+                    &seq_unicode
+                );
+            });
+            println!("done");
 
             // forest
             println!("forest...");
