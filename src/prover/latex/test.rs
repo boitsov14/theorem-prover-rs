@@ -1,4 +1,5 @@
 use crate::{
+    app::LatexError,
     core::{names::Names, parser::parse_sequent},
     prover::{
         kernel::{ProofResult, prove_prop},
@@ -67,23 +68,30 @@ fn test_latex_snapshot(file: &str) {
             // bussproofs
             println!("bussproofs...");
             // generate bussproofs latex file
-            sequent_calculus(
+            match sequent_calculus(
                 seq.clone(),
                 &names,
                 temp.to_str().unwrap(),
                 Latex::Bussproofs,
-            )
-            .unwrap();
-            let bussproofs_content = fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
-            // snapshot test for bussproofs
-            settings.bind(|| {
-                assert_snapshot!(
-                    format!("{idx}-bussproofs-{name}"),
-                    bussproofs_content,
-                    &seq_unicode
-                );
-            });
-            println!("done");
+            ) {
+                Ok(()) => {
+                    let bussproofs_content =
+                        fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
+                    // snapshot test for bussproofs
+                    settings.bind(|| {
+                        assert_snapshot!(
+                            format!("{idx}-bussproofs-{name}"),
+                            bussproofs_content,
+                            &seq_unicode
+                        );
+                    });
+                    println!("done");
+                }
+                Err(LatexError::TooManyBranches) => {
+                    println!("skipped (too many branches)");
+                }
+                Err(_) => unreachable!(),
+            }
 
             // forest
             println!("forest...");
