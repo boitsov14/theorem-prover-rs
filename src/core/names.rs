@@ -227,6 +227,7 @@ pub fn to_unicode(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::core::parser::{parse_formula, parse_term};
+    use std::fmt;
     use test_case::case;
 
     #[case("x")]
@@ -256,5 +257,55 @@ mod tests {
         let mut names = Names::default();
         let fml = parse_formula(s, &mut names, true).unwrap();
         assert_eq!(fml.display(&names).to_unicode(), s);
+    }
+
+    /// A writer that fails after n successful `write_str` calls.
+    struct CountFail(usize);
+
+    impl fmt::Write for CountFail {
+        /// Fails after `n` successful `write_str` calls.
+        fn write_str(&mut self, _s: &str) -> fmt::Result {
+            let Self(ref mut i) = *self;
+            if *i == 0 {
+                return Err(fmt::Error);
+            }
+            *i -= 1;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn term_display_error_branches_sweep() {
+        // prepare a comprehensive term: parentheses, commas, nested terms
+        let mut names = Names::default();
+        let t = parse_term("f(x,g(y,h(x,z)),u,v,w)", &mut names).unwrap();
+
+        // sweep CountFail over all write positions
+        let mut i: usize = 0;
+        loop {
+            let mut w = CountFail(i);
+            if fmt::write(&mut w, format_args!("{}", t.display(&names))).is_ok() {
+                break;
+            }
+            i += 1;
+        }
+    }
+
+    #[test]
+    fn fml_display_error_branches_sweep() {
+        // build a comprehensive formula that contains all operators/quantifiers
+        let mut names = Names::default();
+        let s = "((P ↔ (Q ↔ R)) ∧ (P → (Q → R)) ∧ (P → (Q ∧ R)) ∧ (P → (Q ∨ R)) ∧ ¬P ∧ (⊤ ∨ ⊤) ∧ ⊥ ∧ P ∧ ∀x∀y∀zP(x,f(y,g(z))) ∧ ∃u∃vQ(u,v))";
+        let fml = parse_formula(s, &mut names, true).unwrap();
+
+        // sweep CountFail over all write positions
+        let mut i: usize = 0;
+        loop {
+            let mut w = CountFail(i);
+            if fmt::write(&mut w, format_args!("{}", fml.display(&names))).is_ok() {
+                break;
+            }
+            i += 1;
+        }
     }
 }
