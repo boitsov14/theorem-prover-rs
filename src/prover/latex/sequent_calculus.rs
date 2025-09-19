@@ -66,6 +66,7 @@ struct ProofNode<'a> {
     seq: Sequent<'a>,
     tactic: OnceCell<Tactic>,
     proved_children_cnt: usize,
+    /// None if root
     parent_idx: Option<usize>,
 }
 
@@ -79,14 +80,11 @@ impl<'a> ProofNode<'a> {
             parent_idx: None,
         }
     }
-}
 
-impl<'a> Sequent<'a> {
-    // TODO: 2025/05/30 forestを参考にするか
     #[inline(always)]
-    const fn into_node(self, parent_idx: usize) -> ProofNode<'a> {
+    const fn new(seq: Sequent<'a>, parent_idx: usize) -> Self {
         ProofNode {
-            seq: self,
+            seq,
             tactic: OnceCell::new(),
             proved_children_cnt: 0,
             parent_idx: Some(parent_idx),
@@ -174,7 +172,7 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                 let is_trivial = seq.is_trivial(p);
                 seq.push(p);
                 let parent_idx = nodes.len() - 1;
-                let node = seq.into_node(parent_idx);
+                let node = ProofNode::new(seq, parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     node.tactic.set(Tactic::Axiom).unwrap();
@@ -213,7 +211,7 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                     seq.push(p);
                 }
                 let parent_idx = nodes.len() - 1;
-                let node = seq.into_node(parent_idx);
+                let node = ProofNode::new(seq, parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     node.tactic.set(Tactic::Axiom).unwrap();
@@ -258,7 +256,7 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                     let is_trivial = seq.is_trivial(p);
                     let mut seq = seq.clone();
                     seq.push(p);
-                    let seq = seq.into_node(parent_idx);
+                    let seq = ProofNode::new(seq, parent_idx);
                     if is_trivial {
                         // if trivial, set the Axiom tactic
                         seq.tactic.set(Tactic::Axiom).unwrap();
@@ -286,8 +284,8 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                 seq1.push(p);
                 seq2.push(q);
                 let parent_idx = nodes.len() - 1;
-                let node1 = seq1.into_node(parent_idx);
-                let node2 = seq2.into_node(parent_idx);
+                let node1 = ProofNode::new(seq1, parent_idx);
+                let node2 = ProofNode::new(seq2, parent_idx);
                 if is_trivial_p {
                     // if trivial, set the Axiom tactic
                     node1.tactic.set(Tactic::Axiom).unwrap();
@@ -310,7 +308,7 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                 seq.push(p);
                 seq.push(q);
                 let parent_idx = nodes.len() - 1;
-                let node = seq.into_node(parent_idx);
+                let node = ProofNode::new(seq, parent_idx);
                 if is_trivial {
                     // if trivial, set the Axiom tactic
                     node.tactic.set(Tactic::Axiom).unwrap();
@@ -339,8 +337,8 @@ fn sequent_calculus_impl(seq: Sequent, names: &Names, latex: Latex) -> Result<Ve
                 seq2.push(fml21);
                 seq2.push(fml22);
                 let parent_idx = nodes.len() - 1;
-                let node1 = seq1.into_node(parent_idx);
-                let node2 = seq2.into_node(parent_idx);
+                let node1 = ProofNode::new(seq1, parent_idx);
+                let node2 = ProofNode::new(seq2, parent_idx);
                 if is_trivial1 {
                     // if trivial, set the Axiom tactic
                     node1.tactic.set(Tactic::Axiom).unwrap();
