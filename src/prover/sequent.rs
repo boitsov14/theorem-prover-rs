@@ -208,6 +208,7 @@ impl<'a> Sequent<'a> {
 mod tests {
     use super::*;
     use crate::core::parser::parse_sequent;
+    use std::fmt;
     use test_case::case;
 
     #[case("P ⊢ Q" => "P ⊢ Q")]
@@ -225,5 +226,38 @@ mod tests {
         let seq = parse_sequent(s, &mut names, true, false).unwrap();
         let seq = Sequent::new(&seq);
         seq.display(&names).to_unicode()
+    }
+
+    /// A writer that fails after n successful `write_str` calls.
+    struct CountFail(usize);
+
+    impl fmt::Write for CountFail {
+        /// Fails after `n` successful `write_str` calls.
+        fn write_str(&mut self, _s: &str) -> fmt::Result {
+            let Self(ref mut i) = *self;
+            if *i == 0 {
+                return Err(fmt::Error);
+            }
+            *i -= 1;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn sequent_display_error_branches_sweep() {
+        let mut names = Names::default();
+        let s = "P, Q ⊢ R, S";
+        let split = parse_sequent(s, &mut names, true, false).unwrap();
+        let seq = Sequent::new(&split);
+
+        // sweep CountFail over all write positions
+        let mut i: usize = 0;
+        loop {
+            let mut w = CountFail(i);
+            if fmt::write(&mut w, format_args!("{}", seq.display(&names))).is_ok() {
+                break;
+            }
+            i += 1;
+        }
     }
 }
