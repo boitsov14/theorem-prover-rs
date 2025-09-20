@@ -207,7 +207,7 @@ impl<'a> Sequent<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::parser::parse_sequent;
+    use crate::core::parser::{parse_formula, parse_sequent};
     use std::fmt;
     use test_case::case;
 
@@ -259,5 +259,17 @@ mod tests {
             }
             i += 1;
         }
+    }
+
+    /// Panics on atom to cover `unreachable!` in `get_cost`.
+    #[test]
+    #[should_panic(expected = "unreachable code")]
+    fn get_cost_unreachable() {
+        let mut names = Names::default();
+        let s = "P";
+        let fml = parse_formula(s, &mut names, true).unwrap();
+        let fml = fml.with_side(Left);
+        // this must panic via unreachable!
+        let _ = fml.get_cost();
     }
 }
