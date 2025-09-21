@@ -19,6 +19,7 @@ pub enum ProofResult {
 
 pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
     if seq.is_initially_trivial() {
+        #[cfg(debug_assertions)]
         trace!(
             "Trivial from the beginning: {}",
             seq.display(names).to_unicode()
@@ -29,27 +30,34 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
     let mut seqs = vec![seq];
     let mut temp_fmls = vec![];
     'main: loop {
+        #[cfg(debug_assertions)]
         trace!("Remainder:");
+        #[cfg(debug_assertions)]
         for seq in seqs.iter().rev() {
             trace!("{}", seq.display(names).to_unicode());
         }
         // get the last sequent
         let Some(seq) = seqs.last_mut() else {
+            #[cfg(debug_assertions)]
             trace!("All sequents are proved.");
             return ProofResult::Proved;
         };
         // pop the last formula
         let Some(SidedFormula { fml, side }) = seq.pop() else {
+            #[cfg(debug_assertions)]
             trace!("Unprovable: No formula in the sequent.");
             let model = CounterModel::new(seq);
             return ProofResult::Unprovable(model);
         };
+        #[cfg(debug_assertions)]
+        trace!("Processing: {}", fml.display(names).to_unicode());
         match (fml, side) {
             // Convert `¬p ⊢` to `⊢ p`
             // Convert `⊢ ¬p` to `p ⊢`
             (Not(p), _) => {
                 let p = p.with_side(side.opposite());
                 if seq.is_trivial(p) {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // drop it and continue to the next sequent
                     seqs.pop().unwrap();
@@ -65,6 +73,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                 for p in l {
                     let p = p.with_side(side);
                     if seq.is_trivial(p) {
+                        #[cfg(debug_assertions)]
                         trace!("Trivial");
                         // drop it and continue to the next sequent
                         seqs.pop().unwrap();
@@ -81,6 +90,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                     .map(|p| p.with_side(side))
                     .any(|p| p.is_atom() && seq.contains_atom(&p))
                 {
+                    #[cfg(debug_assertions)]
                     trace!("The formula is redundant.");
                     // ex. `p ∨ q ∨ r, p ⊢`
                     // ex. `⊢ p ∧ q ∧ r, p`
@@ -91,6 +101,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                 for p in l {
                     let p = p.with_side(side);
                     if seq.is_trivial(p) {
+                        #[cfg(debug_assertions)]
                         trace!("Trivial");
                         continue;
                     }
@@ -124,6 +135,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
             (To(p, q), Left) => {
                 let q = q.with_side(Left);
                 if q.is_atom() && seq.contains_atom(&q) {
+                    #[cfg(debug_assertions)]
                     trace!("The formula is redundant.");
                     // ex. `p → q, q ⊢`
                     // `fml` is already popped out, so nothing to do.
@@ -134,15 +146,19 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                 let is_trivial_q = seq.is_trivial(q);
                 if is_trivial_p && is_trivial_q {
                     // both are trivial
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // drop seq
                     seqs.pop().unwrap();
                 } else if is_trivial_p {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // q is yet to be proved
                     seq.push(q);
                 } else if is_trivial_q {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // p is yet to be proved
                     seq.push(p);
@@ -162,6 +178,7 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                 let p = p.with_side(Left);
                 let q = q.with_side(Right);
                 if seq.is_trivial2(p, q) {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // drop it and continue to the next sequent
                     seqs.pop().unwrap();
@@ -185,16 +202,20 @@ pub fn prove_prop(seq: Sequent, names: &Names) -> ProofResult {
                 let is_trivial2 = seq.is_trivial2(fml21, fml22);
                 if is_trivial1 && is_trivial2 {
                     // both are trivial
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // drop seq
                     seqs.pop().unwrap();
                 } else if is_trivial1 {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // the second is yet to be proved
                     seq.push(fml21);
                     seq.push(fml22);
                 } else if is_trivial2 {
+                    #[cfg(debug_assertions)]
                     trace!("Trivial");
                     // the first is yet to be proved
                     seq.push(fml11);

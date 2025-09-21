@@ -498,6 +498,7 @@ impl SplitSequent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use insta::assert_snapshot;
     use test_case::case;
 
     fn pterm(s: &str) -> PTerm {
@@ -932,5 +933,82 @@ fof(con,conjecture,(
         let seq2 = parse_sequent(s2, &mut names, true, false).unwrap();
         assert_eq!(seq1.ant, seq2.ant);
         assert_eq!(seq1.suc, seq2.suc);
+    }
+
+    /// Tests `parse_term` error cases
+    #[test_case::case("1", "f(x,h(y)", "parentheses")]
+    #[test_case::case("2", "f()", "empty-arg")]
+    fn test_parse_term_error(idx: &str, s: &str, file: &str) {
+        let mut names = Names::default();
+        let result = parse_term(s, &mut names);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        // settings for snapshot tests
+        let mut settings = insta::Settings::new();
+        // short file names
+        settings.set_prepend_module_to_snapshot(false);
+        // snapshot path
+        settings.set_snapshot_path("../../snapshots/parse-err/term");
+        // snapshot tests
+        settings.bind(|| {
+            assert_snapshot!(format!("{idx}-{file}"), err, s);
+        });
+    }
+
+    /// Tests `parse_formula` error cases
+    #[test_case::case("1", "((P ∧ Q) ∨ R", "parentheses")]
+    #[test_case::case("2", "P ∧", "trailing-and")]
+    #[test_case::case("3", "∧ P", "leading-and")]
+    #[test_case::case("4", "¬", "incomplete-not")]
+    #[test_case::case("5", "∀x", "incomplete-forall")]
+    #[test_case::case("6", "∀x,", "trailing-comma-forall")]
+    #[test_case::case("7", "∀,x", "leading-comma-forall")]
+    #[test_case::case("8", "∀x,,y", "consecutive-commas-forall")]
+    #[test_case::case("9", "P Q R", "missing-operator")]
+    #[test_case::case("10", "P ∧ ∨ Q", "consecutive-operators")]
+    fn test_parse_formula_error(idx: &str, s: &str, file: &str) {
+        let mut names = Names::default();
+        let result = parse_formula(s, &mut names, false);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        // settings for snapshot tests
+        let mut settings = insta::Settings::new();
+        // short file names
+        settings.set_prepend_module_to_snapshot(false);
+        // snapshot path
+        settings.set_snapshot_path("../../snapshots/parse-err/formula");
+        // snapshot tests
+        settings.bind(|| {
+            assert_snapshot!(format!("{idx}-{file}"), err, s);
+        });
+    }
+
+    /// Tests `parse_sequent` error cases
+    #[test_case::case("1", "(P ∧ Q ⊢ R", "parentheses")]
+    #[test_case::case("2", "(P ∧ Q ⊢ R)", "parentheses2")]
+    #[test_case::case("3", "P, ⊢ Q", "trailing-comma")]
+    #[test_case::case("4", "P ⊢ ,Q", "leading-comma")]
+    #[test_case::case("5", "P,, Q ⊢ R", "consecutive-commas")]
+    #[test_case::case("6", "P Q R ⊢ R", "missing-commas")]
+    #[test_case::case("7", "P(x, ⊢ Q)", "incomplete-predicate-ant")]
+    #[test_case::case("8", "∀x, ⊢ Q", "trailing-comma-quantifier-ant")]
+    #[test_case::case("9", "∀x,yP(x,y),,∀zQ(z) ⊢ R", "mixed-consecutive-commas-ant")]
+    #[test_case::case("10", "∀x,,yP(x,y) ⊢ Q", "consecutive-commas-in-quantifier-ant")]
+    #[test_case::case("11", "R ⊢ ,∀x P(x), ∃y Q(y)", "leading-comma-with-quantifier-ant")]
+    fn test_parse_sequent_error(idx: &str, s: &str, file: &str) {
+        let mut names = Names::default();
+        let result = parse_sequent(s, &mut names, true, false);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        // settings for snapshot tests
+        let mut settings = insta::Settings::new();
+        // short file names
+        settings.set_prepend_module_to_snapshot(false);
+        // snapshot path
+        settings.set_snapshot_path("../../snapshots/parse-err/sequent");
+        // snapshot tests
+        settings.bind(|| {
+            assert_snapshot!(format!("{idx}-{file}"), err, s);
+        });
     }
 }
