@@ -100,7 +100,7 @@ machete:
 
 # Generate code coverage report
 cov:
-    cargo +nightly llvm-cov nextest --branch --open
+    cargo +nightly llvm-cov nextest --release --branch --open
 
 # Insta test
 # cargo insta accept: Accept all snapshots
