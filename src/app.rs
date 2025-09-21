@@ -4,7 +4,7 @@ use crate::{
         Latex,
         ProofResult,
         Sequent,
-        generate_latex,
+        get_latex,
         prove_prop,
         sequent_calculus,
         tableau_method,
@@ -132,10 +132,13 @@ pub fn run() {
     // output countermodel if unprovable
     if let ProofResult::Unprovable(countermodel) = &proof_result {
         info!("generating countermodel LaTeX...");
-        // generate and output truth table for the countermodel
+        // create truth table for the countermodel
         let table = countermodel.evaluate(&seq);
-        // generate LaTeX countermodel table
-        generate_latex(&seq, &names, &table, &out);
+        // generate LaTeX table
+        let latex = get_latex(&seq, &names, &table);
+        // save LaTeX file
+        let mut file = File::create(PathBuf::from(&out).join("countermodel.tex")).unwrap();
+        file.write_all(latex.as_bytes()).unwrap();
         info!("done");
         return;
     }
@@ -146,8 +149,12 @@ pub fn run() {
     if provability && options.ebproof {
         info!("generating ebproof...");
         let start = Instant::now();
-        match sequent_calculus(seq.clone(), &names, &out, Latex::Ebproof) {
-            Ok(()) => {}
+        match sequent_calculus(seq.clone(), &names, Latex::Ebproof) {
+            Ok(proof) => {
+                // save LaTeX file
+                let mut file = File::create(PathBuf::from(&out).join("ebproof.tex")).unwrap();
+                file.write_all(proof.as_bytes()).unwrap();
+            }
             Err(LatexError::OutputTooLarge) => {
                 warn!("ebproof output too large");
                 writeln!(result, "outputTooLarge: true").unwrap();
@@ -165,8 +172,12 @@ pub fn run() {
     if provability && options.bussproofs {
         info!("generating bussproofs...");
         let start = Instant::now();
-        match sequent_calculus(seq.clone(), &names, &out, Latex::Bussproofs) {
-            Ok(()) => {}
+        match sequent_calculus(seq.clone(), &names, Latex::Bussproofs) {
+            Ok(proof) => {
+                // save LaTeX file
+                let mut file = File::create(PathBuf::from(&out).join("bussproofs.tex")).unwrap();
+                file.write_all(proof.as_bytes()).unwrap();
+            }
             Err(LatexError::OutputTooLarge) => {
                 warn!("bussproofs output too large");
                 writeln!(result, "outputTooLarge: true").unwrap();
@@ -186,8 +197,12 @@ pub fn run() {
     if provability && options.forest {
         info!("generating forest...");
         let start = Instant::now();
-        match tableau_method(seq, &names, &out) {
-            Ok(()) => {}
+        match tableau_method(seq, &names) {
+            Ok(proof) => {
+                // save LaTeX file
+                let mut file = File::create(PathBuf::from(&out).join("forest.tex")).unwrap();
+                file.write_all(proof.as_bytes()).unwrap();
+            }
             Err(LatexError::OutputTooLarge) => {
                 warn!("forest output too large");
                 writeln!(result, "outputTooLarge: true").unwrap();

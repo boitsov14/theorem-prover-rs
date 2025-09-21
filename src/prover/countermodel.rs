@@ -4,7 +4,7 @@ use crate::{
 };
 use ThreeValue::*;
 use rustc_hash::FxHashSet;
-use std::{fmt, fs::File, io::Write, path::PathBuf, vec};
+use std::{fmt, vec};
 
 /// Three-valued logic
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,7 +203,7 @@ impl CounterModel {
 }
 
 /// Generates LaTeX table for countermodel truth table
-pub fn generate_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation], out: &str) {
+pub fn get_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation]) -> String {
     // prepare formula row and value row
     let mut fmls = vec![];
     let mut vals = vec![];
@@ -226,12 +226,8 @@ pub fn generate_latex(seq: &Sequent, names: &Names, table: &[FormulaEvaluation],
     let vals = vals.join(" & ");
 
     // embed proof into LaTeX template
-    let table = include_str!("../../templates/countermodel.tex")
+    include_str!("../../templates/countermodel.tex")
         .replace("SPEC", &spec)
         .replace("FMLS", &fmls)
-        .replace("VALS", &vals);
-
-    // save LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("countermodel.tex")).unwrap();
-    file.write_all(table.as_bytes()).unwrap();
+        .replace("VALS", &vals)
 }

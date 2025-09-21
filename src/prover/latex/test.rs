@@ -9,7 +9,6 @@ use crate::{
 };
 use insta::assert_snapshot;
 use std::fs;
-use tempfile::TempDir;
 use test_case::case;
 
 #[case("props")]
@@ -34,10 +33,6 @@ fn test_latex_snapshot(file: &str) {
             // snapshot path
             settings.set_snapshot_path(format!("../../../snapshots/{file}"));
 
-            // create temporary directory for each test case
-            let temp = TempDir::new().unwrap();
-            let temp = temp.path();
-
             // parse sequent
             let mut names = Names::default();
             let seq = parse_sequent(line, &mut names, true, false).unwrap();
@@ -51,53 +46,34 @@ fn test_latex_snapshot(file: &str) {
             // ebproof
             println!("ebproof...");
             // generate ebproof latex file
-            sequent_calculus(seq.clone(), &names, temp.to_str().unwrap(), Latex::Ebproof).unwrap();
-            let ebproof_content = fs::read_to_string(temp.join("ebproof.tex")).unwrap();
+            let proof = sequent_calculus(seq.clone(), &names, Latex::Ebproof).unwrap();
             // snapshot test for ebproof
             settings.bind(|| {
-                assert_snapshot!(
-                    format!("{idx}-ebproof-{name}"),
-                    ebproof_content,
-                    &seq_unicode
-                );
+                assert_snapshot!(format!("{idx}-ebproof-{name}"), proof, &seq_unicode);
             });
             println!("done");
 
             // bussproofs
             println!("bussproofs...");
             // generate bussproofs latex file
-            if matches!(
-                sequent_calculus(
-                    seq.clone(),
-                    &names,
-                    temp.to_str().unwrap(),
-                    Latex::Bussproofs,
-                ),
-                Err(LatexError::TooManyBranches)
-            ) {
+            let result = sequent_calculus(seq.clone(), &names, Latex::Bussproofs);
+            if matches!(&result, Err(LatexError::TooManyBranches)) {
                 // skip when too many branches
                 println!("skipped (too many branches)");
-            } else {
-                let bussproofs_content = fs::read_to_string(temp.join("bussproofs.tex")).unwrap();
-                // snapshot test for bussproofs
+            }
+            if let Ok(proof) = result {
                 settings.bind(|| {
-                    assert_snapshot!(
-                        format!("{idx}-bussproofs-{name}"),
-                        bussproofs_content,
-                        &seq_unicode
-                    );
+                    assert_snapshot!(format!("{idx}-bussproofs-{name}"), proof, &seq_unicode);
                 });
-                println!("done");
             }
 
             // forest
             println!("forest...");
             // generate forest latex file
-            tableau_method(seq, &names, temp.to_str().unwrap()).unwrap();
-            let forest_content = fs::read_to_string(temp.join("forest.tex")).unwrap();
+            let proof = tableau_method(seq, &names).unwrap();
             // snapshot test for forest
             settings.bind(|| {
-                assert_snapshot!(format!("{idx}-forest-{name}"), forest_content, &seq_unicode);
+                assert_snapshot!(format!("{idx}-forest-{name}"), proof, &seq_unicode);
             });
             println!("done");
 

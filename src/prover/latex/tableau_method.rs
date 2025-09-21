@@ -12,7 +12,7 @@ use crate::{
 };
 use log::warn;
 use rustc_hash::FxHashMap;
-use std::{cell::OnceCell, fs::File, io::Write, path::PathBuf, vec};
+use std::{cell::OnceCell, io::Write, vec};
 
 #[derive(Clone, Debug)]
 struct ProofNode<'a> {
@@ -109,7 +109,7 @@ impl SidedFormula<'_> {
 }
 
 /// Generates a LaTeX proof tree using the forest package.
-pub fn tableau_method(seq: Sequent, names: &Names, out: &str) -> Result<(), LatexError> {
+pub fn tableau_method(seq: Sequent, names: &Names) -> Result<String, LatexError> {
     let claim = seq.display(names).to_string().replace(',', r"{,}\,");
     // generate the proof tree
     let nodes = tableau_method_impl(seq);
@@ -121,10 +121,7 @@ pub fn tableau_method(seq: Sequent, names: &Names, out: &str) -> Result<(), Late
     let proof = include_str!("../../../templates/forest.tex")
         .replace("%CLAIM%", claim.trim())
         .replace("%PROOF_CONTENT%", String::from_utf8_lossy(&proof).trim());
-    // save LaTeX file
-    let mut file = File::create(PathBuf::from(out).join("forest.tex")).unwrap();
-    file.write_all(proof.as_bytes()).unwrap();
-    Ok(())
+    Ok(proof)
 }
 
 /// Implementation for generating LaTeX proof trees.

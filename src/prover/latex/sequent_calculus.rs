@@ -9,7 +9,7 @@ use crate::{
 };
 use Latex::*;
 use log::warn;
-use std::{cell::OnceCell, fmt, fs::File, io::Write, path::PathBuf};
+use std::{cell::OnceCell, fmt, io::Write};
 
 /// Represents different LaTeX packages.
 #[derive(Clone, Copy, Debug)]
@@ -93,12 +93,7 @@ impl<'a> ProofNode<'a> {
 }
 
 /// Generates a LaTeX proof tree using sequent calculus.
-pub fn sequent_calculus(
-    seq: Sequent,
-    names: &Names,
-    out: &str,
-    latex: Latex,
-) -> Result<(), LatexError> {
+pub fn sequent_calculus(seq: Sequent, names: &Names, latex: Latex) -> Result<String, LatexError> {
     // create proof tree in LaTeX
     let proof = sequent_calculus_impl(seq, names, latex)?;
     // replace turnstile symbol based on LaTeX package
@@ -115,14 +110,7 @@ pub fn sequent_calculus(
         Bussproofs => include_str!("../../../templates/bussproofs.tex"),
     };
     let proof = template.replace("%PROOF_CONTENT%", proof.trim());
-    // save LaTeX file
-    let file = match latex {
-        Ebproof => "ebproof.tex",
-        Bussproofs => "bussproofs.tex",
-    };
-    let mut file = File::create(PathBuf::from(out).join(file)).unwrap();
-    file.write_all(proof.as_bytes()).unwrap();
-    Ok(())
+    Ok(proof)
 }
 
 /// Implementation for generating LaTeX proof trees.

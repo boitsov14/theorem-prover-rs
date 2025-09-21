@@ -17,7 +17,7 @@ mod prover {
         pub use tableau_method::tableau_method;
     }
     mod sequent;
-    pub use countermodel::generate_latex;
+    pub use countermodel::get_latex;
     pub use kernel::{ProofResult, prove_prop};
     pub use latex::{Latex, sequent_calculus, tableau_method};
     pub use sequent::Sequent;
