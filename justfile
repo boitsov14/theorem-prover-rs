@@ -1,8 +1,20 @@
+###################################
+# Basic configuration
+###################################
+
 # For windows compatibility
 set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe", "-c"]
 
 # Ignore recipe lines beginning with #.
 set ignore-comments := true
+
+# Format justfile
+just-fmt:
+    just --fmt --unstable
+
+###################################
+# Update
+###################################
 
 # Update everything: Rust toolchain, project dependencies, and global tools
 # Note: -i means "allow incompatible upgrades"
@@ -13,6 +25,14 @@ update:
     cargo upgrade -i allow
     cargo update
     cargo install-update -a
+
+# Update Rust toolchain including nightly
+update-rust-all:
+    rustup update
+
+###################################
+# Formatter and Linter
+###################################
 
 # Format code
 fmt:
@@ -28,10 +48,24 @@ lint2:
     just fmt
     RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
 
+###################################
+# Run
+###################################
+
 # Run the project
 run:
     -rm tmp/*.{log,tex,yaml,err}
     cargo run -- --out "tmp"
+
+# Latex build
+tex FILE:
+    -rm tex/*
+    cp tmp/{{ FILE }}.tex tex/out.tex
+    pdflatex -halt-on-error -interaction=nonstopmode -output-directory tex tex/out.tex
+
+###################################
+# Tests
+###################################
 
 # Run tests
 # --no-fail-fast: Do not exit the test run until all tests complete.
@@ -40,63 +74,6 @@ run:
 # cargo nextest run --no-capture
 test FILTER='':
     cargo nextest run --no-fail-fast {{ FILTER }}
-
-# Run benchmarks
-bench FILTER='':
-    cargo bench --features bench -- {{ FILTER }}
-
-# Run flamegraph
-# Requires admin
-flame:
-    cargo flamegraph --profile profiling
-
-# Build in profiling mode
-build-profiling:
-    cargo build --profile profiling
-
-# Run samply
-samply:
-    samply record --rate 1000000 ./target/profiling/theorem-prover-rs.exe
-
-# Add dependency to Cargo.toml
-add package:
-    cargo add {{ package }}
-
-# Add dependency to Cargo.toml with specific features
-add-features package +FEATURES:
-    cargo add {{ package }} --features {{ FEATURES }}
-
-# Install binary package globally
-# Requires cargo-binstall
-binstall package:
-    cargo binstall {{ package }}
-
-# List globally installed packages
-list-global:
-    cargo install --list
-
-# Clean the target directory
-clean:
-    cargo clean
-
-# Update Rust toolchain including nightly
-update-rust-all:
-    rustup update
-
-# Cross-compile for Linux
-# Requires cross
-cross-build:
-    cross build --release --target x86_64-unknown-linux-gnu
-
-# Latex build
-tex FILE:
-    -rm tex/*
-    cp tmp/{{ FILE }}.tex tex/out.tex
-    pdflatex -halt-on-error -interaction=nonstopmode -output-directory tex tex/out.tex
-
-# Detect unused dependencies
-machete:
-    cargo machete
 
 # Generate code coverage report
 cov:
@@ -133,6 +110,65 @@ tex-insta:
         rm examples/snapshots/"$name".{tex,aux,log,pdf}
     done
 
-# Format justfile
-just-fmt:
-    just --fmt --unstable
+###################################
+# Benchmark
+###################################
+
+# Run benchmarks
+bench FILTER='':
+    cargo bench --features bench -- {{ FILTER }}
+
+# Run flamegraph
+# Requires admin
+flame:
+    cargo flamegraph --profile profiling
+
+# Build in profiling mode
+build-profiling:
+    cargo build --profile profiling
+
+# Run samply
+samply:
+    samply record --rate 1000000 ./target/profiling/theorem-prover-rs.exe
+
+###################################
+# Dependencies
+###################################
+
+# Add dependency to Cargo.toml
+add package:
+    cargo add {{ package }}
+
+# Add dependency to Cargo.toml with specific features
+add-features package +FEATURES:
+    cargo add {{ package }} --features {{ FEATURES }}
+
+# Install binary package globally
+# Requires cargo-binstall
+binstall package:
+    cargo binstall {{ package }}
+
+# List globally installed packages
+list-global:
+    cargo install --list
+
+# Detect unused dependencies
+machete:
+    cargo machete
+
+###################################
+# Build
+###################################
+
+# Cross-compile for Linux
+# Requires cross
+cross-build:
+    cross build --release --target x86_64-unknown-linux-gnu
+
+###################################
+# Utils
+###################################
+
+# Clean the target directory
+clean:
+    cargo clean
