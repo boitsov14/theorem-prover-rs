@@ -160,11 +160,10 @@ machete:
 # Build
 ###################################
 
-# Cross-compile for Linux
-# Requires cross
-cross-build:
-    cross build --release --target x86_64-unknown-linux-gnu
-    cross build --profile trace --target x86_64-unknown-linux-gnu
+# Build for Linux
+build:
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --release --target x86_64-unknown-linux-gnu
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --profile trace --target x86_64-unknown-linux-gnu
 
 ###################################
 # Utils
