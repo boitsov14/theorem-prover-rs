@@ -162,6 +162,8 @@ machete:
 
 # Build for Linux
 build:
+    cargo build --release
+    cargo build --profile trace
     MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --release --target x86_64-unknown-linux-gnu
     MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --profile trace --target x86_64-unknown-linux-gnu
 
