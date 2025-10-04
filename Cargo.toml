@@ -38,9 +38,15 @@ required-features = ["bench"]
 codegen-units = 1
 lto = true
 
+# for samply
 [profile.profiling]
 inherits = "release"
 debug = true
+
+# for tracing
+[profile.trace]
+inherits = "release"
+debug-assertions = true
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

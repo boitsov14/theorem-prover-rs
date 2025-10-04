@@ -31,7 +31,6 @@ struct CliOptions {
 
 /// Options from options.json
 #[derive(Deserialize)]
-#[expect(clippy::struct_excessive_bools)]
 struct FileOptions {
     /// Output LaTeX in ebproof format
     #[serde(default)]
@@ -42,9 +41,6 @@ struct FileOptions {
     /// Output LaTeX in forest format
     #[serde(default)]
     forest: bool,
-    /// Enable trace level logging
-    #[serde(default)]
-    trace: bool,
 }
 
 /// Maximum output size limit for LaTeX generation
@@ -73,10 +69,17 @@ pub fn run() {
     // setup logger
     let logger = include_str!("../logger.yaml")
         .replace("LOG_DIR", &out)
-        .replace("LOG_LEVEL", if options.trace { "trace" } else { "info" })
+        .replace(
+            "LOG_LEVEL",
+            if cfg!(debug_assertions) {
+                "trace"
+            } else {
+                "info"
+            },
+        )
         .replace(
             "APPENDERS",
-            if options.trace {
+            if cfg!(debug_assertions) {
                 "[log_file, trace_file]"
             } else {
                 "[log_file]"

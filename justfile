@@ -164,6 +164,7 @@ machete:
 # Requires cross
 cross-build:
     cross build --release --target x86_64-unknown-linux-gnu
+    cross build --profile trace --target x86_64-unknown-linux-gnu
 
 ###################################
 # Utils

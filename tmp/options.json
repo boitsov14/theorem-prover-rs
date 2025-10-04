@@ -1,6 +1,5 @@
 {
   "ebproof": true,
   "bussproofs": true,
-  "forest": true,
-  "trace": false
+  "forest": true
 }
