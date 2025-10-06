@@ -57,6 +57,11 @@ run:
     -rm tmp/*.{log,tex,yaml,err}
     cargo run -- --out "tmp"
 
+# Run the project in release mode
+run-release:
+    -rm tmp/*.{log,tex,yaml,err}
+    cargo run --release -- --out "tmp"
+
 # Latex build
 tex FILE:
     -rm tex/*

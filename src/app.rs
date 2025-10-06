@@ -148,18 +148,18 @@ pub fn run() {
     let time = end.duration_since(start).as_secs_f32() * 1000.0;
     writeln!(result, "proofTime: {time:.3}").unwrap();
 
-    // ebproof
-    if provability && options.ebproof {
-        info!("generating ebproof...");
+    // forest
+    if provability && options.forest {
+        info!("generating forest...");
         let start = Instant::now();
-        match sequent_calculus(seq.clone(), &names, Latex::Ebproof) {
+        match tableau_method(seq.clone(), &names) {
             Ok(proof) => {
                 // save LaTeX file
-                let mut file = File::create(PathBuf::from(&out).join("ebproof.tex")).unwrap();
+                let mut file = File::create(PathBuf::from(&out).join("forest.tex")).unwrap();
                 file.write_all(proof.as_bytes()).unwrap();
             }
             Err(LatexError::OutputTooLarge) => {
-                warn!("ebproof output too large");
+                warn!("forest output too large");
                 writeln!(result, "outputTooLarge: true").unwrap();
                 return;
             }
@@ -168,7 +168,7 @@ pub fn run() {
         let end = Instant::now();
         info!("done");
         let time = end.duration_since(start).as_secs_f32() * 1000.0;
-        writeln!(result, "ebproofTime: {time:.3}").unwrap();
+        writeln!(result, "forestTime: {time:.3}").unwrap();
     }
 
     // bussproofs
@@ -196,18 +196,18 @@ pub fn run() {
         writeln!(result, "bussproofsTime: {time:.3}").unwrap();
     }
 
-    // forest
-    if provability && options.forest {
-        info!("generating forest...");
+    // ebproof
+    if provability && options.ebproof {
+        info!("generating ebproof...");
         let start = Instant::now();
-        match tableau_method(seq, &names) {
+        match sequent_calculus(seq, &names, Latex::Ebproof) {
             Ok(proof) => {
                 // save LaTeX file
-                let mut file = File::create(PathBuf::from(&out).join("forest.tex")).unwrap();
+                let mut file = File::create(PathBuf::from(&out).join("ebproof.tex")).unwrap();
                 file.write_all(proof.as_bytes()).unwrap();
             }
             Err(LatexError::OutputTooLarge) => {
-                warn!("forest output too large");
+                warn!("ebproof output too large");
                 writeln!(result, "outputTooLarge: true").unwrap();
                 return;
             }
@@ -216,6 +216,6 @@ pub fn run() {
         let end = Instant::now();
         info!("done");
         let time = end.duration_since(start).as_secs_f32() * 1000.0;
-        writeln!(result, "forestTime: {time:.3}").unwrap();
+        writeln!(result, "ebproofTime: {time:.3}").unwrap();
     }
 }
