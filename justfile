@@ -9,8 +9,8 @@ set windows-shell := ["C:\\Program Files\\Git\\bin\\sh.exe", "-c"]
 set ignore-comments := true
 
 # Format justfile
-just-fmt:
-    just --fmt --unstable
+j-fmt:
+    j --fmt --unstable
 
 ###################################
 # Update
@@ -40,12 +40,12 @@ fmt:
 
 # Lint code
 lint:
-    just fmt
+    j fmt
     cargo clippy --all-targets --all-features
 
 # Lint code allowing dead_code warnings
 lint2:
-    just fmt
+    j fmt
     RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
 
 ###################################
@@ -169,8 +169,8 @@ machete:
 build:
     cargo build --release
     cargo build --profile trace
-    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --release --target x86_64-unknown-linux-gnu
-    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:latest cargo build --profile trace --target x86_64-unknown-linux-gnu
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:slim cargo build --release --target x86_64-unknown-linux-gnu
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app rust:slim cargo build --profile trace --target x86_64-unknown-linux-gnu
 
 ###################################
 # Utils
