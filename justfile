@@ -10,7 +10,7 @@ set ignore-comments := true
 
 # Format justfile
 j-fmt:
-    j --fmt --unstable
+    just --fmt --unstable
 
 ###################################
 # Update
@@ -40,12 +40,12 @@ fmt:
 
 # Lint code
 lint:
-    j fmt
+    just fmt
     cargo clippy --all-targets --all-features
 
 # Lint code allowing dead_code warnings
 lint2:
-    j fmt
+    just fmt
     RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
 
 ###################################
