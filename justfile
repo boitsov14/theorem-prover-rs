@@ -82,7 +82,7 @@ test FILTER='':
 
 # Generate code coverage report
 cov:
-    cargo +nightly llvm-cov nextest --release --branch --open
+    CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=false cargo +nightly llvm-cov nextest --branch --open
 
 # Insta test
 # cargo insta accept: Accept all snapshots

@@ -1,0 +1,288 @@
+# atom
+P
+
+# negation
+¬P
+
+# conjunction
+P ∧ Q
+
+# disjunction
+P ∨ Q
+
+# conditional
+P → Q
+
+# biconditional
+P ↔ Q
+
+# xor
+(P ∧ ¬Q) ∨ (¬P ∧ Q)
+
+# non-equivalence
+¬(P ↔ Q)
+
+# converse error
+Q → P
+
+# inverse error
+¬Q → ¬P
+
+# counterexample sequent 1
+P ⊢ Q
+
+# counterexample sequent 2
+P ∨ Q ⊢ P ∧ Q
+
+# counterexample sequent 3
+P ∨ Q ⊢ P
+
+# counterexample sequent 4
+P ∨ Q ⊢ Q
+
+# affirming the consequent
+P → Q, Q ⊢ P
+
+# denying the antecedent
+P → Q, ¬P ⊢ ¬Q
+
+# from or to unrelated
+P ∨ Q ⊢ R
+
+# from atom to unrelated
+P ⊢ R
+
+# contradiction claim
+P ⊢ P ∧ ¬P
+
+# invalid de morgan and
+¬(P ∧ Q) ↔ (¬P ∧ ¬Q)
+
+# invalid de morgan or
+¬(P ∨ Q) ↔ (¬P ∨ ¬Q)
+
+# wrong absorption or
+P ∨ (P ∧ Q) ↔ P ∧ Q
+
+# wrong absorption and
+P ∧ (P ∨ Q) ↔ P ∨ Q
+
+# wrong distribution
+P ∧ (Q ∨ R) ↔ (P ∧ Q) ∨ R
+
+# and vs or equivalence
+(P ∧ Q) ↔ (P ∨ Q)
+
+# mixed associativity
+(P ∧ (Q ∧ R)) ↔ ((P ∨ Q) ∧ R)
+
+# implication from disjunction
+(P ∨ Q) → P
+
+# implication to conjunction
+P → (Q ∧ R)
+
+# nested implication collapse
+(P → Q) → R
+
+# implication chain short
+(P → Q) ∧ (Q → R) ↔ (P → R)
+
+# converse transitivity
+(P → R) → ((P → Q) ∧ (Q → R))
+
+# biconditional to conjunction
+P ↔ Q ⊢ P ∧ Q
+
+# from implication to consequent
+P → Q ⊢ Q
+
+# or-elim to arbitrary
+P ∨ Q, P → R, Q → S ⊢ R ∧ S
+
+# unprovable conclusion
+⊢ P
+
+# excluded middle converse
+P ∨ ¬P ⊢ P
+
+# law of non-contradiction negated
+¬(¬(P ∧ ¬P))
+
+# contradiction
+P ∧ ¬P
+
+# not both true
+¬(P ∧ Q)
+
+# not both false
+¬(¬P ∧ ¬Q)
+
+# exclusive or sequent
+P ⊢ ¬P
+
+# invalid contraposition sequent
+¬Q ⊢ ¬P
+
+# wrong converse for biconditional intro
+P → Q ⊢ P ↔ Q
+
+# wrong equivalence implication
+(P → Q) ↔ (Q → P)
+
+# equivalence to disjunction
+P ↔ Q ↔ (P ∨ Q)
+
+# equivalence to conjunction
+P ↔ Q ↔ (P ∧ Q)
+
+# or implies and
+(P ∨ Q) → (P ∧ Q)
+
+# and implies atom (reverse)
+P → (P ∧ Q)
+
+# commutativity mismatch
+(P ∧ Q) ↔ (Q ∨ P)
+
+# idempotent wrong
+P ∧ P ↔ Q
+
+# absorption wrong sequent
+P ∧ (P ∨ Q) ⊢ Q
+
+# disjunction introduction reversed
+P ⊢ P ∧ Q
+
+# weakening reversed
+P ∨ Q ⊢ P
+
+# importation wrong direction
+P ∧ Q → R ⊢ P → (Q ∧ R)
+
+# exportation wrong target
+P → (Q → R) ⊢ (P ∧ Q) ∧ R
+
+# material implication converse only
+¬P ∨ Q ⊢ Q
+
+# converse of modus tollens
+P → Q, ¬P ⊢ ¬Q
+
+# hypothetical syllogism reverse
+P → R ⊢ (P → Q) ∧ (Q → R)
+
+# consensus wrong
+(P ∧ Q) ∨ (¬P ∧ R) ↔ (P ∧ Q) ∨ (Q ∧ R)
+
+# symmetric difference to equivalence
+(P ∧ ¬Q) ∨ (¬P ∧ Q) ↔ (P ↔ Q)
+
+# multiple negation odd
+¬¬¬P
+
+# complex non-tautology 1
+(P → Q) ∨ R
+
+# complex non-tautology 2
+(P ∧ Q) → R
+
+# complex non-tautology 3
+R → (P ∧ Q)
+
+# complex non-tautology 4
+(P ↔ Q) → R
+
+# complex non-tautology 5
+R → (P ↔ Q)
+
+# sequent arbitrary from or
+P ∨ Q ⊢ R ∨ S
+
+# sequent miss from and
+P ∧ Q ⊢ R
+
+# sequent miss from implies
+P → Q ⊢ R → Q
+
+# sequent miss unrelated
+P, Q ⊢ R
+
+# wrong biconditional chain
+(P ↔ Q) ∧ (Q ↔ R) ↔ (P ∧ R)
+
+# invalid peirce (unwrapped)
+(P → Q) → P
+
+# invalid clavius (unwrapped)
+¬P → P
+
+# from falsehood sequent
+⊢ P ∨ Q
+
+# not tautology with constants
+P ∧ true → Q
+
+# true implies atom
+true → P
+
+# atom implies false
+P → false
+
+# disjunction with false
+P ∨ false ↔ Q
+
+# conjunction with true
+P ∧ true ↔ Q
+
+# conditional with true
+Q → true ↔ P
+
+# biconditional with true
+P ↔ true ↔ Q
+
+# biconditional with false
+P ↔ false ↔ Q
+
+# nested conditional non-tautology
+(P → (Q → R)) → Q
+
+# nested disjunction non-tautology
+P ∨ (Q ∧ R)
+
+# nested conjunction non-tautology
+P ∧ (Q ∨ R)
+
+# mixed implication non-tautology
+(P → Q) ∧ R
+
+# implication to disjunction
+P → (Q ∨ R)
+
+# sequent from not both true
+¬(P ∧ Q) ⊢ ¬P
+
+# sequent from not both true 2
+¬(P ∧ Q) ⊢ ¬Q
+
+# sequent to disjunction with negation
+P ⊢ ¬P ∨ Q
+
+# invalid biconditional symmetry sequent
+P ↔ Q ⊢ Q ↔ P ↔ R
+
+# mixed arbitrary target
+P, R → S ⊢ Q
+
+# sequent wrong cut
+P → Q, Q → R ⊢ R
+
+# arbitrary equivalence
+P ↔ R
+
+# three-way or to and
+P ∨ Q ∨ R → P ∧ Q
+
+# three-way and to unrelated
+P ∧ Q ∧ R → S
+
