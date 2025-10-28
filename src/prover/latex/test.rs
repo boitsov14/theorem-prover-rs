@@ -2,7 +2,8 @@ use crate::{
     app::LatexError,
     core::{names::Names, parser::parse_sequent},
     prover::{
-        ProofResult, get_latex,
+        ProofResult,
+        get_latex,
         kernel::prove_prop,
         latex::{Latex, sequent_calculus, tableau_method},
         sequent::Sequent,
@@ -45,8 +46,8 @@ fn test_latex_snapshot(file: &str) {
         let seq_unicode = seq.display(&names).to_unicode();
 
         // check provability
-        let proof_result = prove_prop(seq.clone(), &names);
-        println!("{proof_result:?}");
+        let result = prove_prop(seq.clone(), &names);
+        println!("{result:?}");
 
         // ebproof
         println!("ebproof...");
@@ -88,7 +89,6 @@ fn test_latex_snapshot(file: &str) {
 }
 
 #[test]
-#[expect(clippy::panic)]
 fn test_latex_countermodel_snapshot() {
     // read snapshot file
     let content = fs::read_to_string("examples/snapshots/countermodel.txt").unwrap();
@@ -119,12 +119,12 @@ fn test_latex_countermodel_snapshot() {
         let seq_unicode = seq.display(&names).to_unicode();
 
         // check provability
-        let proof_result = prove_prop(seq.clone(), &names);
-        println!("{proof_result:?}");
+        let result = prove_prop(seq.clone(), &names);
+        println!("{result:?}");
 
         // get countermodel
-        let ProofResult::Unprovable(countermodel) = &proof_result else {
-            panic!("expected Unprovable");
+        let ProofResult::Unprovable(countermodel) = &result else {
+            unreachable!()
         };
         // create truth table for the countermodel
         let table = countermodel.evaluate(&seq);
