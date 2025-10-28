@@ -41,12 +41,17 @@ fmt:
 # Lint code
 lint:
     just fmt
-    cargo clippy --all-targets --all-features
+    cargo +nightly clippy --all-targets --all-features
 
 # Lint code allowing dead_code warnings
 lint2:
     just fmt
-    RUSTFLAGS="-A dead_code" cargo clippy --all-targets --all-features
+    RUSTFLAGS="-A dead_code" cargo +nightly clippy --all-targets --all-features
+
+# Lint code in release mode
+lint-release:
+    just fmt
+    cargo +nightly clippy --all-targets --all-features --release
 
 ###################################
 # Run

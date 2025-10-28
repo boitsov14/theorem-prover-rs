@@ -4,19 +4,19 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Term {
     Var(usize),
-    Func(usize, Vec<Term>),
+    Func(usize, Vec<Self>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Formula {
     Pred(usize, Vec<Term>),
-    Not(Box<Formula>),
-    And(Vec<Formula>),
-    Or(Vec<Formula>),
-    To(Box<Formula>, Box<Formula>),
-    Iff(Box<Formula>, Box<Formula>),
-    All(Vec<usize>, Box<Formula>),
-    Ex(Vec<usize>, Box<Formula>),
+    Not(Box<Self>),
+    And(Vec<Self>),
+    Or(Vec<Self>),
+    To(Box<Self>, Box<Self>),
+    Iff(Box<Self>, Box<Self>),
+    All(Vec<usize>, Box<Self>),
+    Ex(Vec<usize>, Box<Self>),
 }
 
 /// owned version of split sequent with owned formulas

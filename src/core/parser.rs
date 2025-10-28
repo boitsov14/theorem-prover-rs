@@ -34,7 +34,7 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum PTerm {
     Var(String),
-    Func(String, Vec<PTerm>),
+    Func(String, Vec<Self>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,13 +42,13 @@ enum PFormula {
     True,
     False,
     Pred(String, Vec<PTerm>),
-    Not(Box<PFormula>),
-    And(Box<PFormula>, Box<PFormula>),
-    Or(Box<PFormula>, Box<PFormula>),
-    To(Box<PFormula>, Box<PFormula>),
-    Iff(Box<PFormula>, Box<PFormula>),
-    All(String, Box<PFormula>),
-    Ex(String, Box<PFormula>),
+    Not(Box<Self>),
+    And(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
+    To(Box<Self>, Box<Self>),
+    Iff(Box<Self>, Box<Self>),
+    All(String, Box<Self>),
+    Ex(String, Box<Self>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

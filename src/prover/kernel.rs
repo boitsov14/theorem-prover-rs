@@ -5,6 +5,7 @@ use crate::{
         sequent::{Sequent, Side::*, SidedFormula},
     },
 };
+#[cfg(debug_assertions)]
 use log::trace;
 use std::vec;
 
