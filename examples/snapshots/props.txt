@@ -234,3 +234,9 @@ P ⊢ P
 
 # trivial sequent
 P, Q ⊢ R, P
+
+# redundant implication 1
+S ∨ T, P → Q, Q ⊢ S, T
+
+# redundant implication 2
+S ∨ T, P → Q, P ∧ Q ⊢ S, T
