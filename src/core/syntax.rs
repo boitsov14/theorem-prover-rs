@@ -187,6 +187,7 @@ impl Default for Formula {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use crate::core::{
         names::Names,

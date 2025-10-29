@@ -90,6 +90,7 @@ use_debug = "warn" # avoid debug formatting
 [lints.rust]
 explicit-outlives-requirements = "warn" # avoid unnecessary lifetime bounds
 redundant-lifetimes = "warn" # avoid redundant lifetime parameters
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)'] }
 
 [lints.rustdoc]
 unescaped_backticks = "warn" # avoid unescaped backticks in doc comments

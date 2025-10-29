@@ -205,6 +205,7 @@ impl<'a> Sequent<'a> {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
     use crate::core::parser::{parse_formula, parse_sequent};

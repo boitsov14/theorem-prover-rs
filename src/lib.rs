@@ -1,3 +1,6 @@
+// for coverage attribute
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 mod app;
 mod core {
     pub mod names;
@@ -12,6 +15,7 @@ mod prover {
         mod sequent_calculus;
         mod tableau_method;
         #[cfg(test)]
+        #[cfg_attr(coverage_nightly, coverage(off))]
         mod test;
         pub use sequent_calculus::{Latex, sequent_calculus};
         pub use tableau_method::tableau_method;

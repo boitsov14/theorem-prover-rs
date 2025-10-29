@@ -223,6 +223,7 @@ pub fn to_unicode(s: &str) -> String {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
     use crate::core::parser::{parse_formula, parse_term};

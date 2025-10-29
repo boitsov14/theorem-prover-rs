@@ -48,6 +48,7 @@ fn test_latex_snapshot(file: &str) {
         // check provability
         let result = prove_prop(seq.clone(), &names);
         println!("{result:?}");
+        assert!(matches!(&result, ProofResult::Proved));
 
         // ebproof
         println!("ebproof...");
