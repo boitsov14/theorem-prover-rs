@@ -184,3 +184,8 @@ build:
 # Clean the target directory
 clean:
     cargo clean
+
+# Count lines of code
+# To update, `go install github.com/boyter/scc/v3@latest`
+scc:
+    scc .
