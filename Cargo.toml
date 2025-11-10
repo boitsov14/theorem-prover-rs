@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.50", features = ["derive"] }
+clap = { version = "4.5.51", features = ["derive"] }
 divan = { version = "0.1.21", optional = true }
 itertools = "0.14.0"
 log = "0.4.28"
@@ -19,7 +19,7 @@ serde_json = "1.0.145"
 serde_yaml_ng = "0.10.0"
 thiserror = "2.0.17"
 typed-arena = "2.0.2"
-unicode-normalization = "0.1.24"
+unicode-normalization = "0.1.25"
 
 [dev-dependencies]
 insta = "1.43.2"
