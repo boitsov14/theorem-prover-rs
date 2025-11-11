@@ -12,3 +12,5 @@
 # ∃x∀yP(x,y) → ∀y∃xP(x,y)
 # sort: 5274ms, un_sort: 1805ms -> 998ms
 # P(a) to all x(P(x) → P(f(x))) to P(f(f(f(f(f(f(f(f(f(a))))))))))
+
+P or not P

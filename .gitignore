@@ -1,10 +1,16 @@
+# build artifacts
 /target
-/tmp/*.tex
-/tmp/*.log
-/tmp/result.yaml
-/tmp/parse.err
+
+# generated files
+/out-tex
+/out-png
+/tmp/
+!/tmp/formula.txt
+!/tmp/options.json
+
+# profiling outputs
 /flamegraph.svg
 /profile.json.gz
-/tex
-/png
+
+# snapshots
 /snapshots
